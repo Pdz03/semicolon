@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semicolon;</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@300&display=swap" rel="stylesheet">
+    
+    <style>
+        body { background-color: #050505; color: #e5e5e5; font-family: 'JetBrains Mono', monospace; overflow: hidden; }
+        .cinzel { font-family: 'Cinzel', serif; }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 2s ease-in forwards; }
+        .fade-out { animation: fadeOut 1s ease-out forwards; }
+        .animate-wave { animation: wave 8s ease-in-out infinite alternate; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes wave {
+            0% { transform: translateY(0) scaleY(1); }
+            50% { transform: translateY(-10px) scaleY(1.05); }
+            100% { transform: translateY(5px) scaleY(0.95); }
+        }
+        
+        /* Foto Frame Custom */
+        .photo-frame {
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Caption & Date Animation */
+        .caption-tag {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+        }
+        .tag-left { left: -10px; transform: translateX(-20px); }
+        .tag-right { right: -10px; transform: translateX(20px); }
+        .photo-card:not(.opacity-0) .caption-tag {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .date-label {
+            position: absolute;
+            top: 6px;
+            left: 10px;
+            font-size: 9px;
+            letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.7);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        /* Chat Bubbles */
+        .chat-bubble {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            position: relative;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-family: sans-serif;
+        }
+        .chat-her {
+            background-color: #ffffff;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .chat-me {
+            background-color: #054d44; /* Darker WA Green */
+            color: #fff;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        /* Style for Chat 1 blueish - based on user screenshot */
+        .chat-me-blue {
+            background-color: #125e8a; 
+        }
+        .chat-time {
+            font-size: 9px;
+            opacity: 0.6;
+            margin-left: 8px;
+            float: right;
+            margin-top: 4px;
+        }
+        .chat-quote {
+            background: rgba(0,0,0,0.1);
+            border-left: 3px solid #34b7f1;
+            padding: 4px 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        /* Waveform for VN */
+        .waveform {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 30px;
+        }
+        .wave-bar {
+            width: 2px;
+            background: #999;
+            border-radius: 1px;
+            animation: waveBounce 1s ease-in-out infinite;
+        }
+        @keyframes waveBounce {
+            0%, 100% { height: 5px; }
+            50% { height: 25px; }
+        }
+
+        /* Collage Styles */
+        #collage-view {
+            position: relative;
+            width: 100%;
+            height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+        .collage-item {
+            position: absolute;
+            border: 4px solid white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: all 1s cubic-bezier(0.19, 1, 0.22, 1);
+            opacity: 0;
+            transform: scale(0.5) translateZ(-500px);
+        }
+        .collage-item:hover {
+            z-index: 50 !important;
+            transform: scale(1.1) rotate(0deg) !important;
+            box-shadow: 0 20px 50px rgba(255,255,255,0.2);
+        }
+        .collage-caption {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            pointer-events: none;
+            text-shadow: 0 0 20px rgba(0,0,0,1);
+        }
+        @keyframes floating {
+            0%, 100% { transform: translateY(0) rotate(var(--rot)); }
+            50% { transform: translateY(-15px) rotate(calc(var(--rot) + 2deg)); }
+        }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center min-h-screen relative overflow-hidden">
+    
+    <!-- Background overlay -->
+    <div class="absolute inset-0 pointer-events-none opacity-20 z-[-10]" style="background-image: radial-gradient(circle, #333 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+    <audio id="bg-music" loop></audio>
+
+    <!-- LOCK SCREEN -->
+    <div id="lock-screen" class="text-center p-8 w-full max-w-md z-10 transition-all duration-700">
+        <h1 class="text-4xl cinzel tracking-[0.2em] mb-4 text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">SEMICOLON;</h1>
+        <p class="text-xs text-gray-400 mb-10 tracking-widest uppercase">A Pause, Not An End.</p>
+        <div id="timer-box" class="mb-8 hidden">
+            <p class="text-[10px] text-red-400 tracking-widest mb-2">UNLOCKING IN:</p>
+            <div id="countdown" class="text-3xl font-bold tracking-widest text-red-500 font-mono">00:00:00</div>
+        </div>
+        <div class="relative mb-8 group">
+            <input type="text" id="code-input" placeholder="ENTER CODE" 
+                class="bg-transparent border-b border-gray-700 text-center text-xl tracking-[0.5em] w-full py-2 focus:outline-none focus:border-white transition-all duration-300 text-white">
+        </div>
+        <button onclick="attemptLogin()" class="px-10 py-3 border border-white/20 hover:bg-white hover:text-black transition-all duration-300 text-xs tracking-[0.3em] uppercase">Compile</button>
+        <p id="msg" class="text-red-500 text-xs mt-6 h-4"></p>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="hidden absolute inset-0 flex items-center justify-center cursor-pointer z-10 bg-black/80 backdrop-blur-sm" onclick="startJourney()">
+        <div class="text-center animate-pulse">
+            <p class="text-sm tracking-[0.5em] text-white">TAP TO BEGIN MEMORY DUMP</p>
+        </div>
+    </div>
+
+    <!-- MEMORY SCREEN -->
+    <div id="memory-screen" class="hidden flex flex-col items-center justify-center w-full h-screen p-4 relative z-0">
+        
+        <!-- Wavy Line Animation -->
+        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 z-0">
+            <svg viewBox="0 0 1440 320" class="w-full h-auto animate-wave">
+                <path fill="#ffffff" fill-opacity="0.1" d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+            </svg>
+        </div>
+
+        <!-- Meta Info (Visible in chat/voice, hidden in photos) -->
+        <div id="meta-top" class="absolute top-8 left-0 w-full text-center z-50">
+            <p id="mem-date-global" class="text-[14px] md:text-[16px] text-white/60 tracking-[0.5em] mb-1 font-bold drop-shadow-lg"></p>
+            <p id="mem-loc-global" class="text-[10px] text-gray-500 tracking-widest uppercase"></p>
+        </div>
+
+        <!-- Mixed Content Container -->
+        <div id="content-area" class="w-full max-w-6xl flex flex-col items-center justify-center z-10 p-4 pt-24 min-h-[60vh]">
+            
+            <!-- Photo Slot (Default) -->
+            <div id="photo-view" class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-20">
+                 <!-- Photo 1 -->
+                 <div id="photo-card-1" class="photo-card transition-all duration-1000 transform hover:scale-105 relative">
+                    <div class="photo-frame p-2 rotate-[-3deg] md:rotate-[-6deg] relative">
+                        <div class="aspect-[4/5] w-52 md:w-80 overflow-hidden relative">
+                            <img id="mem-img-1" src="" class="object-cover w-full h-full">
+                            <div id="mem-cap-1" class="caption-tag tag-left"></div>
+                        </div>
+                        <p id="mem-date-1" class="date-label"></p>
+                    </div>
+                </div>
+                <!-- Photo 2 -->
+                <div id="photo-card-2" class="photo-card transition-all duration-1000 delay-300 transform hover:scale-105 relative mt-4 md:mt-0">
+                    <div class="photo-frame p-2 rotate-[3deg] md:rotate-[6deg] mt-6 md:mt-24 relative">
+                         <div class="aspect-[4/5] w-52 md:w-80 overflow-hidden relative">
+                            <img id="mem-img-2" src="" class="object-cover w-full h-full">
+                            <div id="mem-cap-2" class="caption-tag tag-right"></div>
+                        </div>
+                        <p id="mem-date-2" class="date-label"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Slot -->
+            <div id="chat-view" class="hidden w-full max-w-md flex flex-col p-6 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md">
+                <div id="chat-bubbles" class="flex flex-col">
+                    <!-- Dynamic Bubbles Go Here -->
+                </div>
+            </div>
+
+            <!-- Voice Slot (Waveform + Caption) -->
+            <div id="voice-view" class="hidden flex flex-col items-center text-center">
+                <div class="bg-white p-4 rounded-2xl w-full max-w-sm mb-12 shadow-xl flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    </div>
+                    <div id="vn-waveform" class="waveform flex-1"></div>
+                    <span class="text-[10px] text-gray-500 font-sans">0:24</span>
+                </div>
+                <p id="voice-msg" class="text-sm md:text-xl cinzel leading-relaxed text-white max-w-xl"></p>
+            </div>
+
+            <!-- Collage Slot -->
+            <div id="collage-view" class="hidden w-full h-full relative">
+                 <div id="collage-items" class="absolute inset-0 flex items-center justify-center overflow-hidden"></div>
+                 <h2 id="collage-text" class="collage-caption cinzel text-white text-lg md:text-3xl opacity-0 transition-opacity duration-2000 pointer-events-none"></h2>
+            </div>
+        </div>
+
+        <!-- Global Caption Area (Only for chat/voice if needed) -->
+        <div id="caption-box" class="text-center mt-12 max-w-2xl z-10 px-4 min-h-[60px] hidden">
+             <p id="mem-caption" class="text-sm md:text-lg cinzel text-white/80 opacity-0 transition-opacity duration-1000"></p>
+        </div>
+
+        <!-- Controls -->
+        <div class="absolute bottom-10 right-10 flex space-x-4 z-20">
+             <button onclick="nextSlide()" class="group flex items-center gap-2 text-xs text-gray-600 hover:text-white transition-colors tracking-widest">
+                NEXT <span class="group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- FINAL SCREEN -->
+    <div id="final-screen" class="hidden flex flex-col items-center justify-center w-full h-screen bg-black text-center p-8 z-50 relative overflow-hidden">
+        <div id="final-text" class="text-white text-lg md:text-2xl cinzel leading-loose whitespace-pre-line z-10"></div>
+        <div class="mt-8 opacity-0 transition-opacity duration-3000 text-[10px] text-gray-600 tracking-[0.5em]" id="final-footer">SEMICOLON; PROJECT</div>
+    </div>
+
+    <script>
+        let memories = [];
+        let currentIndex = 0;
+        let config = {};
+
+        window.onload = async () => {
+            const res = await fetch('/api/status');
+            config = await res.json();
+            document.getElementById('bg-music').src = config.music_url;
+            checkTimer();
+            setInterval(checkTimer, 1000);
+        };
+
+        function checkTimer() {
+            const now = new Date();
+            const release = new Date(config.release_time);
+            if(now < release) {
+                document.getElementById('timer-box').classList.remove('hidden');
+                const diff = release - now;
+                const d = new Date(diff);
+                document.getElementById('countdown').innerText = d.toISOString().substr(11, 8);
+            } else {
+                document.getElementById('timer-box').classList.add('hidden');
+            }
+        }
+
+        async function attemptLogin() {
+            const code = document.getElementById('code-input').value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            if(data.success) {
+                const memRes = await fetch('/api/memories');
+                memories = await memRes.json();
+                document.getElementById('lock-screen').classList.add('opacity-0', '-translate-y-10');
+                setTimeout(() => {
+                    document.getElementById('lock-screen').classList.add('hidden');
+                    document.getElementById('start-screen').classList.remove('hidden');
+                }, 700);
+            } else {
+                document.getElementById('msg').innerText = "INVALID ACCESS TOKEN.";
+            }
+        }
+
+        function startJourney() {
+            document.getElementById('bg-music').play().catch(e => console.log("Audio block"));
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('memory-screen').classList.remove('hidden');
+            showSlide(0);
+        }
+
+        function showSlide(index) {
+            if(index >= memories.length) {
+                showFinal();
+                return;
+            }
+
+            const item = memories[index];
+            const nextItem = memories[index+1];
+
+            const photoView = document.getElementById('photo-view');
+            const chatView = document.getElementById('chat-view');
+            const voiceView = document.getElementById('voice-view');
+            const collageView = document.getElementById('collage-view');
+            const metaTop = document.getElementById('meta-top');
+
+            [photoView, chatView, voiceView, collageView].forEach(v => v.classList.add('hidden'));
+            
+            if (item.type === 'chat') {
+                metaTop.classList.remove('hidden');
+                document.getElementById('mem-date-global').innerText = item.date;
+                document.getElementById('mem-loc-global').innerText = item.location;
+                chatView.classList.remove('hidden');
+                renderChats(item.chat_data);
+            } else if (item.type === 'voice') {
+                metaTop.classList.remove('hidden');
+                document.getElementById('mem-date-global').innerText = item.date;
+                document.getElementById('mem-loc-global').innerText = item.location;
+                voiceView.classList.remove('hidden');
+                renderVoice(item);
+            } else if (item.type === 'collage') {
+                metaTop.classList.add('hidden');
+                collageView.classList.remove('hidden');
+                renderCollage(item);
+            } else {
+                metaTop.classList.add('hidden'); // Meta inside photo cards
+                photoView.classList.remove('hidden');
+                renderPhotos(item, nextItem);
+            }
+
+            currentIndex = index;
+        }
+
+        function renderPhotos(item, next) {
+            const c1 = document.getElementById('photo-card-1');
+            const c2 = document.getElementById('photo-card-2');
+            
+            // Photo 1
+            document.getElementById('mem-img-1').src = item.image_url;
+            document.getElementById('mem-date-1').innerText = item.date;
+            document.getElementById('mem-cap-1').innerText = item.caption;
+            c1.classList.add('opacity-0', 'translate-y-5');
+            
+            // Photo 2
+            if (next && next.type === 'photo') {
+                document.getElementById('mem-img-2').src = next.image_url;
+                document.getElementById('mem-date-2').innerText = next.date;
+                document.getElementById('mem-cap-2').innerText = next.caption;
+                c2.classList.remove('hidden');
+                c2.classList.add('opacity-0', 'translate-y-5');
+            } else {
+                c2.classList.add('hidden');
+            }
+
+            setTimeout(() => {
+                c1.classList.remove('opacity-0', 'translate-y-5');
+                if (next && next.type === 'photo') {
+                    setTimeout(() => c2.classList.remove('opacity-0', 'translate-y-5'), 300);
+                }
+            }, 100);
+        }
+
+        function renderChats(data) {
+            const container = document.getElementById('chat-bubbles');
+            container.innerHTML = "";
+            data.forEach((chat, i) => {
+                const bubble = document.createElement('div');
+                bubble.className = `chat-bubble ${chat.sender === 'me' ? 'chat-me' : 'chat-her'} opacity-0 translate-y-4 transition-all duration-500`;
+                if (currentIndex === 0 && chat.sender === 'me') bubble.classList.add('chat-me-blue');
+                let content = "";
+                if (chat.quoted) content += `<div class="chat-quote">${chat.quoted}</div>`;
+                content += `${chat.text.replace(/\n/g, '<br>')} <span class="chat-time">${chat.time}</span>`;
+                bubble.innerHTML = content;
+                container.appendChild(bubble);
+                setTimeout(() => bubble.classList.remove('opacity-0', 'translate-y-4'), i * 300);
+            });
+        }
+
+        function renderVoice(item) {
+            const wave = document.getElementById('vn-waveform');
+            wave.innerHTML = "";
+            for(let i=0; i<30; i++) {
+                const bar = document.createElement('div');
+                bar.className = "wave-bar";
+                bar.style.animationDelay = `${i * 0.05}s`;
+                bar.style.height = `${Math.random() * 20 + 5}px`;
+                wave.appendChild(bar);
+            }
+            document.getElementById('voice-msg').innerText = item.caption;
+        }
+
+        function renderCollage(item) {
+            const container = document.getElementById('collage-items');
+            const text = document.getElementById('collage-text');
+            container.innerHTML = "";
+            text.innerText = item.caption;
+            text.style.opacity = 0;
+
+            const isMobile = window.innerWidth < 768;
+            const radiusBase = isMobile ? 120 : 250;
+            const sizeBase = isMobile ? 80 : 120;
+
+            const total = item.collage_data.length;
+            item.collage_data.forEach((url, i) => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = "collage-item";
+                
+                // Random positioning but spread out
+                const angle = (i / total) * Math.PI * 2;
+                const radius = radiusBase + Math.random() * (radiusBase * 0.4);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * (radius * 0.7); // Oval spread
+                const rot = (Math.random() * 40) - 20;
+                const size = sizeBase + Math.random() * (sizeBase * 0.6);
+
+                img.style.width = `${size}px`;
+                img.style.left = `calc(50% + ${x}px - ${size/2}px)`;
+                img.style.top = `calc(50% + ${y}px - ${size/2}px)`;
+                img.style.setProperty('--rot', `${rot}deg`);
+                img.style.animation = `floating ${3 + Math.random() * 2}s ease-in-out infinite`;
+                
+                container.appendChild(img);
+
+                setTimeout(() => {
+                    img.style.opacity = 0.8;
+                    img.style.transform = `scale(1) rotate(${rot}deg) translateZ(0)`;
+                }, i * 200 + 500);
+            });
+
+            setTimeout(() => { text.style.opacity = 1; }, 2000);
+        }
+
+        function nextSlide() {
+            const item = memories[currentIndex];
+            const next = memories[currentIndex+1];
+            const jump = (item.type === 'photo' && next && next.type === 'photo') ? 2 : 1;
+            showSlide(currentIndex + jump);
+        }
+
+        function showFinal() {
+            document.getElementById('memory-screen').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('memory-screen').classList.add('hidden');
+                const finalScreen = document.getElementById('final-screen');
+                finalScreen.classList.remove('hidden');
+                finalScreen.classList.add('fade-in');
+                typeWriter(config.final_message, 'final-text');
+                setTimeout(() => { document.getElementById('final-footer').style.opacity = 1; }, 5000);
+            }, 1000);
+        }
+
+        function typeWriter(text, elementId) {
+            let i = 0;
+            const elm = document.getElementById(elementId);
+            elm.innerHTML = "";
+            function type() {
+                if (i < text.length) {
+                    elm.innerHTML += text.charAt(i) === '\n' ? '<br>' : text.charAt(i);
+                    i++;
+                    setTimeout(type, 80);
+                }
+            }
+            type();
+        }
+    </script>
+</body>
+</html>
