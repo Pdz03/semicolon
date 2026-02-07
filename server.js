@@ -194,7 +194,9 @@ app.post('/api/login', async (req, res) => {
     // User Check
     if (code === config.unlock_code) {
         const now = new Date();
-        
+        if (now < config.release_time) {
+            return res.json({ success: false, reason: 'not_released' });
+        }
         return res.json({ success: true, role: 'user' });
     }
     return res.json({ success: false, reason: 'wrong_code' });
