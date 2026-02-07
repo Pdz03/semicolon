@@ -84,7 +84,7 @@ app.get('/init', async (req, res) => {
         release_time: new Date('2026-02-08T09:00:00+07:00'),
         unlock_code: '191025010802', // Sesuaikan kode di kertas
         final_message: "Proses kompilasi rindu selesai.\n\nSekarang, letakkan HP-mu.\nTutup matamu.\n\nJangan buka sebelum aku bilang 'Selesai'.",
-        music_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" // Ganti link lagumu nanti
+        music_url: "/music/khsk.mp3" // Ganti link lagumu nanti
     });
 
     // 2. Setup Memories (Story Sequence)
