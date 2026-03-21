@@ -211,7 +211,7 @@ app.get('/api/memories', async (req, res) => {
 // --- SERVER ---
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT ?? "3001";
-    
+
     app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}`));
 }
 module.exports = app;
