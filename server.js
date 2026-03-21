@@ -73,7 +73,19 @@ const SettingSchema = new mongoose.Schema({
 const Memory = mongoose.model('Memory', MemorySchema);
 const Setting = mongoose.model('Setting', SettingSchema);
 
+const SettingV2Schema = new mongoose.Schema({
+    key: String,
+    release_time: Date
+});
+const SettingV2 = mongoose.model('SettingV2', SettingV2Schema);
+
 app.use(bodyParser.json());
+
+// Redirect root to /v2
+app.get("/", (req, res) => {
+    res.redirect("/v2");
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 // --- INIT DATA (Jalankan sekali via browser: /init) ---
 app.get('/init', async (req, res) => {
@@ -175,7 +187,25 @@ app.get('/init', async (req, res) => {
     res.send('Database Semicolon Re-Initialized with Full Story!');
 });
 
+app.get('/init-v2', async (req, res) => {
+    const exist = await SettingV2.findOne({ key: 'config_v2' });
+    if (!exist) {
+        await SettingV2.create({
+            key: 'config_v2',
+            release_time: new Date('2026-03-24T09:00:00+07:00') // <-- Atur tanggal kencan Cengklik di sini
+        });
+        return res.send('Database V2 Initialized!');
+    }
+    res.send('V2 Data already exists.');
+});
+
 // --- API ROUTES ---
+
+// Ambil status v2 (bisa disesuaikan jika ingin beda config)
+app.get('/api/v2/status', async (req, res) => {
+    const config = await SettingV2.findOne({ key: 'config_v2' });
+    res.json(config);
+});
 
 // Cek Waktu & Status (Public)
 app.get('/api/status', async (req, res) => {

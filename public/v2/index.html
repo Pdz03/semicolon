@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Semicolon; v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { 
+            font-family: 'JetBrains Mono', monospace; 
+            background-color: #050505; 
+            color: #e5e5e5; 
+            overflow: hidden; 
+        }
+        .glitch { animation: glitch 1.5s infinite; }
+        @keyframes glitch { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        
+        /* Efek garis scan CRT jadul */
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 relative scanlines">
+
+    <div class="z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg shadow-[0_0_30px_rgba(29,78,216,0.1)]">
+        
+        <div>
+            <h1 class="text-3xl font-bold glitch tracking-[0.3em]">SEMICOLON<span class="text-blue-500">;</span></h1>
+            <p class="text-[10px] text-blue-400 mt-2 tracking-[0.4em]">SYSTEM UPGRADE: VERSION 2.0</p>
+        </div>
+
+        <div class="py-6 border-y border-blue-900/30">
+            <p class="text-xs text-gray-500 mb-2">ESTIMATED LAUNCH IN:</p>
+            <div id="countdown" class="text-4xl sm:text-5xl font-bold tracking-widest text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]">
+                --:--:--
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-600 italic">"Menyiapkan variabel baru..."</p>
+    </div>
+
+    <script>
+        let countdownInterval;
+
+        window.onload = async () => {
+            try {
+                // Ambil jam dari database
+                const res = await fetch('/api/v2/status');
+                const data = await res.json();
+                
+                if (data.release_time) {
+                    startTimer(data.release_time);
+                } else {
+                    document.getElementById('countdown').innerText = "SYSTEM OFFLINE";
+                }
+            } catch (error) {
+                document.getElementById('countdown').innerText = "CONNECTION LOST";
+            }
+        };
+
+        function startTimer(isoTime) {
+            const endTime = new Date(isoTime).getTime();
+            
+            countdownInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const dist = endTime - now;
+
+                if (dist < 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('countdown').innerText = "READY";
+                    document.getElementById('countdown').classList.add('text-green-400');
+                    document.getElementById('countdown').classList.remove('text-blue-300');
+                    return;
+                }
+
+                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((dist % (1000 * 60)) / 1000);
+
+                // Format biar selalu 2 digit (09, bukan 9)
+                const format = (num) => num.toString().padStart(2, '0');
+
+                if (d > 0) {
+                    document.getElementById('countdown').innerText = `${d}D ${format(h)}:${format(m)}:${format(s)}`;
+                } else {
+                    document.getElementById('countdown').innerText = `${format(h)}:${format(m)}:${format(s)}`;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
