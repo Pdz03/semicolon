@@ -207,6 +207,24 @@ app.get('/api/v2/status', async (req, res) => {
     res.json(config);
 });
 
+// --- API ADMIN: UPDATE COUNTDOWN V2 ---
+app.post('/api/v2/update-time', async (req, res) => {
+    const { new_time, secret } = req.body;
+    
+    // Keamanan standar biar nggak ada yang iseng nembak API
+    if (secret !== 'sajak-admin') {
+        return res.status(403).json({ error: 'Akses Ditolak: Kode Admin Salah' });
+    }
+
+    const config = await SettingV2.findOne({ key: 'config_v2' });
+    if (!config) return res.status(404).json({ error: 'Data V2 belum di-init' });
+
+    config.release_time = new Date(new_time);
+    await config.save();
+    
+    res.json({ success: true, message: 'Waktu berhasil diupdate!' });
+});
+
 // Cek Waktu & Status (Public)
 app.get('/api/status', async (req, res) => {
     const config = await Setting.findOne({ key: 'config' });
