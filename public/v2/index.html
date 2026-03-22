@@ -395,48 +395,48 @@
         }
       }
 
-      async function startFingerprint() {
-        const codeBox = document.getElementById("secret-code-box");
-        const codeDisplay = document.getElementById("master-code-display");
+    //   async function startFingerprint() {
+    //     const codeBox = document.getElementById("secret-code-box");
+    //     const codeDisplay = document.getElementById("master-code-display");
 
-        const options = {
-          publicKey: {
-            challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
-            rpId: window.location.hostname,
-            userVerification: "required",
-            timeout: 60000,
-          },
-        };
+    //     const options = {
+    //       publicKey: {
+    //         challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
+    //         rpId: window.location.hostname,
+    //         userVerification: "required",
+    //         timeout: 60000,
+    //       },
+    //     };
 
-        try {
-          // Panggil sensor sidik jari bawaan HP
-          const assertion = await navigator.credentials.get(options);
+    //     try {
+    //       // Panggil sensor sidik jari bawaan HP
+    //       const assertion = await navigator.credentials.get(options);
 
-          // Jika sidik jari Ida valid, generate 6 digit random
-          const randomCode = Math.floor(
-            100000 + Math.random() * 900000,
-          ).toString();
+    //       // Jika sidik jari Ida valid, generate 6 digit random
+    //       const randomCode = Math.floor(
+    //         100000 + Math.random() * 900000,
+    //       ).toString();
 
-          // Tampilkan ke layar
-          codeDisplay.innerText = randomCode;
-          codeBox.classList.remove("hidden");
+    //       // Tampilkan ke layar
+    //       codeDisplay.innerText = randomCode;
+    //       codeBox.classList.remove("hidden");
 
-          // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
-        } catch (err) {
-          alert("Otentikasi Gagal atau Dibatalkan!");
-          console.error(err);
-        }
-      }
+    //       // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
+    //     } catch (err) {
+    //       alert("Otentikasi Gagal atau Dibatalkan!");
+    //       console.error(err);
+    //     }
+    //   }
 
-      function connectDevices() {
-        // Nanti diisi logic Socket.io
-        const code = document.getElementById("client-code").value;
-        if (code === "TKG-892") {
-          alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
-        } else {
-          alert("Kode Tidak Valid!");
-        }
-      }
+    //   function connectDevices() {
+    //     // Nanti diisi logic Socket.io
+    //     const code = document.getElementById("client-code").value;
+    //     if (code === "TKG-892") {
+    //       alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
+    //     } else {
+    //       alert("Kode Tidak Valid!");
+    //     }
+    //   }
     </script>
   </body>
 </html>
