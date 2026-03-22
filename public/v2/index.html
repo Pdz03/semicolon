@@ -79,6 +79,23 @@
           transform: scale(1);
         }
       }
+
+      /* Efek Kedip Merah kalau Salah Jawab */
+      @keyframes errorFlash {
+        0%,
+        100% {
+          border-color: rgba(127, 29, 29, 0.5);
+          box-shadow: none;
+        }
+        50% {
+          border-color: #ef4444;
+          box-shadow: 0 0 25px rgba(239, 68, 68, 0.8);
+          background-color: rgba(239, 68, 68, 0.1);
+        }
+      }
+      .error-shake {
+        animation: errorFlash 0.3s ease-in-out 2;
+      }
     </style>
   </head>
   <body
@@ -252,7 +269,7 @@
       class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
     >
       <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
-        BACAKAN SOAL INI
+        BACAKAN SOAL <span id="reader-progress" class="text-white">(1/3)</span>
       </h2>
       <p class="text-xs text-gray-400 mb-6">
         Agen partner sedang menunggu instruksi darimu.
@@ -277,8 +294,9 @@
       id="screen-executor"
       class="hidden z-10 w-full max-w-md text-center space-y-4 p-6 border border-red-900/50 bg-red-950/10 rounded-lg fade-in"
     >
-      <h2 class="text-red-500 font-bold tracking-widest text-xl">
+      <h2 class="text-red-500 font-bold tracking-widest text-xl mb-2">
         INPUT JAWABAN
+        <span id="executor-progress" class="text-white">(1/3)</span>
       </h2>
       <p class="text-xs text-gray-400">
         Dengarkan instruksi, lalu eksekusi angka.
@@ -293,6 +311,7 @@
         </h1>
       </div>
 
+      <div id="numpad-container" class="grid grid-cols-3 gap-3 p-2 border border-transparent rounded"></div>
       <div class="grid grid-cols-3 gap-3">
         <button
           onclick="typeNum('1')"
@@ -368,6 +387,7 @@
         </button>
       </div>
     </div>
+</div>
 
     <div
       id="screen-deeptalk"
@@ -732,29 +752,32 @@
       let currentTopicText = "";
       let typedAnswer = "";
 
-      // --- 1. NANGKAP PERINTAH START LEVEL DARI SERVER ---
-      socket.on("start_level", (data) => {
-        // Sembunyikan radar
-        document.getElementById("screen-game").classList.add("hidden");
+      // --- 1. PERBAIKAN START LEVEL (Mencegah Layar Numpuk) ---
+socket.on('start_level', (data) => {
+    // Sembunyikan SEMUA layar lain secara paksa
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-deeptalk').classList.add('hidden');
+    
+    currentCorrectAnswer = data.correctAnswer;
+    currentTopicText = data.topicText;
+    
+    // Update indikator (1/3)
+    document.getElementById('reader-progress').innerText = `(${data.subLevel}/3)`;
+    document.getElementById('executor-progress').innerText = `(${data.subLevel}/3)`;
 
-        currentCorrectAnswer = data.correctAnswer;
-        currentTopicText = data.topicText;
+    const myRole = isClient ? 'client' : 'master';
 
-        // Tentukan role HP ini (isClient diset dari URL ?as=client)
-        const myRole = isClient ? "client" : "master";
-
-        // Cek apakah HP ini ditugaskan jadi Reader (pembaca)
-        if (data.reader === myRole) {
-          document.getElementById("screen-reader").classList.remove("hidden");
-          document.getElementById("question-display").innerText =
-            data.questionText;
-        } else {
-          // Kalau bukan, berarti HP ini jadi Executor (Numpad)
-          document.getElementById("screen-executor").classList.remove("hidden");
-          typedAnswer = "";
-          document.getElementById("answer-display").innerText = "_";
-        }
-      });
+    if (data.reader === myRole) {
+        document.getElementById('screen-reader').classList.remove('hidden');
+        document.getElementById('screen-executor').classList.add('hidden');
+        document.getElementById('question-display').innerText = data.questionText;
+    } else {
+        document.getElementById('screen-executor').classList.remove('hidden');
+        document.getElementById('screen-reader').classList.add('hidden');
+        typedAnswer = "";
+        document.getElementById('answer-display').innerText = "_";
+    }
+});
 
       // --- 2. FUNGSI NUMPAD EXECUTOR ---
       function typeNum(num) {
@@ -768,17 +791,20 @@
           typedAnswer || "_";
       }
 
-      function submitAnswer() {
-        if (typedAnswer === currentCorrectAnswer) {
-          // Kalau jawaban benar, kasih tau server!
-          socket.emit("answer_correct");
-        } else {
-          // Kalau salah, reset layar
-          alert("Akses Ditolak: Kalkulasi Salah!");
-          typedAnswer = "";
-          document.getElementById("answer-display").innerText = "_";
-        }
-      }
+// --- 2. HAPUS ALERT, GANTI KEDIP MERAH ---
+function submitAnswer() {
+    if (typedAnswer === currentCorrectAnswer) {
+        socket.emit('answer_correct');
+    } else {
+        // Efek Kedip Merah tanpa Alert
+        const numpad = document.getElementById('numpad-container');
+        numpad.classList.add('error-shake');
+        setTimeout(() => numpad.classList.remove('error-shake'), 600); // Hapus class setelah animasi selesai
+        
+        typedAnswer = "";
+        document.getElementById('answer-display').innerText = "_";
+    }
+}
 
       // --- 3. BUKA DEEP TALK (Jawaban Benar) ---
       socket.on("unlock_deeptalk", () => {
@@ -790,10 +816,10 @@
           `"${currentTopicText}"`;
       });
 
-      // --- 4. LANJUT KE LEVEL BERIKUTNYA ---
-      function reqNextLevel() {
-        socket.emit("request_next_level");
-      }
+// --- 3. LANJUT LANGKAH (Bukan otomatis ke Radar) ---
+function reqNextLevel() {
+    socket.emit('request_next_step'); // Biar server yang mikir, lanjut soal atau balik radar
+}
 
       // --- 5. KEMBALI KE RADAR UNTUK CARI WAHANA BARU ---
       socket.on("back_to_radar", () => {

@@ -107,83 +107,83 @@ const TopicV2 = mongoose.model("TopicV2", TopicV2Schema);
 const QuestionV2 = mongoose.model("QuestionV2", QuestionV2Schema);
 
 let gameState = {
-  masterCode: null, // Kode 6 digit dari HP Master (HP-mu)
-  currentLevel: 1,
-  paperCodes: ["3517", "4913"], // GANTI dengan 2 kode rahasia di kertasmu
-  selectedWeeks: [], // Simpan pilihan minggu kalender
+    masterCode: null,
+    currentLevel: 1,
+    currentSubLevel: 1, // Menyimpan urutan soal (1 sampai 3)
+    usedQuestions: [],  // Array Anti-Duplikat Soal
+    usedTopics: [],     // Array Anti-Duplikat Topik Deep Talk
+    paperCodes: ["3517", "4913"], // GANTI dengan 2 kode rahasia di kertasmu
+    selectedWeeks: []
 };
 
-// --- SOCKET.IO LOGIC ---
-io.on("connection", (socket) => {
-  console.log("📱 Device Terhubung:", socket.id);
+// Fungsi Pintar Mengambil Data (Biar bisa dipanggil berulang)
+async function sendQuestionAndTopic() {
+    const level = gameState.currentLevel;
 
-  // ==========================================
-  // TAHAP 1: SINKRONISASI KODE (PAIRING)
-  // ==========================================
-
-  // HP Master (Dipegang Ida) mengirim kode hasil generate sidik jari
-  socket.on("master_set_code", (code) => {
-    gameState.masterCode = code;
-    socket.join("cengklik_room"); // Masuk ke room khusus kalian
-    console.log("🔑 Master Code Set:", code);
-  });
-
-  // HP Client (Dipegang Fendi) mencoba memasukkan kode
-  socket.on("client_submit_code", (code) => {
-    // TAMPILKAN LOG DI TERMINAL SERVER
-    console.log(`[DEBUG] Master simpan kode: '${gameState.masterCode}'`);
-    console.log(`[DEBUG] Client kirim kode: '${code}'`);
-
-    if (code === gameState.masterCode) {
-      socket.join("cengklik_room");
-      io.to("cengklik_room").emit("pairing_success");
-      console.log("✅ PAIRING MATCH!");
-    } else {
-      socket.emit("pairing_failed");
-      console.log("❌ PAIRING GAGAL!");
-    }
-  });
-
-  // ==========================================
-  // TAHAP 2: GAME LOOP & GANTIAN JAWAB
-  // ==========================================
-
-  // Dipanggil saat GPS mendeteksi kalian sampai di wahana
-  socket.on("gps_arrived", async (level) => {
-    gameState.currentLevel = level;
-
-    // 1. Ambil 1 soal acak dari DB sesuai level
-    const questions = await QuestionV2.find({ level: level });
-    const randomQ = questions[Math.floor(Math.random() * questions.length)];
-
-    // 2. Ambil 1 topik obrolan acak yang aktif
-    const topics = await TopicV2.find({ isActive: true });
-    const randomT = topics[Math.floor(Math.random() * topics.length)];
-
-    // 3. Tentukan giliran baca soal vs jawab
-    // Karena Ida pegang HP Master:
-    // Level Ganjil (1,3,5): HP Master muncul Numpad (Ida Jawab), HP Client muncul teks (Fendi Baca)
-    // Level Genap (2,4): Sebaliknya.
-    const readerDevice = level % 2 !== 0 ? "client" : "master";
-
-    io.to("cengklik_room").emit("start_level", {
-      level: level,
-      questionText: randomQ.text,
-      correctAnswer: randomQ.answer,
-      topicText: randomT.text,
-      reader: readerDevice, // Frontend akan nyesuaiin UI berdasarkan ini
+    // 1. Ambil 1 Soal (Sesuai Level) yang BELUM PERNAH dipakai
+    let questions = await QuestionV2.find({ 
+        level: level, 
+        _id: { $nin: gameState.usedQuestions } 
     });
-  });
+    
+    // Fallback: Kalau stok soal di level ini habis, reset tracker untuk level ini
+    if (questions.length === 0) {
+        questions = await QuestionV2.find({ level: level });
+    }
+    const randomQ = questions[Math.floor(Math.random() * questions.length)];
+    gameState.usedQuestions.push(randomQ._id); // Catat soal ini udah kepakai
 
-  // Jika jawaban benar, buka sesi Deep Talk
-// Jika jawaban benar, buka sesi Deep Talk
+    // 2. Ambil 1 Topik Deep Talk yang BELUM PERNAH dipakai
+    let topics = await TopicV2.find({ 
+        isActive: true, 
+        _id: { $nin: gameState.usedTopics } 
+    });
+    
+    if (topics.length === 0) {
+        topics = await TopicV2.find({ isActive: true });
+    }
+    const randomT = topics[Math.floor(Math.random() * topics.length)];
+    gameState.usedTopics.push(randomT._id); // Catat topik ini udah kepakai
+
+    // 3. Penentuan Role (Gantian Jawab PER WAHANA/LEVEL, bukan per soal)
+    const readerDevice = (level % 2 !== 0) ? 'client' : 'master';
+
+    io.to('cengklik_room').emit('start_level', {
+        level: level,
+        subLevel: gameState.currentSubLevel, // Kirim info ini soal ke-berapa (1/2/3)
+        questionText: randomQ.text,
+        correctAnswer: randomQ.answer,
+        topicText: randomT.text,
+        reader: readerDevice
+    });
+}
+
+// --- SOCKET.IO LOGIC ---
+io.on('connection', (socket) => {
+    // ... (Kode master_set_code & client_submit_code tetap sama) ...
+
+    // Saat GPS sampai di Wahana Baru
+    socket.on('gps_arrived', async (level) => {
+        gameState.currentLevel = level;
+        gameState.currentSubLevel = 1; // Mulai dari soal pertama
+        await sendQuestionAndTopic();
+    });
+
+    // Buka Deep Talk kalau jawaban benar
     socket.on('answer_correct', () => {
         io.to('cengklik_room').emit('unlock_deeptalk');
     });
 
-    // Jika kalian sepakat lanjut dari layar Deep Talk
-    socket.on('request_next_level', () => {
-        io.to('cengklik_room').emit('back_to_radar');
+    // Saat diklik "LANJUT" dari layar Deep Talk
+    socket.on('request_next_step', async () => {
+        if (gameState.currentSubLevel < 3) {
+            // Kalau belum 3 soal, lanjut ke soal berikutnya di wahana yang SAMA
+            gameState.currentSubLevel++;
+            await sendQuestionAndTopic();
+        } else {
+            // Kalau sudah 3 soal, KEMBALI KE RADAR untuk cari wahana level selanjutnya
+            io.to('cengklik_room').emit('back_to_radar');
+        }
     });
   // ==========================================
   // TAHAP 3: THE ENDGAME SCENE
