@@ -10,6 +10,11 @@
     <link rel="icon" type="image/png" href="/images/favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
@@ -204,24 +209,24 @@
     </div>
     <div
       id="screen-game"
-      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
+      class="hidden z-10 w-full max-w-md text-center space-y-4 p-6 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
     >
-      <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
+      <h2 class="text-blue-500 font-bold tracking-widest text-xl">
         RADAR AKTIF
       </h2>
-      <p id="radar-status" class="text-xs text-gray-400 mb-8">
-        Koneksi aman. Menunggu sinyal GPS...
+      <p id="radar-status" class="text-[10px] text-gray-400">
+        Menunggu sinyal satelit...
       </p>
 
       <div
-        class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center relative"
+        class="w-full h-[250px] rounded border border-blue-800 relative z-20 overflow-hidden shadow-[0_0_15px_rgba(29,78,216,0.3)]"
       >
-        <span class="text-4xl animate-pulse absolute">📡</span>
+        <div id="map" class="w-full h-full bg-black"></div>
       </div>
 
       <p
         id="distance-indicator"
-        class="text-[10px] text-yellow-500 mt-4 font-bold tracking-widest"
+        class="text-xs text-yellow-500 font-bold tracking-widest"
       >
         JARAK: MENGHITUNG...
       </p>
@@ -229,7 +234,7 @@
       <p
         onclick="forceArrive()"
         id="cheat-btn"
-        class="text-[8px] text-gray-800 mt-8 select-none"
+        class="text-[8px] text-gray-800 mt-4 select-none cursor-pointer"
       >
         dev_override
       </p>
@@ -415,13 +420,19 @@
       // --- VARIABEL GLOBAL GAME ---
       let waypoints = [];
       let currentLevel = 1;
-      let isArrived = false; // Mencegah spam emit ke server
+      let isArrived = false;
       let watchId;
       let cheatTaps = 0;
 
-      // --- FUNGSI MENGHITUNG JARAK (HAVERSINE FORMULA) ---
+      // Variabel Peta
+      let map;
+      let playerMarker;
+      let targetMarker;
+      let radarLine;
+
+      // --- FUNGSI MENGHITUNG JARAK (Tetap Sama) ---
       function getDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Radius bumi dalam meter
+        const R = 6371e3;
         const p1 = (lat1 * Math.PI) / 180;
         const p2 = (lat2 * Math.PI) / 180;
         const deltaP = p2 - p1;
@@ -433,13 +444,11 @@
             Math.cos(p2) *
             Math.sin(deltaLambda / 2) *
             Math.sin(deltaLambda / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c; // Hasil dalam meter
+        return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
       }
 
-      // --- FUNGSI MULAI RADAR ---
+      // --- FUNGSI INISIALISASI PETA & RADAR ---
       async function startRadar() {
-        // 1. Ambil data titik kordinat dari server
         try {
           const res = await fetch("/api/v2/admin/data");
           const data = await res.json();
@@ -448,18 +457,82 @@
           console.error("Gagal load waypoints!");
         }
 
+        const target = waypoints[currentLevel - 1];
+        if (!target) return;
+
+        // 1. Render Peta (Default view sementara ke Waduk Cengklik Park)
+        if (!map) {
+          map = L.map("map", { zoomControl: false }).setView(
+            [target.lat, target.lng],
+            18,
+          );
+
+          // Pakai CartoDB Dark Matter biar petanya warna hitam/gelap ala hacker
+          L.tileLayer(
+            "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+            {
+              attribution: "&copy; OpenStreetMap",
+              maxZoom: 20,
+            },
+          ).addTo(map);
+
+          // Icon Target (Wahana)
+          const targetIcon = L.divIcon({
+            className: "bg-transparent",
+            html: '<div class="text-2xl animate-bounce">📍</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+          });
+          targetMarker = L.marker([target.lat, target.lng], {
+            icon: targetIcon,
+          }).addTo(map);
+
+          // Icon Player (Kalian berdua)
+          const playerIcon = L.divIcon({
+            className: "bg-transparent",
+            html: '<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-[0_0_10px_rgba(59,130,246,1)]"></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+          playerMarker = L.marker([target.lat, target.lng], {
+            icon: playerIcon,
+          }).addTo(map);
+
+          // Garis penghubung
+          radarLine = L.polyline([], {
+            color: "#3b82f6",
+            dashArray: "5, 5",
+            weight: 2,
+          }).addTo(map);
+
+          // Perbaiki ukuran peta setelah div un-hidden
+          setTimeout(() => map.invalidateSize(), 500);
+        }
+
         // 2. Nyalakan GPS Tracker
         if (navigator.geolocation) {
           document.getElementById("radar-status").innerText =
-            `Mencari titik Level ${currentLevel}...`;
+            `Menuju: ${target.name} (Level ${currentLevel})`;
 
           watchId = navigator.geolocation.watchPosition(
             (position) => {
               const myLat = position.coords.latitude;
               const myLng = position.coords.longitude;
 
-              const target = waypoints[currentLevel - 1];
-              if (!target) return; // Game tamat
+              // Update posisi icon biru di peta
+              playerMarker.setLatLng([myLat, myLng]);
+
+              // Gambar garis putus-putus dari kamu ke target
+              radarLine.setLatLngs([
+                [myLat, myLng],
+                [target.lat, target.lng],
+              ]);
+
+              // Pusatkan kamera agar kamu dan target selalu terlihat di layar
+              map.fitBounds(radarLine.getBounds(), {
+                padding: [30, 30],
+                maxZoom: 19,
+              });
 
               // Hitung Jarak
               const distance = Math.round(
@@ -468,23 +541,15 @@
               document.getElementById("distance-indicator").innerText =
                 `JARAK: ${distance} METER`;
 
-              // Jika masuk radius 20 meter, BOOM! Trigger Game.
-              if (distance <= 20 && !isArrived) {
-                triggerArrival();
-              }
+              // Jika masuk radius 20 meter
+              if (distance <= 20 && !isArrived) triggerArrival();
             },
             (error) => {
               document.getElementById("distance-indicator").innerText =
                 "ERROR GPS: " + error.message;
             },
-            {
-              enableHighAccuracy: true, // Wajib TRUE biar akurat
-              maximumAge: 0,
-              timeout: 10000,
-            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 },
           );
-        } else {
-          alert("Browser tidak support GPS!");
         }
       }
 
