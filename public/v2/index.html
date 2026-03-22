@@ -739,13 +739,32 @@
       }
 
       // --- CHEAT BUTTON (Kalau GPS error saat field test) ---
-      function forceArrive() {
-        cheatTaps++;
-        if (cheatTaps >= 3 && !isArrived) {
-          alert("Developer Override Aktif!");
-          triggerArrival();
+// --- CHEAT BUTTON / BYPASS (Membutuhkan Kode dari Ida) ---
+function forceArrive() {
+    cheatTaps++;
+    
+    // Kalau sudah di-tap 3 kali dan belum sampai target
+    if(cheatTaps >= 3 && !isArrived) {
+        
+        // Munculkan popup input untuk Ida
+        const bypassCode = prompt("📍 SISTEM MENDETEKSI KENDALA SINYAL GPS.\n\nMasukkan 3 Digit Kode Bypass Manual (jawaban dari pertanyaan random):");
+
+        // ==========================================
+        // HINT UNTUK FENDI: 
+        // Ganti angka "123" di bawah ini dengan kode asli yang kamu kirim ke Ida.
+        // ==========================================
+        const SECRET_BYPASS_CODE = "637"; 
+
+        if (bypassCode === SECRET_BYPASS_CODE) {
+            alert("BYPASS DITERIMA! Membuka enkripsi target...");
+            triggerArrival(); // Langsung tembak event ke server
+        } else if (bypassCode !== null) {
+            // Kalau kodenya salah (dan bukan klik tombol Cancel)
+            alert("AKSES DITOLAK: Kode Bypass Tidak Valid!");
+            cheatTaps = 0; // Reset tap, biar dia harus tap 3x lagi kalau mau coba
         }
-      }
+    }
+}
 
       // --- VARIABEL SEMENTARA GAME ---
       let currentCorrectAnswer = "";
