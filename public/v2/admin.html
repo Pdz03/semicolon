@@ -31,6 +31,9 @@
             <button onclick="switchTab('timer')" id="tab-timer" class="pb-2 px-2 tab-active">TIMER</button>
             <button onclick="switchTab('biometric')" id="tab-biometric" class="pb-2 px-2 tab-inactive">BIOMETRIC</button>
             <button onclick="switchTab('chat')" id="tab-chat" class="pb-2 px-2 tab-inactive">CHAT DEMO</button>
+            <button onclick="switchTab('locations')" id="tab-locations" class="pb-2 px-2 tab-inactive">GPS</button>
+<button onclick="switchTab('topics')" id="tab-topics" class="pb-2 px-2 tab-inactive">TOPICS</button>
+<button onclick="switchTab('questions')" id="tab-questions" class="pb-2 px-2 tab-inactive">BANK SOAL</button>
         </div>
 
         <div id="content-timer" class="space-y-4 p-4 bg-red-950/10 border border-red-900/30 rounded">
@@ -89,13 +92,31 @@
                 </button>
             </div>
         </div>
+<div id="content-locations" class="hidden space-y-4">
+    <h2 class="text-sm text-green-400 mb-2">> WAHANA WAYPOINTS (5 LEVEL)</h2>
+    <div id="loc-list" class="space-y-3">
+        </div>
+</div>
 
+<div id="content-topics" class="hidden space-y-4">
+    <h2 class="text-sm text-yellow-400 mb-2">> DEEP TALK TOPICS (REWARD)</h2>
+    <p class="text-[10px] text-gray-500 mb-4">Centang untuk mengaktifkan topik ke dalam acakan sistem.</p>
+    <div id="topic-list" class="space-y-2 h-[50vh] overflow-y-auto pr-2">
+        </div>
+</div>
+
+<div id="content-questions" class="hidden space-y-4">
+    <h2 class="text-sm text-purple-400 mb-2">> MATH QUESTION BANK (READ ONLY)</h2>
+    <p class="text-[10px] text-gray-500 mb-4">Sistem akan mengacak 3 soal dari bank soal per level wahana.</p>
+    <div id="question-list" class="space-y-4 h-[50vh] overflow-y-auto pr-2">
+        </div>
+</div>
     </div>
 
     <script>
         // --- TAB LOGIC ---
         function switchTab(tabName) {
-            ['timer', 'biometric', 'chat'].forEach(name => {
+            ['timer', 'biometric', 'chat', 'locations', 'topics', 'questions'].forEach(name => {
                 document.getElementById('content-' + name).classList.add('hidden');
                 document.getElementById('tab-' + name).classList.remove('tab-active');
                 document.getElementById('tab-' + name).classList.add('tab-inactive');
@@ -143,7 +164,7 @@
             user: {
                 id: randomUserId,
                 name: "ida",
-                displayName: "Ida"
+                displayName: "Ida Indarwati"
             },
             pubKeyCredParams: [
                 { type: "public-key", alg: -7 },   // ES256 (Default Android)
@@ -311,6 +332,87 @@
                 mediaRecorder.stop();
             }
         });
+
+        // --- FETCH DATA SAAT ADMIN DIBUKA ---
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch('/api/v2/admin/data');
+        const data = await res.json();
+        renderLocations(data.locs);
+        renderTopics(data.topics);
+        renderQuestions(data.questions);
+    } catch(e) { console.log("Gagal load data", e); }
+});
+
+// Render Lokasi
+function renderLocations(locs) {
+    const container = document.getElementById('loc-list');
+    container.innerHTML = locs.map(l => `
+        <div class="p-3 bg-green-950/10 border border-green-900/30 rounded">
+            <p class="text-xs text-green-500 font-bold mb-2">LEVEL ${l.level}</p>
+            <input type="text" id="loc-name-${l._id}" value="${l.name}" class="w-full bg-black border border-gray-700 p-2 text-xs text-white mb-2" placeholder="Nama Wahana">
+            <div class="flex space-x-2 mb-2">
+                <input type="number" step="any" id="loc-lat-${l._id}" value="${l.lat}" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Latitude">
+                <input type="number" step="any" id="loc-lng-${l._id}" value="${l.lng}" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Longitude">
+            </div>
+            <button onclick="saveLoc('${l._id}')" class="w-full bg-green-900/50 hover:bg-green-800 text-green-400 text-xs py-2 border border-green-700 rounded">SAVE LOCATION</button>
+        </div>
+    `).join('');
+}
+
+async function saveLoc(id) {
+    const name = document.getElementById(`loc-name-${id}`).value;
+    const lat = document.getElementById(`loc-lat-${id}`).value;
+    const lng = document.getElementById(`loc-lng-${id}`).value;
+    const secret = document.getElementById('admin-secret').value;
+    
+    await fetch('/api/v2/admin/update-loc', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id, name, lat, lng, secret })
+    });
+    alert(`Lokasi ${name} tersimpan!`);
+}
+
+// Render Topik
+function renderTopics(topics) {
+    const container = document.getElementById('topic-list');
+    container.innerHTML = topics.map(t => `
+        <div class="flex items-start space-x-2 p-2 bg-yellow-950/10 border border-yellow-900/30 rounded">
+            <input type="checkbox" id="top-check-${t._id}" ${t.isActive ? 'checked' : ''} onchange="saveTopic('${t._id}')" class="mt-1">
+            <textarea id="top-text-${t._id}" onchange="saveTopic('${t._id}')" class="w-full bg-black border-none text-xs text-gray-300 resize-none h-12 focus:outline-none">${t.text}</textarea>
+        </div>
+    `).join('');
+}
+
+async function saveTopic(id) {
+    const text = document.getElementById(`top-text-${id}`).value;
+    const isActive = document.getElementById(`top-check-${id}`).checked;
+    const secret = document.getElementById('admin-secret').value;
+    
+    await fetch('/api/v2/admin/update-topic', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id, text, isActive, secret })
+    });
+}
+
+// Render Bank Soal
+function renderQuestions(questions) {
+    const container = document.getElementById('question-list');
+    // Group by level
+    let html = '';
+    for(let i=1; i<=5; i++) {
+        const qLvl = questions.filter(q => q.level === i);
+        html += `<div class="mb-4"><p class="text-xs font-bold text-purple-500 mb-2 border-b border-purple-900/50 pb-1">LEVEL ${i} (${qLvl.length} Soal)</p>`;
+        html += qLvl.map(q => `
+            <div class="mb-2 p-2 bg-black border border-gray-800 rounded">
+                <p class="text-[10px] text-gray-400">Q: ${q.text}</p>
+                <p class="text-[10px] text-green-400 mt-1">A: ${q.answer}</p>
+            </div>
+        `).join('');
+        html += `</div>`;
+    }
+    container.innerHTML = html;
+}
 
     </script>
 </body>

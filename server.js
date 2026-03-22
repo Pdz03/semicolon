@@ -187,19 +187,123 @@ app.get('/init', async (req, res) => {
     res.send('Database Semicolon Re-Initialized with Full Story!');
 });
 
+// --- INIT DATA V2 FULL (Buka /init-v2 di browser) ---
 app.get('/init-v2', async (req, res) => {
+    // 1. Init Config Time
     const exist = await SettingV2.findOne({ key: 'config_v2' });
     if (!exist) {
-        await SettingV2.create({
-            key: 'config_v2',
-            release_time: new Date('2026-03-24T09:00:00+07:00') // <-- Atur tanggal kencan Cengklik di sini
-        });
-        return res.send('Database V2 Initialized!');
+        await SettingV2.create({ key: 'config_v2', release_time: new Date('2026-03-24T09:00:00+07:00') });
     }
-    res.send('V2 Data already exists.');
+
+    // 2. Init Lokasi (5 Wahana Kosong untuk diisi di Admin)
+    await LocationV2.deleteMany({});
+    const locs = [];
+    for(let i=1; i<=5; i++) {
+        locs.push({ level: i, name: `Wahana Level ${i}`, lat: 0, lng: 0 });
+    }
+    await LocationV2.insertMany(locs);
+
+    // 3. Init 25 Topik Deep Talk
+    await TopicV2.deleteMany({});
+    const topics = [
+        "Apa impresi pertamamu pas kita pertama kali jalan berdua dulu?",
+        "Sebutkan satu hal kecil dari aku yang sering bikin kamu senyum sendiri.",
+        "Apa ketakutan terbesarmu pas awal-awal kita mutusin buat LDR Magelang-Boyolali?",
+        "Coba sebutin satu kebiasaan baruku yang baru kamu sadari akhir-akhir ini.",
+        "Kalau hubungan kita ini ada soundtrack-nya, lagu apa yang paling cocok?",
+        "Ekspektasi vs Realita: Apa yang paling beda setelah kita jadian dibanding pas PDKT?",
+        "Momen apa yang paling bikin kamu deg-degan pas kita masih awal-awal deket?",
+        "Kalau lagi jauh, hal apa dari aku yang paling sering kamu kangenin?",
+        "Menurutmu, cara terbaik kita buat nyelesaiin beda pendapat itu gimana?",
+        "Kalau dikasih tiket liburan berdua gratis, kamu pengen kita ke mana?",
+        "Sifatku yang mana yang paling bikin kamu geregetan, tapi tetep kamu sayang?",
+        "Perubahan paling positif apa yang kamu rasain di dirimu setelah kita bareng?",
+        "Sebutin momen paling receh kita yang sampai sekarang masih bikin kamu ketawa.",
+        "Bahasa cinta (Love Language) apa yang paling kerasa kamu dapetin dari aku?",
+        "Hal apa yang pengen banget kamu lakuin bareng aku tapi belum kesampaian?",
+        "Apa arti kata 'Pulang' atau 'Rumah' buat kamu sekarang?",
+        "Gimana caramu meyakinkan diri waktu lagi capek atau ragu sama jarak kita?",
+        "Coba deskripsiin hubungan kita saat ini pakai 3 kata aja.",
+        "Kebiasaan anehku apa yang awalnya bikin kaget tapi akhirnya bisa kamu terima?",
+        "Di momen apa kamu ngerasa paling dicintai sama aku?",
+        "Hal apa yang bikin kamu ngerasa paling aman pas lagi sama aku?",
+        "Apa yang paling kamu syukuri dari pertemuan kita di Solo/Jogja kemarin?",
+        "Kalau kita bisa ulang satu hari dari masa lalu kita, hari apa yang kamu pilih?",
+        "Apa pesan yang pengen banget kamu sampaikan ke aku tapi gengsi ngomongnya?",
+        "Bayanganmu tentang kita berdua 5 tahun dari sekarang itu kayak gimana?"
+    ];
+    await TopicV2.insertMany(topics.map(t => ({ text: t, isActive: true })));
+
+    // 4. Init 25 Bank Soal Matematika (5 Per Level) - Didesain untuk di-diktekan Fendi ke Ida
+    await QuestionV2.deleteMany({});
+    const questions = [
+        // Level 1: Basic Math
+        { level: 1, text: "(25 + 15) x 2 = ?", answer: "80" },
+        { level: 1, text: "(100 / 4) + 15 = ?", answer: "40" },
+        { level: 1, text: "(7 x 8) + 4 = ?", answer: "60" },
+        { level: 1, text: "150 - 75 + 25 = ?", answer: "100" },
+        { level: 1, text: "(250 / 2) + 25 = ?", answer: "150" },
+        
+        // Level 2: Pangkat & Akar
+        { level: 2, text: "√144 x 3 = ?", answer: "36" },
+        { level: 2, text: "(19 + 10) x 2 = ?", answer: "58" }, // Tanggal + Bulan
+        { level: 2, text: "5² + 15 = ?", answer: "40" },
+        { level: 2, text: "2⁴ x 3 = ?", answer: "48" },
+        { level: 2, text: "√81 x √16 = ?", answer: "36" },
+        
+        // Level 3: Aljabar Dasar (Cari Variabel)
+        { level: 3, text: "3a + 5 = 20. Berapa a?", answer: "5" },
+        { level: 3, text: "2y - 10 = 20. Berapa y?", answer: "15" },
+        { level: 3, text: "(10 + 5) x (10 - 5) = ?", answer: "75" },
+        { level: 3, text: "4b - 8 = 16. Berapa b?", answer: "6" },
+        { level: 3, text: "20% dari 150 = ?", answer: "30" },
+        
+        // Level 4: Logika Tipuan (BODMAS / KABATAKU)
+        { level: 4, text: "2 + 2 x 4 = ?", answer: "10" }, 
+        { level: 4, text: "(100 / 10) + 19 = ?", answer: "29" },
+        { level: 4, text: "Jika x = 5, y = 4. Maka x² - y² = ?", answer: "9" },
+        { level: 4, text: "√625 / 5 = ?", answer: "5" },
+        { level: 4, text: "3³ - √49 = ?", answer: "20" },
+        
+        // Level 5: Rumit / Butuh Konsentrasi
+        { level: 5, text: "((50 / 2) x 3) - 5 = ?", answer: "70" },
+        { level: 5, text: "1000 / 8 = ?", answer: "125" },
+        { level: 5, text: "(√225 x 2) - 10 = ?", answer: "20" },
+        { level: 5, text: "(2026 - 2025) + 100 = ?", answer: "101" },
+        { level: 5, text: "√10000 / √100 = ?", answer: "10" }
+    ];
+    await QuestionV2.insertMany(questions);
+
+    res.send('Database V2 Initialized with Locations, Topics, and Questions!');
 });
 
+
 // --- API ROUTES ---
+
+// --- API ADMIN V2 ---
+// Ambil semua data
+app.get('/api/v2/admin/data', async (req, res) => {
+    const locs = await LocationV2.find().sort({level: 1});
+    const topics = await TopicV2.find();
+    const questions = await QuestionV2.find().sort({level: 1});
+    res.json({ locs, topics, questions });
+});
+
+// Update Lokasi
+app.post('/api/v2/admin/update-loc', async (req, res) => {
+    const { id, name, lat, lng, secret } = req.body;
+    if(secret !== 'sajak-admin') return res.status(403).json({error: 'Ditolak'});
+    await LocationV2.findByIdAndUpdate(id, { name, lat, lng });
+    res.json({success: true});
+});
+
+// Update Topik (Teks atau Status Aktif)
+app.post('/api/v2/admin/update-topic', async (req, res) => {
+    const { id, text, isActive, secret } = req.body;
+    if(secret !== 'sajak-admin') return res.status(403).json({error: 'Ditolak'});
+    await TopicV2.findByIdAndUpdate(id, { text, isActive });
+    res.json({success: true});
+});
 
 // Ambil status v2 (bisa disesuaikan jika ingin beda config)
 app.get('/api/v2/status', async (req, res) => {
