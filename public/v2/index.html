@@ -28,47 +28,98 @@
             background-size: 100% 2px, 3px 100%;
             pointer-events: none;
         }
+
+        /* Animasi Transisi Layar */
+        .fade-in { animation: fadeIn 0.5s ease-in forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4 relative scanlines">
 
-    <div class="z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg shadow-[0_0_30px_rgba(29,78,216,0.1)]">
-        
-        <div>
-            <h1 class="text-3xl font-bold glitch tracking-[0.3em]">SEMICOLON<span class="text-blue-500">;</span></h1>
-            <p class="text-[10px] text-blue-400 mt-2 tracking-[0.4em]">SYSTEM UPGRADE: VERSION 2.0</p>
-        </div>
-
-        <div class="py-6 border-y border-blue-900/30">
-            <p class="text-xs text-gray-500 mb-2">ESTIMATED LAUNCH IN:</p>
-            <div id="countdown" class="text-4xl sm:text-5xl font-bold tracking-widest text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]">
-                --:--:--
+    <div id="screen-countdown" class="w-full flex flex-col items-center z-10 fade-in">
+        <div class="w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg shadow-[0_0_30px_rgba(29,78,216,0.1)]">
+            <div>
+                <h1 onclick="secretSkip()" class="text-3xl font-bold glitch tracking-[0.3em] cursor-pointer select-none">SEMICOLON<span class="text-blue-500">;</span></h1>
+                <p class="text-[10px] text-blue-400 mt-2 tracking-[0.4em]">SYSTEM UPGRADE: VERSION 2.0</p>
             </div>
-        </div>
 
-        <p class="text-xs text-gray-600 italic">"Menyiapkan variabel baru..."</p>
-        <!-- <a href="/v1" class="text-xs mt-4 text-gray-600 underline">Semikolon V1 - Our Story</a> -->
+            <div class="py-6 border-y border-blue-900/30">
+                <p class="text-xs text-gray-500 mb-2">ESTIMATED LAUNCH IN:</p>
+                <div id="countdown" class="text-4xl sm:text-5xl font-bold tracking-widest text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]">
+                    --:--:--
+                </div>
+            </div>
+
+            <p class="text-xs text-gray-600 italic">"Menyiapkan variabel baru..."</p>
+        </div>
+        <a href="/v1" class="text-sm mt-5 text-gray-400 underline hover:text-white transition">Semicolon V1 - Our Story</a>
     </div>
-    <a href="/v1" class="text-sm mt-3 text-gray-400 underline">Semicolon V1 - Our Story</a>
+
+    <div id="screen-permission" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-yellow-900/50 bg-yellow-950/10 rounded-lg fade-in">
+        <h2 class="text-yellow-500 font-bold tracking-widest mb-4">⚠ HARDWARE ACCESS REQUIRED</h2>
+        <p class="text-xs text-gray-400 mb-6">Sistem membutuhkan sinkronisasi sensor (Audio & Optik) untuk melanjutkan protokol LDR.</p>
+        <button onclick="requestPermissions()" class="w-full bg-yellow-700 hover:bg-yellow-600 text-black font-bold py-3 rounded shadow-[0_0_15px_rgba(202,138,4,0.4)] transition">
+            GRANT ACCESS & INITIALIZE
+        </button>
+        <p id="perm-error" class="text-[10px] text-red-500 hidden mt-2">Akses ditolak. Mohon izinkan Kamera & Mic di pengaturan browser.</p>
+    </div>
+
+    <div id="screen-master" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-green-900/50 bg-green-950/10 rounded-lg fade-in">
+        <h2 class="text-green-500 font-bold tracking-widest text-xl mb-2">BIOMETRIC LOCK</h2>
+        <p class="text-xs text-gray-400 mb-8">Tempelkan jari yang terdaftar untuk mendapatkan kode dekripsi.</p>
+        
+        <button onclick="startFingerprint()" class="w-24 h-24 mx-auto rounded-full border-2 border-green-500 flex items-center justify-center hover:bg-green-900/30 transition shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+            <span class="text-4xl">👆</span>
+        </button>
+
+        <div id="secret-code-box" class="hidden mt-8 p-4 border border-green-500 bg-black">
+            <p class="text-[10px] text-green-400 mb-1">DECRYPTION KEY:</p>
+            <h1 class="text-3xl font-bold tracking-[0.5em] text-white">TKG-892</h1>
+            <p class="text-[10px] text-gray-500 mt-2">Bacakan kode ini ke Agen Fendi.</p>
+        </div>
+    </div>
+
+    <div id="screen-client" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-purple-900/50 bg-purple-950/10 rounded-lg fade-in">
+        <h2 class="text-purple-500 font-bold tracking-widest mb-4">AWAITING CONNECTION</h2>
+        <p class="text-xs text-gray-400 mb-2">Masukkan Decryption Key dari device utama:</p>
+        
+        <input type="text" id="client-code" class="w-full bg-black border border-purple-600 p-3 text-center text-xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-purple-900/50 rounded uppercase" placeholder="XXX-XXX" autocomplete="off">
+        
+        <button onclick="connectDevices()" class="w-full mt-4 bg-purple-800 hover:bg-purple-700 text-white font-bold py-3 rounded transition shadow-[0_0_15px_rgba(147,51,214,0.4)]">
+            SYNC DEVICES
+        </button>
+    </div>
+
     <script>
         let countdownInterval;
+        let taps = 0;
+
+        // PARSING URL PARAMETERS
+        const urlParams = new URLSearchParams(window.location.search);
+        const isClient = urlParams.get('as') === 'client';
+        const skipTimer = urlParams.get('skip') === 'true';
 
         window.onload = async () => {
-            try {
-                // Ambil jam dari database
-                const res = await fetch('/api/v2/status');
-                const data = await res.json();
-                
-                if (data.release_time) {
-                    startTimer(data.release_time);
-                } else {
-                    document.getElementById('countdown').innerText = "SYSTEM OFFLINE";
+            if (skipTimer) {
+                showPermissions();
+            } else {
+                try {
+                    // Ambil jam dari database
+                    const res = await fetch('/api/v2/status');
+                    const data = await res.json();
+                    
+                    if (data.release_time) {
+                        startTimer(data.release_time);
+                    } else {
+                        document.getElementById('countdown').innerText = "SYSTEM OFFLINE";
+                    }
+                } catch (error) {
+                    document.getElementById('countdown').innerText = "CONNECTION LOST";
                 }
-            } catch (error) {
-                document.getElementById('countdown').innerText = "CONNECTION LOST";
             }
         };
 
+        // --- COUNTDOWN LOGIC ---
         function startTimer(isoTime) {
             const endTime = new Date(isoTime).getTime();
             
@@ -89,7 +140,6 @@
                 const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
                 const s = Math.floor((dist % (1000 * 60)) / 1000);
 
-                // Format biar selalu 2 digit (09, bukan 9)
                 const format = (num) => num.toString().padStart(2, '0');
 
                 if (d > 0) {
@@ -98,6 +148,57 @@
                     document.getElementById('countdown').innerText = `${format(h)}:${format(m)}:${format(s)}`;
                 }
             }, 1000);
+        }
+
+        // --- NAVIGATION & PERMISSION LOGIC ---
+        function secretSkip() {
+            taps++;
+            if(taps >= 3) showPermissions();
+        }
+
+        function showPermissions() {
+            clearInterval(countdownInterval); // Hentikan timer di background
+            document.getElementById('screen-countdown').classList.add('hidden');
+            document.getElementById('screen-permission').classList.remove('hidden');
+        }
+
+        async function requestPermissions() {
+            try {
+                // Minta izin Mic & Kamera
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                
+                // Matikan stream segera supaya indikator kamera HP mati lagi
+                stream.getTracks().forEach(track => track.stop());
+
+                // Tampilkan layar sesuai role
+                document.getElementById('screen-permission').classList.add('hidden');
+                if (isClient) {
+                    document.getElementById('screen-client').classList.remove('hidden');
+                } else {
+                    document.getElementById('screen-master').classList.remove('hidden');
+                }
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('perm-error').classList.remove('hidden');
+            }
+        }
+
+        // --- UI DUMMY ACTIONS (Placeholder untuk WebAuthn & Socket) ---
+        function startFingerprint() {
+            // Nanti diisi logic WebAuthn
+            alert("Memanggil sensor sidik jari OS...");
+            document.getElementById('secret-code-box').classList.remove('hidden');
+        }
+
+        function connectDevices() {
+            // Nanti diisi logic Socket.io
+            const code = document.getElementById('client-code').value;
+            if(code === 'TKG-892') {
+                alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
+            } else {
+                alert("Kode Tidak Valid!");
+            }
         }
     </script>
 </body>
