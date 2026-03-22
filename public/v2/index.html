@@ -269,7 +269,7 @@
       class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
     >
       <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
-        BACAKAN SOAL <span id="reader-progress" class="text-white">(1/3)</span>
+        BACAKAN SOAL <span id="reader-progress" class="text-white">(1/2)</span>
       </h2>
       <p class="text-xs text-gray-400 mb-6">
         Agen partner sedang menunggu instruksi darimu.
@@ -302,7 +302,7 @@
     >
       <h2 class="text-red-500 font-bold tracking-widest text-xl mb-2">
         INPUT JAWABAN
-        <span id="executor-progress" class="text-white">(1/3)</span>
+        <span id="executor-progress" class="text-white">(1/2)</span>
       </h2>
       <p class="text-xs text-gray-400">
         Dengarkan instruksi, lalu eksekusi angka.
@@ -321,7 +321,6 @@
         id="numpad-container"
         class="grid grid-cols-3 gap-3 p-2 border border-transparent rounded"
       >
-        <div class="grid grid-cols-3 gap-3">
           <button
             onclick="typeNum('1')"
             class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
@@ -395,7 +394,6 @@
             GO
           </button>
         </div>
-      </div>
     </div>
 
     <div
@@ -403,7 +401,7 @@
       class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-yellow-900/50 bg-yellow-950/10 rounded-lg fade-in"
     >
       <h2 class="text-yellow-500 font-bold tracking-widest text-xl mb-2">
-        AKSES TERBUKA
+    AKSES TERBUKA
       </h2>
       <p class="text-xs text-gray-400 mb-6">
         Silakan nikmati waktu di wahana ini, dan bahas topik berikut:
@@ -429,19 +427,74 @@
       </button>
     </div>
 
-    <div
-      id="screen-endgame"
-      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-white/50 bg-black rounded-lg fade-in"
-    >
-      <h2 class="text-white font-bold tracking-widest text-xl mb-2">
-        TAHAP AKHIR
-      </h2>
-      <p class="text-xs text-gray-400 mb-6">
-        Misi utama selesai. Menginisiasi protokol validasi memori...
-      </p>
-
-      <p class="text-sm italic text-gray-500">(Kerangka Endgame Siap)</p>
+    <div id="screen-endgame" class="hidden z-10 w-full max-w-md space-y-4">
+    
+    <div id="endgame-codes" class="text-center p-8 border border-white/50 bg-black rounded-lg fade-in">
+        <h2 class="text-white font-bold tracking-widest text-xl mb-6">PROTOKOL FINAL</h2>
+        <p class="text-xs text-gray-400 mb-6">Masukkan 2 kode otorisasi dari dokumen fisik yang telah diamankan.</p>
+        
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="text-[10px] text-gray-500">KODE 1 (Hint: Hari Awal Kita)</label>
+                <input type="number" id="paper-code-1" class="w-full bg-gray-900 border border-gray-700 p-3 text-white text-center tracking-[0.5em] rounded focus:border-white focus:outline-none" placeholder="XXXX">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-500">KODE 2 (Hint: Tahun Dimulainya Cerita)</label>
+                <input type="number" id="paper-code-2" class="w-full bg-gray-900 border border-gray-700 p-3 text-white text-center tracking-[0.5em] rounded focus:border-white focus:outline-none" placeholder="XXXX">
+            </div>
+            <button onclick="submitPaperCodes()" class="w-full mt-4 bg-white text-black font-bold py-3 rounded hover:bg-gray-200 transition">VERIFIKASI DOKUMEN</button>
+        </div>
     </div>
+
+    <div id="endgame-timer" class="hidden text-center p-8 border border-red-900/50 bg-red-950/10 rounded-lg fade-in">
+        <h2 class="text-red-500 font-bold tracking-widest text-xl mb-4">INSTRUKSI AGEN</h2>
+        <p class="text-sm text-gray-300 mb-6">Silakan ambil jarak 5-10 meter dari partner Anda. Jangan berbalik sebelum diinstruksikan.</p>
+        
+        <div class="text-5xl font-bold text-white mb-8 tracking-widest" id="step-countdown">00:00</div>
+        
+        <button onclick="confirmStepAway()" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 rounded transition shadow-[0_0_15px_rgba(153,27,27,0.5)]">SAYA SUDAH MENJAUH</button>
+    </div>
+
+    <div id="endgame-chat" class="hidden flex-col h-[75vh] border border-blue-900/50 bg-black rounded-lg relative fade-in">
+        <div class="p-4 border-b border-blue-900/50 bg-blue-950/30 text-center">
+            <h2 class="text-blue-400 font-bold tracking-widest text-sm">SECURE CHANNEL</h2>
+            <p class="text-[10px] text-gray-400">Sampaikan apapun yang belum tersampaikan.</p>
+        </div>
+        
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 pb-24"></div>
+
+        <div id="vn-review" class="hidden absolute bottom-16 w-full p-3 bg-gray-900 border-t border-gray-700 flex items-center justify-between">
+            <button onclick="cancelVN()" class="text-red-500 p-2"><span class="text-xl">🗑️</span></button>
+            <audio id="vn-audio-preview" controls class="h-8 w-48"></audio>
+            <button onclick="sendVN()" class="text-green-500 p-2"><span class="text-xl">✈️</span></button>
+        </div>
+
+        <div class="absolute bottom-0 w-full p-3 border-t border-blue-900/50 bg-gray-900 flex justify-between items-center space-x-2 rounded-b-lg">
+            <label class="cursor-pointer text-gray-400 hover:text-white p-2">
+                📷 <input type="file" accept="image/*" capture="user" class="hidden" onchange="sendPhoto(event)">
+            </label>
+            <input type="text" id="chat-input-text" placeholder="Ketik pesan..." class="flex-1 bg-black border border-gray-700 p-2 text-sm text-white rounded focus:outline-none focus:border-blue-500">
+            <button onclick="sendText()" class="text-blue-400 hover:text-blue-300 p-2">➤</button>
+            <button id="btn-record-vn" class="bg-blue-700 hover:bg-blue-600 text-white rounded-full p-2 ml-1 transition">🎙️</button>
+        </div>
+        
+        <button onclick="endChatSession()" class="absolute top-2 right-2 text-[10px] bg-red-900/50 text-red-200 px-2 py-1 rounded">Akhiri</button>
+    </div>
+
+    <div id="endgame-calendar" class="hidden text-center p-6 border border-purple-900/50 bg-purple-950/10 rounded-lg fade-in">
+        <h2 class="text-purple-400 font-bold tracking-widest text-lg mb-2">JADWAL PERTEMUAN</h2>
+        <p class="text-xs text-gray-400 mb-6" id="cal-instruction">Pilih 2 minggu di bulan April untuk kunjungan.</p>
+        
+        <div class="grid grid-cols-1 gap-2 mb-6" id="cal-weeks">
+            <button onclick="toggleWeek(this, 'Minggu 1 (1-5 Apr)')" class="cal-btn bg-black border border-purple-800 text-gray-300 py-3 rounded text-sm transition">Minggu 1 (1 - 5 April)</button>
+            <button onclick="toggleWeek(this, 'Minggu 2 (6-12 Apr)')" class="cal-btn bg-black border border-purple-800 text-gray-300 py-3 rounded text-sm transition">Minggu 2 (6 - 12 April)</button>
+            <button onclick="toggleWeek(this, 'Minggu 3 (13-19 Apr)')" class="cal-btn bg-black border border-purple-800 text-gray-300 py-3 rounded text-sm transition">Minggu 3 (13 - 19 April)</button>
+            <button onclick="toggleWeek(this, 'Minggu 4 (20-26 Apr)')" class="cal-btn bg-black border border-purple-800 text-gray-300 py-3 rounded text-sm transition">Minggu 4 (20 - 26 April)</button>
+        </div>
+        
+        <button id="btn-submit-cal" onclick="submitCalendar()" class="hidden w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded transition shadow-[0_0_15px_rgba(126,34,206,0.5)]">KONFIRMASI JADWAL</button>
+    </div>
+</div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -805,11 +858,11 @@
         currentCorrectAnswer = data.correctAnswer;
         currentTopicText = data.topicText;
 
-        // Update indikator (1/3)
+        // Update indikator (1/2)
         document.getElementById("reader-progress").innerText =
-          `(${data.subLevel}/3)`;
+          `(${data.subLevel}/2)`;
         document.getElementById("executor-progress").innerText =
-          `(${data.subLevel}/3)`;
+          `(${data.subLevel}/2)`;
 
         const myRole = isClient ? "client" : "master";
 
@@ -870,15 +923,15 @@ socket.on('unlock_deeptalk', (state) => {
     // LOGIKA TEKS TOMBOL DINAMIS
     const btnNext = document.getElementById('btn-next-step');
     
-    if (state.subLevel < 3) {
+    if (state.subLevel < 2) {
         // Kalau baru soal 1 atau 2
         btnNext.innerText = "LANJUT SOAL BERIKUTNYA";
-    } else if (state.subLevel === 3 && state.level < 5) {
+    } else if (state.subLevel === 2 && state.level < 5) {
         // Kalau sudah 3 soal, tapi belum level 5
-        btnNext.innerText = "LANJUT KE WAHANA BERIKUTNYA";
-    } else if (state.subLevel === 3 && state.level === 5) {
+        btnNext.innerText = "LANJUT KE LEVEL BERIKUTNYA";
+    } else if (state.subLevel === 2 && state.level === 5) {
         // Kalau sudah level 5 dan soal terakhir selesai!
-        btnNext.innerText = "MENUJU PROTOKOL FINAL";
+        btnNext.innerText = "MENUJU LAST GAME";
         btnNext.classList.replace('bg-yellow-700', 'bg-purple-700'); // Ubah warna khusus final
         btnNext.classList.replace('hover:bg-yellow-600', 'hover:bg-purple-600');
         btnNext.classList.replace('text-black', 'text-white');
@@ -916,6 +969,228 @@ socket.on('unlock_deeptalk', (state) => {
         // Buka layar Endgame
         document.getElementById("screen-endgame").classList.remove("hidden");
       });
+
+
+      // ==========================================
+// LOGIKA ENDGAME (TAHAP AKHIR)
+// ==========================================
+
+let stepInterval;
+let vnRecorder;
+let vnChunks = [];
+let vnBlob = null;
+let selectedWeeks = [];
+
+// 1. Submit Kode Kertas
+function submitPaperCodes() {
+    const c1 = document.getElementById('paper-code-1').value;
+    const c2 = document.getElementById('paper-code-2').value;
+    socket.emit('verify_paper', { code1: c1, code2: c2 });
+}
+
+socket.on('paper_failed', () => alert("Akses Ditolak: Kode Dokumen Tidak Valid!"));
+
+socket.on('paper_success', () => {
+    document.getElementById('endgame-codes').classList.add('hidden');
+    document.getElementById('endgame-timer').classList.remove('hidden');
+    socket.emit('request_timer'); // Minta durasi ke server
+});
+
+// 2. Timer Menjauh
+socket.on('start_step_away', (seconds) => {
+    let timeLeft = seconds;
+    const display = document.getElementById('step-countdown');
+    
+    stepInterval = setInterval(() => {
+        timeLeft--;
+        const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+        const s = (timeLeft % 60).toString().padStart(2, '0');
+        display.innerText = `${m}:${s}`;
+        
+        if (timeLeft <= 0) {
+            clearInterval(stepInterval);
+            socket.emit('trigger_chat_session');
+        }
+    }, 1000);
+});
+
+function confirmStepAway() {
+    clearInterval(stepInterval);
+    socket.emit('trigger_chat_session');
+}
+
+// 3. Walkie Talkie (Chat Session)
+socket.on('open_chat_session', () => {
+    document.getElementById('endgame-timer').classList.add('hidden');
+    document.getElementById('endgame-chat').classList.remove('hidden');
+    document.getElementById('screen-endgame').classList.remove('max-w-md'); // Biar agak lebar
+    document.getElementById('screen-endgame').classList.add('max-w-lg');
+});
+
+// -- Render Bubble Chat --
+function appendChat(type, content, isMe) {
+    const chatBox = document.getElementById('chat-messages');
+    let mediaHTML = '';
+    
+    if (type === 'text') mediaHTML = `<p class="text-sm text-white">${content}</p>`;
+    if (type === 'audio') mediaHTML = `<audio controls src="${content}" class="h-10 w-48"></audio>`;
+    if (type === 'image') mediaHTML = `<img src="${content}" class="w-48 rounded">`;
+
+    const align = isMe ? 'justify-end' : 'justify-start';
+    const bg = isMe ? 'bg-blue-900/60 border-blue-500 rounded-l-xl rounded-tr-xl' : 'bg-gray-800 border-gray-600 rounded-r-xl rounded-tl-xl';
+
+    chatBox.innerHTML += `
+        <div class="flex w-full ${align}">
+            <div class="p-2 border ${bg} max-w-[80%] shadow-lg">
+                <p class="text-[8px] text-gray-400 mb-1">${isMe ? 'Kamu' : 'Partner'}</p>
+                ${mediaHTML}
+            </div>
+        </div>
+    `;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+socket.on('receive_media', (data) => {
+    appendChat(data.type, data.content, false);
+});
+
+// -- Kirim Teks --
+function sendText() {
+    const input = document.getElementById('chat-input-text');
+    if(input.value.trim() === '') return;
+    socket.emit('send_media', { type: 'text', content: input.value });
+    appendChat('text', input.value, true);
+    input.value = '';
+}
+
+// -- Kirim Foto (Otomatis Kompres base64) --
+function sendPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 600;
+            const scale = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            const base64Img = canvas.toDataURL('image/jpeg', 0.6);
+            socket.emit('send_media', { type: 'image', content: base64Img });
+            appendChat('image', base64Img, true);
+        }
+    }
+}
+
+// -- Fitur VN (WhatsApp Style) --
+const btnRecord = document.getElementById('btn-record-vn');
+let isRecording = false;
+
+btnRecord.addEventListener('click', async () => {
+    if (!isRecording) {
+        // MULAI REKAM
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            vnRecorder = new MediaRecorder(stream);
+            vnChunks = [];
+            vnRecorder.ondataavailable = e => vnChunks.push(e.data);
+            vnRecorder.onstop = () => {
+                vnBlob = new Blob(vnChunks, { type: 'audio/webm' });
+                document.getElementById('vn-audio-preview').src = URL.createObjectURL(vnBlob);
+                document.getElementById('vn-review').classList.remove('hidden'); // Munculin Review
+                stream.getTracks().forEach(track => track.stop()); // Matikan mic
+            };
+            vnRecorder.start();
+            isRecording = true;
+            btnRecord.classList.replace('bg-blue-700', 'bg-red-600');
+            btnRecord.classList.add('animate-pulse');
+        } catch (err) { alert("Izinkan akses Microphone!"); }
+    } else {
+        // STOP REKAM (Beralih ke mode review)
+        vnRecorder.stop();
+        isRecording = false;
+        btnRecord.classList.replace('bg-red-600', 'bg-blue-700');
+        btnRecord.classList.remove('animate-pulse');
+    }
+});
+
+function cancelVN() {
+    vnBlob = null;
+    document.getElementById('vn-review').classList.add('hidden');
+}
+
+function sendVN() {
+    if(!vnBlob) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(vnBlob);
+    reader.onloadend = () => {
+        const base64Audio = reader.result;
+        socket.emit('send_media', { type: 'audio', content: base64Audio });
+        appendChat('audio', base64Audio, true);
+        cancelVN(); // Sembunyikan review setelah kirim
+    }
+}
+
+// 4. Kalender April
+function endChatSession() {
+    if(confirm("Yakin ingin mengakhiri sesi Secure Channel ini?")) {
+        socket.emit('end_chat_session');
+    }
+}
+
+socket.on('open_calendar', () => {
+    document.getElementById('endgame-chat').classList.add('hidden');
+    document.getElementById('endgame-calendar').classList.remove('hidden');
+    
+    // Kalau layarmu (Client), sembunyikan tombol biar cuma Ida yang milih
+    if (isClient) {
+        document.getElementById('cal-instruction').innerText = "Menunggu pilihan jadwal dari partner...";
+        const btns = document.querySelectorAll('.cal-btn');
+        btns.forEach(b => b.classList.add('pointer-events-none', 'opacity-50'));
+    }
+});
+
+function toggleWeek(element, weekName) {
+    if (selectedWeeks.includes(weekName)) {
+        selectedWeeks = selectedWeeks.filter(w => w !== weekName);
+        element.classList.replace('bg-purple-900', 'bg-black');
+        element.classList.replace('text-white', 'text-gray-300');
+    } else {
+        if (selectedWeeks.length >= 2) return alert("Maksimal pilih 2 minggu!");
+        selectedWeeks.push(weekName);
+        element.classList.replace('bg-black', 'bg-purple-900');
+        element.classList.replace('text-gray-300', 'text-white');
+    }
+    
+    // Tampilkan tombol konfirmasi kalau pas 2
+    const btnSubmit = document.getElementById('btn-submit-cal');
+    if (selectedWeeks.length === 2) btnSubmit.classList.remove('hidden');
+    else btnSubmit.classList.add('hidden');
+}
+
+function submitCalendar() {
+    socket.emit('submit_calendar', selectedWeeks);
+    document.getElementById('endgame-calendar').innerHTML = `<h2 class="text-green-400 font-bold mt-10">JADWAL TERKIRIM.</h2><p class="text-xs text-gray-400 mt-2">Silakan bertatap muka kembali.</p>`;
+}
+
+// Tampilan di HP Fendi saat Ida selesai milih jadwal
+socket.on('fendi_receive_calendar', (weeks) => {
+    document.getElementById('endgame-calendar').innerHTML = `
+        <h2 class="text-purple-400 font-bold tracking-widest text-lg mb-4">HASIL PROTOKOL</h2>
+        <p class="text-xs text-gray-300 mb-4">Ida telah memilih:</p>
+        <div class="space-y-2 mb-8">
+            <div class="p-3 bg-purple-900/50 rounded border border-purple-500 text-white text-sm">${weeks[0]}</div>
+            <div class="p-3 bg-purple-900/50 rounded border border-purple-500 text-white text-sm">${weeks[1]}</div>
+        </div>
+        <p class="text-[10px] text-gray-500 italic">"Sampaikan keputusanmu padanya sekarang secara langsung."</p>
+    `;
+});
 
       //   async function startFingerprint() {
       //     const codeBox = document.getElementById("secret-code-box");

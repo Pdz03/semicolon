@@ -82,7 +82,8 @@ const Setting = mongoose.model("Setting", SettingSchema);
 const SettingV2Schema = new mongoose.Schema({
     key: String,
     release_time: Date,
-    dev_mode: { type: Boolean, default: true } // Default true untuk masa testing
+    dev_mode: { type: Boolean, default: true }, // Default true untuk masa testing
+    step_timer: { type: Number, default: 60 } // Timer menjauh (detik)
 });
 const SettingV2 = mongoose.model("SettingV2", SettingV2Schema);
 
@@ -223,12 +224,12 @@ io.on("connection", (socket) => {
 
     // Saat diklik "LANJUT" dari layar Deep Talk
     socket.on('request_next_step', async () => {
-        if (gameState.currentSubLevel < 3) {
+        if (gameState.currentSubLevel < 2) {
             // Lanjut soal ke-2 atau ke-3
             gameState.currentSubLevel++;
             await sendQuestionAndTopic();
         } else {
-            // Level selesai (3 soal terjawab)
+            // Level selesai (2 soal terjawab)
             if (gameState.currentLevel >= 5) {
                 // JIKA LEVEL 5 SELESAI -> MASUK BABAK FINAL!
                 io.to('cengklik_room').emit('start_endgame');
@@ -250,11 +251,37 @@ io.on("connection", (socket) => {
       codes.code1 === gameState.paperCodes[0] &&
       codes.code2 === gameState.paperCodes[1]
     ) {
-      io.to("cengklik_room").emit("paper_success_step_back");
-    } else {
-      socket.emit("paper_failed");
-    }
+     io.to('cengklik_room').emit('paper_success');
+        } else {
+            socket.emit('paper_failed');
+        }
   });
+
+  // 2. Minta durasi timer ke server
+    socket.on('request_timer', async () => {
+        const config = await SettingV2.findOne({ key: 'config_v2' });
+        io.to('cengklik_room').emit('start_step_away', config.step_timer || 60);
+    });
+
+    // 3. Konfirmasi sudah menjauh / Timer habis
+    socket.on('trigger_chat_session', () => {
+        io.to('cengklik_room').emit('open_chat_session');
+    });
+
+    // 4. Terima dan Broadcast Media (VN, Teks, Foto)
+    socket.on('send_media', (data) => {
+        socket.broadcast.to('cengklik_room').emit('receive_media', data);
+    });
+
+    // 5. Akhiri Sesi & Buka Kalender
+    socket.on('end_chat_session', () => {
+        io.to('cengklik_room').emit('open_calendar');
+    });
+
+    // 6. Ida Submit Kalender
+    socket.on('submit_calendar', (weeks) => {
+        socket.broadcast.to('cengklik_room').emit('fendi_receive_calendar', weeks);
+    });
 
   // 3.2 Kirim Media (VN, Foto, Teks)
   // Menerima pesan dari satu HP, lalu di-broadcast ke HP satunya
