@@ -246,6 +246,159 @@
         animation: spin 4s linear infinite;
       }
     </style>
+
+    <div
+      id="screen-reader"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
+        BACAKAN SOAL INI
+      </h2>
+      <p class="text-xs text-gray-400 mb-6">
+        Agen partner sedang menunggu instruksi darimu.
+      </p>
+
+      <div
+        class="p-6 bg-black border border-blue-500 rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+      >
+        <h1
+          id="question-display"
+          class="text-2xl font-bold text-white leading-relaxed"
+        >
+          --
+        </h1>
+      </div>
+      <p class="text-[10px] text-gray-600 animate-pulse mt-4">
+        Menunggu agen memasukkan jawaban...
+      </p>
+    </div>
+
+    <div
+      id="screen-executor"
+      class="hidden z-10 w-full max-w-md text-center space-y-4 p-6 border border-red-900/50 bg-red-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-red-500 font-bold tracking-widest text-xl">
+        INPUT JAWABAN
+      </h2>
+      <p class="text-xs text-gray-400">
+        Dengarkan instruksi, lalu eksekusi angka.
+      </p>
+
+      <div class="bg-black border border-red-500 rounded p-4 mb-4">
+        <h1
+          id="answer-display"
+          class="text-4xl font-bold text-white tracking-widest"
+        >
+          _
+        </h1>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <button
+          onclick="typeNum('1')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          1
+        </button>
+        <button
+          onclick="typeNum('2')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          2
+        </button>
+        <button
+          onclick="typeNum('3')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          3
+        </button>
+        <button
+          onclick="typeNum('4')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          4
+        </button>
+        <button
+          onclick="typeNum('5')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          5
+        </button>
+        <button
+          onclick="typeNum('6')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          6
+        </button>
+        <button
+          onclick="typeNum('7')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          7
+        </button>
+        <button
+          onclick="typeNum('8')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          8
+        </button>
+        <button
+          onclick="typeNum('9')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          9
+        </button>
+        <button
+          onclick="delNum()"
+          class="bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-xl py-4 rounded font-bold"
+        >
+          DEL
+        </button>
+        <button
+          onclick="typeNum('0')"
+          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+        >
+          0
+        </button>
+        <button
+          onclick="submitAnswer()"
+          class="bg-green-700 hover:bg-green-600 text-white text-xl py-4 rounded font-bold shadow-[0_0_15px_rgba(21,128,61,0.5)]"
+        >
+          GO
+        </button>
+      </div>
+    </div>
+
+    <div
+      id="screen-deeptalk"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-yellow-900/50 bg-yellow-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-yellow-500 font-bold tracking-widest text-xl mb-2">
+        AKSES TERBUKA
+      </h2>
+      <p class="text-xs text-gray-400 mb-6">
+        Silakan nikmati waktu di wahana ini, dan bahas topik berikut:
+      </p>
+
+      <div
+        class="p-6 bg-black border border-yellow-500 rounded-lg shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+      >
+        <p
+          id="deeptalk-display"
+          class="text-sm font-bold text-white italic leading-relaxed"
+        >
+          --
+        </p>
+      </div>
+
+      <button
+        onclick="reqNextLevel()"
+        class="w-full mt-6 bg-yellow-700 hover:bg-yellow-600 text-black font-bold py-3 rounded transition"
+      >
+        LANJUT KE WAHANA BERIKUTNYA
+      </button>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
       let countdownInterval;
@@ -573,6 +726,91 @@
           triggerArrival();
         }
       }
+
+      // --- VARIABEL SEMENTARA GAME ---
+      let currentCorrectAnswer = "";
+      let currentTopicText = "";
+      let typedAnswer = "";
+
+      // --- 1. NANGKAP PERINTAH START LEVEL DARI SERVER ---
+      socket.on("start_level", (data) => {
+        // Sembunyikan radar
+        document.getElementById("screen-game").classList.add("hidden");
+
+        currentCorrectAnswer = data.correctAnswer;
+        currentTopicText = data.topicText;
+
+        // Tentukan role HP ini (isClient diset dari URL ?as=client)
+        const myRole = isClient ? "client" : "master";
+
+        // Cek apakah HP ini ditugaskan jadi Reader (pembaca)
+        if (data.reader === myRole) {
+          document.getElementById("screen-reader").classList.remove("hidden");
+          document.getElementById("question-display").innerText =
+            data.questionText;
+        } else {
+          // Kalau bukan, berarti HP ini jadi Executor (Numpad)
+          document.getElementById("screen-executor").classList.remove("hidden");
+          typedAnswer = "";
+          document.getElementById("answer-display").innerText = "_";
+        }
+      });
+
+      // --- 2. FUNGSI NUMPAD EXECUTOR ---
+      function typeNum(num) {
+        typedAnswer += num;
+        document.getElementById("answer-display").innerText = typedAnswer;
+      }
+
+      function delNum() {
+        typedAnswer = typedAnswer.slice(0, -1);
+        document.getElementById("answer-display").innerText =
+          typedAnswer || "_";
+      }
+
+      function submitAnswer() {
+        if (typedAnswer === currentCorrectAnswer) {
+          // Kalau jawaban benar, kasih tau server!
+          socket.emit("answer_correct");
+        } else {
+          // Kalau salah, reset layar
+          alert("Akses Ditolak: Kalkulasi Salah!");
+          typedAnswer = "";
+          document.getElementById("answer-display").innerText = "_";
+        }
+      }
+
+      // --- 3. BUKA DEEP TALK (Jawaban Benar) ---
+      socket.on("unlock_deeptalk", () => {
+        document.getElementById("screen-reader").classList.add("hidden");
+        document.getElementById("screen-executor").classList.add("hidden");
+
+        document.getElementById("screen-deeptalk").classList.remove("hidden");
+        document.getElementById("deeptalk-display").innerText =
+          `"${currentTopicText}"`;
+      });
+
+      // --- 4. LANJUT KE LEVEL BERIKUTNYA ---
+      function reqNextLevel() {
+        socket.emit("request_next_level");
+      }
+
+      // --- 5. KEMBALI KE RADAR UNTUK CARI WAHANA BARU ---
+      socket.on("back_to_radar", () => {
+        document.getElementById("screen-deeptalk").classList.add("hidden");
+        document.getElementById("screen-game").classList.remove("hidden");
+
+        currentLevel++; // Naik level
+        isArrived = false; // Buka kunci GPS lagi
+
+        if (currentLevel > 5) {
+          // TODO: MASUK KE ENDGAME SCENE (Voice Note & Kalender)
+          alert("SEMUA WAHANA SELESAI! Beralih ke protokol final...");
+          // Nanti kita buat fungsi startEndgame() di sini
+        } else {
+          startRadar(); // Nyalakan GPS lagi buat cari level selanjutnya
+        }
+      });
 
       //   async function startFingerprint() {
       //     const codeBox = document.getElementById("secret-code-box");

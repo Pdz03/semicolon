@@ -176,10 +176,15 @@ io.on("connection", (socket) => {
   });
 
   // Jika jawaban benar, buka sesi Deep Talk
-  socket.on("answer_correct", () => {
-    io.to("cengklik_room").emit("unlock_deeptalk");
-  });
+// Jika jawaban benar, buka sesi Deep Talk
+    socket.on('answer_correct', () => {
+        io.to('cengklik_room').emit('unlock_deeptalk');
+    });
 
+    // Jika kalian sepakat lanjut dari layar Deep Talk
+    socket.on('request_next_level', () => {
+        io.to('cengklik_room').emit('back_to_radar');
+    });
   // ==========================================
   // TAHAP 3: THE ENDGAME SCENE
   // ==========================================
