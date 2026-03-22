@@ -7,6 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Semicolon; v2</title>
+    <link rel="icon" type="image/png" href="/images/favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
@@ -208,15 +209,30 @@
       <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
         RADAR AKTIF
       </h2>
-      <p class="text-xs text-gray-400 mb-8">
-        Koneksi aman. Menunggu sinyal GPS dari target lokasi...
+      <p id="radar-status" class="text-xs text-gray-400 mb-8">
+        Koneksi aman. Menunggu sinyal GPS...
       </p>
 
       <div
-        class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center"
+        class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center relative"
       >
-        <span class="text-4xl animate-pulse">📡</span>
+        <span class="text-4xl animate-pulse absolute">📡</span>
       </div>
+
+      <p
+        id="distance-indicator"
+        class="text-[10px] text-yellow-500 mt-4 font-bold tracking-widest"
+      >
+        JARAK: MENGHITUNG...
+      </p>
+
+      <p
+        onclick="forceArrive()"
+        id="cheat-btn"
+        class="text-[8px] text-gray-800 mt-8 select-none"
+      >
+        dev_override
+      </p>
     </div>
 
     <style>
@@ -288,6 +304,7 @@
 
         // (Opsional: Nanti di sini kita panggil fungsi nyalakan GPS)
         console.log("PAIRING SUKSES! Siap melacak wahana.");
+        startRadar();
       });
 
       // Kalau kode salah
@@ -395,48 +412,145 @@
         }
       }
 
-    //   async function startFingerprint() {
-    //     const codeBox = document.getElementById("secret-code-box");
-    //     const codeDisplay = document.getElementById("master-code-display");
+      // --- VARIABEL GLOBAL GAME ---
+      let waypoints = [];
+      let currentLevel = 1;
+      let isArrived = false; // Mencegah spam emit ke server
+      let watchId;
+      let cheatTaps = 0;
 
-    //     const options = {
-    //       publicKey: {
-    //         challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
-    //         rpId: window.location.hostname,
-    //         userVerification: "required",
-    //         timeout: 60000,
-    //       },
-    //     };
+      // --- FUNGSI MENGHITUNG JARAK (HAVERSINE FORMULA) ---
+      function getDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Radius bumi dalam meter
+        const p1 = (lat1 * Math.PI) / 180;
+        const p2 = (lat2 * Math.PI) / 180;
+        const deltaP = p2 - p1;
+        const deltaLon = lon2 - lon1;
+        const deltaLambda = (deltaLon * Math.PI) / 180;
+        const a =
+          Math.sin(deltaP / 2) * Math.sin(deltaP / 2) +
+          Math.cos(p1) *
+            Math.cos(p2) *
+            Math.sin(deltaLambda / 2) *
+            Math.sin(deltaLambda / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Hasil dalam meter
+      }
 
-    //     try {
-    //       // Panggil sensor sidik jari bawaan HP
-    //       const assertion = await navigator.credentials.get(options);
+      // --- FUNGSI MULAI RADAR ---
+      async function startRadar() {
+        // 1. Ambil data titik kordinat dari server
+        try {
+          const res = await fetch("/api/v2/admin/data");
+          const data = await res.json();
+          waypoints = data.locs.sort((a, b) => a.level - b.level);
+        } catch (e) {
+          console.error("Gagal load waypoints!");
+        }
 
-    //       // Jika sidik jari Ida valid, generate 6 digit random
-    //       const randomCode = Math.floor(
-    //         100000 + Math.random() * 900000,
-    //       ).toString();
+        // 2. Nyalakan GPS Tracker
+        if (navigator.geolocation) {
+          document.getElementById("radar-status").innerText =
+            `Mencari titik Level ${currentLevel}...`;
 
-    //       // Tampilkan ke layar
-    //       codeDisplay.innerText = randomCode;
-    //       codeBox.classList.remove("hidden");
+          watchId = navigator.geolocation.watchPosition(
+            (position) => {
+              const myLat = position.coords.latitude;
+              const myLng = position.coords.longitude;
 
-    //       // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
-    //     } catch (err) {
-    //       alert("Otentikasi Gagal atau Dibatalkan!");
-    //       console.error(err);
-    //     }
-    //   }
+              const target = waypoints[currentLevel - 1];
+              if (!target) return; // Game tamat
 
-    //   function connectDevices() {
-    //     // Nanti diisi logic Socket.io
-    //     const code = document.getElementById("client-code").value;
-    //     if (code === "TKG-892") {
-    //       alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
-    //     } else {
-    //       alert("Kode Tidak Valid!");
-    //     }
-    //   }
+              // Hitung Jarak
+              const distance = Math.round(
+                getDistance(myLat, myLng, target.lat, target.lng),
+              );
+              document.getElementById("distance-indicator").innerText =
+                `JARAK: ${distance} METER`;
+
+              // Jika masuk radius 20 meter, BOOM! Trigger Game.
+              if (distance <= 20 && !isArrived) {
+                triggerArrival();
+              }
+            },
+            (error) => {
+              document.getElementById("distance-indicator").innerText =
+                "ERROR GPS: " + error.message;
+            },
+            {
+              enableHighAccuracy: true, // Wajib TRUE biar akurat
+              maximumAge: 0,
+              timeout: 10000,
+            },
+          );
+        } else {
+          alert("Browser tidak support GPS!");
+        }
+      }
+
+      // --- EKSEKUSI SAAT SAMPAI ---
+      function triggerArrival() {
+        isArrived = true; // Kunci biar gak spam
+        if (watchId) navigator.geolocation.clearWatch(watchId); // Matikan radar sementara
+        document.getElementById("radar-status").innerText = "TARGET DITEMUKAN!";
+        document.getElementById("distance-indicator").innerText =
+          "MEMBUKA ENKRIPSI...";
+
+        // Tembak ke server
+        socket.emit("gps_arrived", currentLevel);
+      }
+
+      // --- CHEAT BUTTON (Kalau GPS error saat field test) ---
+      function forceArrive() {
+        cheatTaps++;
+        if (cheatTaps >= 3 && !isArrived) {
+          alert("Developer Override Aktif!");
+          triggerArrival();
+        }
+      }
+
+      //   async function startFingerprint() {
+      //     const codeBox = document.getElementById("secret-code-box");
+      //     const codeDisplay = document.getElementById("master-code-display");
+
+      //     const options = {
+      //       publicKey: {
+      //         challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
+      //         rpId: window.location.hostname,
+      //         userVerification: "required",
+      //         timeout: 60000,
+      //       },
+      //     };
+
+      //     try {
+      //       // Panggil sensor sidik jari bawaan HP
+      //       const assertion = await navigator.credentials.get(options);
+
+      //       // Jika sidik jari Ida valid, generate 6 digit random
+      //       const randomCode = Math.floor(
+      //         100000 + Math.random() * 900000,
+      //       ).toString();
+
+      //       // Tampilkan ke layar
+      //       codeDisplay.innerText = randomCode;
+      //       codeBox.classList.remove("hidden");
+
+      //       // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
+      //     } catch (err) {
+      //       alert("Otentikasi Gagal atau Dibatalkan!");
+      //       console.error(err);
+      //     }
+      //   }
+
+      //   function connectDevices() {
+      //     // Nanti diisi logic Socket.io
+      //     const code = document.getElementById("client-code").value;
+      //     if (code === "TKG-892") {
+      //       alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
+      //     } else {
+      //       alert("Kode Tidak Valid!");
+      //     }
+      //   }
     </script>
   </body>
 </html>
