@@ -7,6 +7,8 @@ const path = require("path");
 const http = require("http").createServer(app); // Wajib pakai http server untuk socket
 const io = require("socket.io")(http);
 
+
+
 // --- KONEKSI DB ---
 // --- KONEKSI DATABASE OPTIMIZED FOR VERCEL ---
 let cached = global.mongoose;
@@ -79,11 +81,22 @@ const SettingSchema = new mongoose.Schema({
 const Memory = mongoose.model("Memory", MemorySchema);
 const Setting = mongoose.model("Setting", SettingSchema);
 
+// --- SCHEMA V2: CHAT HISTORY & SESSION ---
+const ChatMessageSchema = new mongoose.Schema({
+    session_id: String,
+    sender: String, // 'fendi' (client) atau 'ida' (master)
+    type: String,   // 'text', 'image', 'audio'
+    content: String,
+    created_at: { type: Date, default: Date.now }
+});
+const ChatMessage = mongoose.model('ChatMessage', ChatMessageSchema);
+
 const SettingV2Schema = new mongoose.Schema({
     key: String,
     release_time: Date,
     dev_mode: { type: Boolean, default: true }, // Default true untuk masa testing
-    step_timer: { type: Number, default: 60 } // Timer menjauh (detik)
+    step_timer: { type: Number, default: 60 }, // Timer menjauh (detik)
+    current_session: { type: String, default: 'DEV_TEST_01' } // SESI DEFAULT
 });
 const SettingV2 = mongoose.model("SettingV2", SettingV2Schema);
 
@@ -257,6 +270,10 @@ io.on("connection", (socket) => {
         }
   });
 
+  socket.on('submit_paper_answer', (answer) => {
+        socket.broadcast.to('cengklik_room').emit('receive_paper_answer', answer);
+    });
+
   // 2. Minta durasi timer ke server
     socket.on('request_timer', async () => {
         const config = await SettingV2.findOne({ key: 'config_v2' });
@@ -269,7 +286,21 @@ io.on("connection", (socket) => {
     });
 
     // 4. Terima dan Broadcast Media (VN, Teks, Foto)
-    socket.on('send_media', (data) => {
+// Terima, Simpan ke DB, lalu Broadcast Media
+    socket.on('send_media', async (data) => {
+        // 1. Ambil nama sesi yang sedang aktif saat ini
+        const config = await SettingV2.findOne({ key: 'config_v2' });
+        const activeSession = config.current_session || 'DEFAULT';
+
+        // 2. Simpan obrolan ke Database MongoDB
+        await ChatMessage.create({
+            session_id: activeSession,
+            sender: data.sender, // Menangkap siapa yang ngirim
+            type: data.type,
+            content: data.content
+        });
+
+        // 3. Lempar ke HP pasangannya supaya muncul di layar
         socket.broadcast.to('cengklik_room').emit('receive_media', data);
     });
 
@@ -283,12 +314,6 @@ io.on("connection", (socket) => {
         socket.broadcast.to('cengklik_room').emit('fendi_receive_calendar', weeks);
     });
 
-  // 3.2 Kirim Media (VN, Foto, Teks)
-  // Menerima pesan dari satu HP, lalu di-broadcast ke HP satunya
-  socket.on("send_media", (data) => {
-    // data = { type: 'audio'|'image'|'text', content: '...', sender: 'master'|'client' }
-    socket.broadcast.to("cengklik_room").emit("receive_media", data);
-  });
 
   // 3.3 & 3.4 Kalender April
   socket.on("submit_april_weeks", (weeks) => {
@@ -557,6 +582,21 @@ app.get("/init-v2", async (req, res) => {
 });
 
 // --- API ROUTES ---
+
+// API: Ubah Sesi Aktif
+app.post('/api/v2/admin/set-session', async (req, res) => {
+    const { secret, session_name } = req.body;
+    if(secret !== 'sajak-admin') return res.status(403).json({error: 'Ditolak'});
+    
+    await SettingV2.findOneAndUpdate({ key: 'config_v2' }, { current_session: session_name });
+    res.json({ success: true, session_name });
+});
+
+// API: Lihat Riwayat Chat Berdasarkan Sesi (Bisa kamu buka di browser nanti)
+app.get('/api/v2/chat-history/:session', async (req, res) => {
+    const history = await ChatMessage.find({ session_id: req.params.session }).sort({ created_at: 1 });
+    res.json(history);
+});
 
 // --- API ADMIN V2 ---
 // Ambil semua data admin

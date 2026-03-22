@@ -123,12 +123,22 @@
                     </label>
                 </div>
             </div>
+            
           <button
             onclick="updateTimer()"
             class="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded transition"
           >
             UPDATE COUNTDOWN
           </button>
+          <div class="border-t border-red-900/30 pt-4 mt-4">
+                <h2 class="text-sm text-blue-400 mb-2">> DATABASE SESSION CONTROL</h2>
+                <p class="text-[10px] text-gray-400 mb-2">Gunakan sesi berbeda untuk Testing dan Hari H agar data memori tidak tercampur.</p>
+                <div class="flex space-x-2">
+                    <input type="text" id="session-input" placeholder="Contoh: DATE_FINAL_01" class="flex-1 bg-black border border-blue-800 p-3 text-sm text-white focus:outline-none focus:border-blue-500 rounded uppercase">
+                    <button onclick="updateSession()" class="bg-blue-900 hover:bg-blue-800 text-white font-bold px-4 rounded transition">SET SESI</button>
+                </div>
+                <p id="current-session-display" class="text-xs text-green-500 mt-2 font-bold"></p>
+            </div>
         </div>
       </div>
 
@@ -552,18 +562,35 @@
       });
 
       // --- FETCH DATA SAAT ADMIN DIBUKA ---
-      window.addEventListener("DOMContentLoaded", async () => {
-        try {
-          const res = await fetch("/api/v2/admin/data");
-          const data = await res.json();
-          document.getElementById('dev-mode-toggle').checked = data.config.dev_mode; // Set toggle awal
-          renderLocations(data.locs);
-          renderTopics(data.topics);
-          renderQuestions(data.questions);
-        } catch (e) {
-          console.log("Gagal load data", e);
-        }
-      });
+// (Tampilkan nama sesi saat fetch data pertama kali)
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch('/api/v2/admin/data');
+        const data = await res.json();
+        // ... (kode yang sudah ada)
+        document.getElementById('current-session-display').innerText = `SESI AKTIF: ${data.config.current_session}`;
+        document.getElementById('session-input').value = data.config.current_session;
+    } catch(e) {}
+});
+
+async function updateSession() {
+    const sessionName = document.getElementById('session-input').value.trim().toUpperCase();
+    const secret = document.getElementById('admin-secret').value;
+    if(!sessionName) return alert("Nama sesi tidak boleh kosong!");
+
+    const res = await fetch('/api/v2/admin/set-session', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ secret, session_name: sessionName })
+    });
+    const data = await res.json();
+    if(data.success) {
+        document.getElementById('current-session-display').innerText = `SESI AKTIF: ${data.session_name}`;
+        alert(`Sistem kini merekam memori ke sesi: ${data.session_name}`);
+    } else {
+        alert(data.error);
+    }
+}
+      
 
       // Fungsi untuk hit API Toggle
 async function toggleDevMode() {
@@ -661,6 +688,8 @@ async function toggleDevMode() {
         }
         container.innerHTML = html;
       }
+
+
     </script>
   </body>
 </html>
