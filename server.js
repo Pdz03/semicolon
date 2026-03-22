@@ -159,17 +159,48 @@ async function sendQuestionAndTopic() {
 }
 
 // --- SOCKET.IO LOGIC ---
-io.on('connection', (socket) => {
-    // ... (Kode master_set_code & client_submit_code tetap sama) ...
+io.on("connection", (socket) => {
+  console.log("📱 Device Terhubung:", socket.id);
 
-    // Saat GPS sampai di Wahana Baru
+  // ==========================================
+  // TAHAP 1: SINKRONISASI KODE (PAIRING)
+  // ==========================================
+
+  // HP Master (Dipegang Ida) mengirim kode hasil generate sidik jari
+  socket.on("master_set_code", (code) => {
+    gameState.masterCode = code;
+    socket.join("cengklik_room"); // Masuk ke room khusus kalian
+    console.log("🔑 Master Code Set:", code);
+  });
+
+  // HP Client (Dipegang Fendi) mencoba memasukkan kode
+  socket.on("client_submit_code", (code) => {
+    // TAMPILKAN LOG DI TERMINAL SERVER
+    console.log(`[DEBUG] Master simpan kode: '${gameState.masterCode}'`);
+    console.log(`[DEBUG] Client kirim kode: '${code}'`);
+
+    if (code === gameState.masterCode) {
+      socket.join("cengklik_room");
+      io.to("cengklik_room").emit("pairing_success");
+      console.log("✅ PAIRING MATCH!");
+    } else {
+      socket.emit("pairing_failed");
+      console.log("❌ PAIRING GAGAL!");
+    }
+  });
+
+  // ==========================================
+  // TAHAP 2: GAME LOOP & GANTIAN JAWAB
+  // ==========================================
+
+  // Saat GPS sampai di Wahana Baru
     socket.on('gps_arrived', async (level) => {
         gameState.currentLevel = level;
         gameState.currentSubLevel = 1; // Mulai dari soal pertama
         await sendQuestionAndTopic();
     });
 
-    // Buka Deep Talk kalau jawaban benar
+  // Buka Deep Talk kalau jawaban benar
     socket.on('answer_correct', () => {
         io.to('cengklik_room').emit('unlock_deeptalk');
     });
