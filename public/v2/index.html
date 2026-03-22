@@ -288,6 +288,12 @@
       <p class="text-[10px] text-gray-600 animate-pulse mt-4">
         Menunggu agen memasukkan jawaban...
       </p>
+      <button
+        onclick="socket.emit('skip_question')"
+        class="btn-dev-skip hidden mt-4 text-[10px] bg-yellow-600/20 border border-yellow-600 text-yellow-500 py-1 px-4 rounded-full mx-auto"
+      >
+        [DEV] SKIP PERTANYAAN
+      </button>
     </div>
 
     <div
@@ -311,83 +317,86 @@
         </h1>
       </div>
 
-      <div id="numpad-container" class="grid grid-cols-3 gap-3 p-2 border border-transparent rounded"></div>
-      <div class="grid grid-cols-3 gap-3">
-        <button
-          onclick="typeNum('1')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          1
-        </button>
-        <button
-          onclick="typeNum('2')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          2
-        </button>
-        <button
-          onclick="typeNum('3')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          3
-        </button>
-        <button
-          onclick="typeNum('4')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          4
-        </button>
-        <button
-          onclick="typeNum('5')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          5
-        </button>
-        <button
-          onclick="typeNum('6')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          6
-        </button>
-        <button
-          onclick="typeNum('7')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          7
-        </button>
-        <button
-          onclick="typeNum('8')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          8
-        </button>
-        <button
-          onclick="typeNum('9')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          9
-        </button>
-        <button
-          onclick="delNum()"
-          class="bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-xl py-4 rounded font-bold"
-        >
-          DEL
-        </button>
-        <button
-          onclick="typeNum('0')"
-          class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
-        >
-          0
-        </button>
-        <button
-          onclick="submitAnswer()"
-          class="bg-green-700 hover:bg-green-600 text-white text-xl py-4 rounded font-bold shadow-[0_0_15px_rgba(21,128,61,0.5)]"
-        >
-          GO
-        </button>
+      <div
+        id="numpad-container"
+        class="grid grid-cols-3 gap-3 p-2 border border-transparent rounded"
+      >
+        <div class="grid grid-cols-3 gap-3">
+          <button
+            onclick="typeNum('1')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            1
+          </button>
+          <button
+            onclick="typeNum('2')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            2
+          </button>
+          <button
+            onclick="typeNum('3')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            3
+          </button>
+          <button
+            onclick="typeNum('4')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            4
+          </button>
+          <button
+            onclick="typeNum('5')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            5
+          </button>
+          <button
+            onclick="typeNum('6')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            6
+          </button>
+          <button
+            onclick="typeNum('7')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            7
+          </button>
+          <button
+            onclick="typeNum('8')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            8
+          </button>
+          <button
+            onclick="typeNum('9')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            9
+          </button>
+          <button
+            onclick="delNum()"
+            class="bg-red-900/50 hover:bg-red-800 border border-red-700 text-red-200 text-xl py-4 rounded font-bold"
+          >
+            DEL
+          </button>
+          <button
+            onclick="typeNum('0')"
+            class="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white text-2xl py-4 rounded font-bold"
+          >
+            0
+          </button>
+          <button
+            onclick="submitAnswer()"
+            class="bg-green-700 hover:bg-green-600 text-white text-xl py-4 rounded font-bold shadow-[0_0_15px_rgba(21,128,61,0.5)]"
+          >
+            GO
+          </button>
+        </div>
       </div>
     </div>
-</div>
 
     <div
       id="screen-deeptalk"
@@ -412,11 +421,26 @@
       </div>
 
       <button
+      id="btn-next-step"
         onclick="reqNextLevel()"
         class="w-full mt-6 bg-yellow-700 hover:bg-yellow-600 text-black font-bold py-3 rounded transition"
       >
         LANJUT KE WAHANA BERIKUTNYA
       </button>
+    </div>
+
+    <div
+      id="screen-endgame"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-white/50 bg-black rounded-lg fade-in"
+    >
+      <h2 class="text-white font-bold tracking-widest text-xl mb-2">
+        TAHAP AKHIR
+      </h2>
+      <p class="text-xs text-gray-400 mb-6">
+        Misi utama selesai. Menginisiasi protokol validasi memori...
+      </p>
+
+      <p class="text-sm italic text-gray-500">(Kerangka Endgame Siap)</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -739,32 +763,33 @@
       }
 
       // --- CHEAT BUTTON (Kalau GPS error saat field test) ---
-// --- CHEAT BUTTON / BYPASS (Membutuhkan Kode dari Ida) ---
-function forceArrive() {
-    cheatTaps++;
-    
-    // Kalau sudah di-tap 3 kali dan belum sampai target
-    if(cheatTaps >= 3 && !isArrived) {
-        
-        // Munculkan popup input untuk Ida
-        const bypassCode = prompt("📍 SISTEM MENDETEKSI KENDALA SINYAL GPS.\n\nMasukkan 3 Digit Kode Bypass Manual (jawaban dari pertanyaan random):");
+      // --- CHEAT BUTTON / BYPASS (Membutuhkan Kode dari Ida) ---
+      function forceArrive() {
+        cheatTaps++;
 
-        // ==========================================
-        // HINT UNTUK FENDI: 
-        // Ganti angka "123" di bawah ini dengan kode asli yang kamu kirim ke Ida.
-        // ==========================================
-        const SECRET_BYPASS_CODE = "637"; 
+        // Kalau sudah di-tap 3 kali dan belum sampai target
+        if (cheatTaps >= 3 && !isArrived) {
+          // Munculkan popup input untuk Ida
+          const bypassCode = prompt(
+            "📍 SISTEM MENDETEKSI KENDALA SINYAL GPS.\n\nMasukkan 3 Digit Kode Bypass Manual (jawaban dari pertanyaan random):",
+          );
 
-        if (bypassCode === SECRET_BYPASS_CODE) {
+          // ==========================================
+          // HINT UNTUK FENDI:
+          // Ganti angka "123" di bawah ini dengan kode asli yang kamu kirim ke Ida.
+          // ==========================================
+          const SECRET_BYPASS_CODE = "637";
+
+          if (bypassCode === SECRET_BYPASS_CODE) {
             alert("BYPASS DITERIMA! Membuka enkripsi target...");
             triggerArrival(); // Langsung tembak event ke server
-        } else if (bypassCode !== null) {
+          } else if (bypassCode !== null) {
             // Kalau kodenya salah (dan bukan klik tombol Cancel)
             alert("AKSES DITOLAK: Kode Bypass Tidak Valid!");
             cheatTaps = 0; // Reset tap, biar dia harus tap 3x lagi kalau mau coba
+          }
         }
-    }
-}
+      }
 
       // --- VARIABEL SEMENTARA GAME ---
       let currentCorrectAnswer = "";
@@ -772,31 +797,40 @@ function forceArrive() {
       let typedAnswer = "";
 
       // --- 1. PERBAIKAN START LEVEL (Mencegah Layar Numpuk) ---
-socket.on('start_level', (data) => {
-    // Sembunyikan SEMUA layar lain secara paksa
-    document.getElementById('screen-game').classList.add('hidden');
-    document.getElementById('screen-deeptalk').classList.add('hidden');
-    
-    currentCorrectAnswer = data.correctAnswer;
-    currentTopicText = data.topicText;
-    
-    // Update indikator (1/3)
-    document.getElementById('reader-progress').innerText = `(${data.subLevel}/3)`;
-    document.getElementById('executor-progress').innerText = `(${data.subLevel}/3)`;
+      socket.on("start_level", (data) => {
+        // Sembunyikan SEMUA layar lain secara paksa
+        document.getElementById("screen-game").classList.add("hidden");
+        document.getElementById("screen-deeptalk").classList.add("hidden");
 
-    const myRole = isClient ? 'client' : 'master';
+        currentCorrectAnswer = data.correctAnswer;
+        currentTopicText = data.topicText;
 
-    if (data.reader === myRole) {
-        document.getElementById('screen-reader').classList.remove('hidden');
-        document.getElementById('screen-executor').classList.add('hidden');
-        document.getElementById('question-display').innerText = data.questionText;
-    } else {
-        document.getElementById('screen-executor').classList.remove('hidden');
-        document.getElementById('screen-reader').classList.add('hidden');
-        typedAnswer = "";
-        document.getElementById('answer-display').innerText = "_";
-    }
-});
+        // Update indikator (1/3)
+        document.getElementById("reader-progress").innerText =
+          `(${data.subLevel}/3)`;
+        document.getElementById("executor-progress").innerText =
+          `(${data.subLevel}/3)`;
+
+        const myRole = isClient ? "client" : "master";
+
+        if (data.reader === myRole) {
+          document.getElementById("screen-reader").classList.remove("hidden");
+          document.getElementById("screen-executor").classList.add("hidden");
+          document.getElementById("question-display").innerText =
+            data.questionText;
+        } else {
+          document.getElementById("screen-executor").classList.remove("hidden");
+          document.getElementById("screen-reader").classList.add("hidden");
+          typedAnswer = "";
+          document.getElementById("answer-display").innerText = "_";
+        }
+
+        const skipBtns = document.querySelectorAll(".btn-dev-skip");
+        skipBtns.forEach((btn) => {
+          if (data.isDevMode) btn.classList.remove("hidden");
+          else btn.classList.add("hidden");
+        });
+      });
 
       // --- 2. FUNGSI NUMPAD EXECUTOR ---
       function typeNum(num) {
@@ -810,35 +844,51 @@ socket.on('start_level', (data) => {
           typedAnswer || "_";
       }
 
-// --- 2. HAPUS ALERT, GANTI KEDIP MERAH ---
-function submitAnswer() {
-    if (typedAnswer === currentCorrectAnswer) {
-        socket.emit('answer_correct');
-    } else {
-        // Efek Kedip Merah tanpa Alert
-        const numpad = document.getElementById('numpad-container');
-        numpad.classList.add('error-shake');
-        setTimeout(() => numpad.classList.remove('error-shake'), 600); // Hapus class setelah animasi selesai
-        
-        typedAnswer = "";
-        document.getElementById('answer-display').innerText = "_";
-    }
-}
+      // --- 2. HAPUS ALERT, GANTI KEDIP MERAH ---
+      function submitAnswer() {
+        if (typedAnswer === currentCorrectAnswer) {
+          socket.emit("answer_correct");
+        } else {
+          // Efek Kedip Merah tanpa Alert
+          const numpad = document.getElementById("numpad-container");
+          numpad.classList.add("error-shake");
+          setTimeout(() => numpad.classList.remove("error-shake"), 600); // Hapus class setelah animasi selesai
+
+          typedAnswer = "";
+          document.getElementById("answer-display").innerText = "_";
+        }
+      }
 
       // --- 3. BUKA DEEP TALK (Jawaban Benar) ---
-      socket.on("unlock_deeptalk", () => {
-        document.getElementById("screen-reader").classList.add("hidden");
-        document.getElementById("screen-executor").classList.add("hidden");
+socket.on('unlock_deeptalk', (state) => {
+    document.getElementById('screen-reader').classList.add('hidden');
+    document.getElementById('screen-executor').classList.add('hidden');
+    
+    document.getElementById('screen-deeptalk').classList.remove('hidden');
+    document.getElementById('deeptalk-display').innerText = `"${currentTopicText}"`;
 
-        document.getElementById("screen-deeptalk").classList.remove("hidden");
-        document.getElementById("deeptalk-display").innerText =
-          `"${currentTopicText}"`;
-      });
+    // LOGIKA TEKS TOMBOL DINAMIS
+    const btnNext = document.getElementById('btn-next-step');
+    
+    if (state.subLevel < 3) {
+        // Kalau baru soal 1 atau 2
+        btnNext.innerText = "LANJUT SOAL BERIKUTNYA";
+    } else if (state.subLevel === 3 && state.level < 5) {
+        // Kalau sudah 3 soal, tapi belum level 5
+        btnNext.innerText = "LANJUT KE WAHANA BERIKUTNYA";
+    } else if (state.subLevel === 3 && state.level === 5) {
+        // Kalau sudah level 5 dan soal terakhir selesai!
+        btnNext.innerText = "MENUJU PROTOKOL FINAL";
+        btnNext.classList.replace('bg-yellow-700', 'bg-purple-700'); // Ubah warna khusus final
+        btnNext.classList.replace('hover:bg-yellow-600', 'hover:bg-purple-600');
+        btnNext.classList.replace('text-black', 'text-white');
+    }
+});
 
-// --- 3. LANJUT LANGKAH (Bukan otomatis ke Radar) ---
-function reqNextLevel() {
-    socket.emit('request_next_step'); // Biar server yang mikir, lanjut soal atau balik radar
-}
+      // --- 3. LANJUT LANGKAH (Bukan otomatis ke Radar) ---
+      function reqNextLevel() {
+        socket.emit("request_next_step"); // Biar server yang mikir, lanjut soal atau balik radar
+      }
 
       // --- 5. KEMBALI KE RADAR UNTUK CARI WAHANA BARU ---
       socket.on("back_to_radar", () => {
@@ -855,6 +905,16 @@ function reqNextLevel() {
         } else {
           startRadar(); // Nyalakan GPS lagi buat cari level selanjutnya
         }
+      });
+
+      // Nangkep perintah masuk ke babak final dari server
+      socket.on("start_endgame", () => {
+        // Tutup semua layar game
+        document.getElementById("screen-deeptalk").classList.add("hidden");
+        document.getElementById("screen-game").classList.add("hidden");
+
+        // Buka layar Endgame
+        document.getElementById("screen-endgame").classList.remove("hidden");
       });
 
       //   async function startFingerprint() {

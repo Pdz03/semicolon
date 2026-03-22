@@ -113,6 +113,16 @@
             class="w-full bg-black border border-red-800 p-3 text-sm text-white focus:outline-none focus:border-red-500 rounded"
             value="sajak-admin"
           />
+          <div class="border-t border-red-900/30 pt-4 mt-4">
+                <h2 class="text-sm text-yellow-400 mb-2">> SYSTEM MODE</h2>
+                <div class="flex items-center justify-between bg-black border border-gray-800 p-3 rounded">
+                    <span class="text-xs text-gray-300">DEVELOPMENT MODE (Skip Aktif)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="dev-mode-toggle" onchange="toggleDevMode()" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    </label>
+                </div>
+            </div>
           <button
             onclick="updateTimer()"
             class="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded transition"
@@ -546,6 +556,7 @@
         try {
           const res = await fetch("/api/v2/admin/data");
           const data = await res.json();
+          document.getElementById('dev-mode-toggle').checked = data.config.dev_mode; // Set toggle awal
           renderLocations(data.locs);
           renderTopics(data.topics);
           renderQuestions(data.questions);
@@ -553,6 +564,19 @@
           console.log("Gagal load data", e);
         }
       });
+
+      // Fungsi untuk hit API Toggle
+async function toggleDevMode() {
+    const isDev = document.getElementById('dev-mode-toggle').checked;
+    const secret = document.getElementById('admin-secret').value;
+    
+    const res = await fetch('/api/v2/admin/toggle-dev', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ secret, dev_mode: isDev })
+    });
+    const data = await res.json();
+    if(data.error) alert(data.error);
+}
 
       // Render Lokasi
       function renderLocations(locs) {

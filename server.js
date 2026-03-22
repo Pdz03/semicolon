@@ -80,8 +80,9 @@ const Memory = mongoose.model("Memory", MemorySchema);
 const Setting = mongoose.model("Setting", SettingSchema);
 
 const SettingV2Schema = new mongoose.Schema({
-  key: String,
-  release_time: Date,
+    key: String,
+    release_time: Date,
+    dev_mode: { type: Boolean, default: true } // Default true untuk masa testing
 });
 const SettingV2 = mongoose.model("SettingV2", SettingV2Schema);
 
@@ -148,13 +149,16 @@ async function sendQuestionAndTopic() {
     // 3. Penentuan Role (Gantian Jawab PER WAHANA/LEVEL, bukan per soal)
     const readerDevice = (level % 2 !== 0) ? 'client' : 'master';
 
+const config = await SettingV2.findOne({ key: 'config_v2' }); // Ambil status dev_mode
+
     io.to('cengklik_room').emit('start_level', {
         level: level,
-        subLevel: gameState.currentSubLevel, // Kirim info ini soal ke-berapa (1/2/3)
+        subLevel: gameState.currentSubLevel,
         questionText: randomQ.text,
         correctAnswer: randomQ.answer,
         topicText: randomT.text,
-        reader: readerDevice
+        reader: readerDevice,
+        isDevMode: config.dev_mode // <-- Kirim status ini ke frontend
     });
 }
 
@@ -201,19 +205,38 @@ io.on("connection", (socket) => {
     });
 
   // Buka Deep Talk kalau jawaban benar
+// Buka Deep Talk kalau jawaban benar
     socket.on('answer_correct', () => {
-        io.to('cengklik_room').emit('unlock_deeptalk');
+        io.to('cengklik_room').emit('unlock_deeptalk', {
+            level: gameState.currentLevel,
+            subLevel: gameState.currentSubLevel
+        });
+    });
+
+    // Fitur Skip dari Dev Mode
+    socket.on('skip_question', () => {
+        io.to('cengklik_room').emit('unlock_deeptalk', {
+            level: gameState.currentLevel,
+            subLevel: gameState.currentSubLevel
+        });
     });
 
     // Saat diklik "LANJUT" dari layar Deep Talk
     socket.on('request_next_step', async () => {
         if (gameState.currentSubLevel < 3) {
-            // Kalau belum 3 soal, lanjut ke soal berikutnya di wahana yang SAMA
+            // Lanjut soal ke-2 atau ke-3
             gameState.currentSubLevel++;
             await sendQuestionAndTopic();
         } else {
-            // Kalau sudah 3 soal, KEMBALI KE RADAR untuk cari wahana level selanjutnya
-            io.to('cengklik_room').emit('back_to_radar');
+            // Level selesai (3 soal terjawab)
+            if (gameState.currentLevel >= 5) {
+                // JIKA LEVEL 5 SELESAI -> MASUK BABAK FINAL!
+                io.to('cengklik_room').emit('start_endgame');
+            } else {
+                // JIKA BELUM LEVEL 5 -> KEMBALI KE RADAR, NAIK LEVEL
+                gameState.currentLevel++; 
+                io.to('cengklik_room').emit('back_to_radar');
+            }
         }
     });
   // ==========================================
@@ -509,14 +532,23 @@ app.get("/init-v2", async (req, res) => {
 // --- API ROUTES ---
 
 // --- API ADMIN V2 ---
-// Ambil semua data
-app.get("/api/v2/admin/data", async (req, res) => {
-  const locs = await LocationV2.find().sort({ level: 1 });
-  const topics = await TopicV2.find();
-  const questions = await QuestionV2.find().sort({ level: 1 });
-  res.json({ locs, topics, questions });
+// Ambil semua data admin
+app.get('/api/v2/admin/data', async (req, res) => {
+    const config = await SettingV2.findOne({ key: 'config_v2' });
+    const locs = await LocationV2.find().sort({level: 1});
+    const topics = await TopicV2.find();
+    const questions = await QuestionV2.find().sort({level: 1});
+    res.json({ config, locs, topics, questions }); // Tambahkan config di sini
 });
 
+// API Toggle Dev Mode
+app.post('/api/v2/admin/toggle-dev', async (req, res) => {
+    const { secret, dev_mode } = req.body;
+    if(secret !== 'sajak-admin') return res.status(403).json({error: 'Ditolak'});
+    
+    await SettingV2.findOneAndUpdate({ key: 'config_v2' }, { dev_mode: dev_mode });
+    res.json({ success: true, dev_mode });
+});
 // Update Lokasi
 app.post("/api/v2/admin/update-loc", async (req, res) => {
   const { id, name, lat, lng, secret } = req.body;
