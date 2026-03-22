@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const app = express();
 const path = require("path");
+const http = require('http').createServer(app); // Wajib pakai http server untuk socket
+const io = require('socket.io')(http);
 
 // --- KONEKSI DB ---
 // --- KONEKSI DATABASE OPTIMIZED FOR VERCEL ---
@@ -99,6 +101,107 @@ const QuestionV2Schema = new mongoose.Schema({
 const LocationV2 = mongoose.model('LocationV2', LocationV2Schema);
 const TopicV2 = mongoose.model('TopicV2', TopicV2Schema);
 const QuestionV2 = mongoose.model('QuestionV2', QuestionV2Schema);
+
+let gameState = {
+    masterCode: null,          // Kode 6 digit dari HP Master (HP-mu)
+    currentLevel: 1,
+    paperCodes: ['3517', '4913'], // GANTI dengan 2 kode rahasia di kertasmu
+    selectedWeeks: []          // Simpan pilihan minggu kalender
+};
+
+// --- SOCKET.IO LOGIC ---
+io.on('connection', (socket) => {
+    console.log('📱 Device Terhubung:', socket.id);
+
+    // ==========================================
+    // TAHAP 1: SINKRONISASI KODE (PAIRING)
+    // ==========================================
+    
+    // HP Master (Dipegang Ida) mengirim kode hasil generate sidik jari
+    socket.on('master_set_code', (code) => {
+        gameState.masterCode = code;
+        socket.join('cengklik_room'); // Masuk ke room khusus kalian
+        console.log('🔑 Master Code Set:', code);
+    });
+
+    // HP Client (Dipegang Fendi) mencoba memasukkan kode
+    socket.on('client_submit_code', (code) => {
+        if (code === gameState.masterCode) {
+            socket.join('cengklik_room');
+            // Jika benar, tembak event ke kedua HP untuk mulai game
+            io.to('cengklik_room').emit('pairing_success'); 
+        } else {
+            socket.emit('pairing_failed');
+        }
+    });
+
+
+    // ==========================================
+    // TAHAP 2: GAME LOOP & GANTIAN JAWAB
+    // ==========================================
+    
+    // Dipanggil saat GPS mendeteksi kalian sampai di wahana
+    socket.on('gps_arrived', async (level) => {
+        gameState.currentLevel = level;
+        
+        // 1. Ambil 1 soal acak dari DB sesuai level
+        const questions = await QuestionV2.find({ level: level });
+        const randomQ = questions[Math.floor(Math.random() * questions.length)];
+
+        // 2. Ambil 1 topik obrolan acak yang aktif
+        const topics = await TopicV2.find({ isActive: true });
+        const randomT = topics[Math.floor(Math.random() * topics.length)];
+
+        // 3. Tentukan giliran baca soal vs jawab
+        // Karena Ida pegang HP Master:
+        // Level Ganjil (1,3,5): HP Master muncul Numpad (Ida Jawab), HP Client muncul teks (Fendi Baca)
+        // Level Genap (2,4): Sebaliknya.
+        const readerDevice = (level % 2 !== 0) ? 'client' : 'master';
+
+        io.to('cengklik_room').emit('start_level', {
+            level: level,
+            questionText: randomQ.text,
+            correctAnswer: randomQ.answer,
+            topicText: randomT.text,
+            reader: readerDevice // Frontend akan nyesuaiin UI berdasarkan ini
+        });
+    });
+
+    // Jika jawaban benar, buka sesi Deep Talk
+    socket.on('answer_correct', () => {
+        io.to('cengklik_room').emit('unlock_deeptalk');
+    });
+
+
+    // ==========================================
+    // TAHAP 3: THE ENDGAME SCENE
+    // ==========================================
+    
+    // 3.1 Konfirmasi Kertas
+    socket.on('verify_paper', (codes) => {
+        // codes = { code1: '1234', code2: '5678' }
+        if (codes.code1 === gameState.paperCodes[0] && codes.code2 === gameState.paperCodes[1]) {
+            io.to('cengklik_room').emit('paper_success_step_back'); 
+        } else {
+            socket.emit('paper_failed');
+        }
+    });
+
+    // 3.2 Kirim Media (VN, Foto, Teks)
+    // Menerima pesan dari satu HP, lalu di-broadcast ke HP satunya
+    socket.on('send_media', (data) => {
+        // data = { type: 'audio'|'image'|'text', content: '...', sender: 'master'|'client' }
+        socket.broadcast.to('cengklik_room').emit('receive_media', data);
+    });
+
+    // 3.3 & 3.4 Kalender April
+    socket.on('submit_april_weeks', (weeks) => {
+        gameState.selectedWeeks = weeks;
+        // Kirim pilihan minggu Ida ke HP Fendi
+        socket.broadcast.to('cengklik_room').emit('show_fendi_response', weeks);
+    });
+
+});
 
 app.use(bodyParser.json());
 
@@ -385,6 +488,6 @@ app.get('/api/memories', async (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT ?? "3001";
 
-    app.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}`));
+    http.listen(PORT, () => console.log(`Server is running at http://localhost:${PORT}`));
 }
 module.exports = app;

@@ -89,12 +89,90 @@
             SYNC DEVICES
         </button>
     </div>
+    <div id="screen-game" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in">
+    <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">RADAR AKTIF</h2>
+    <p class="text-xs text-gray-400 mb-8">Koneksi aman. Menunggu sinyal GPS dari target lokasi...</p>
+    
+    <div class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center">
+        <span class="text-4xl animate-pulse">📡</span>
+    </div>
+</div>
 
+<style>
+    /* Tambahkan ini di bagian <style> atas biar animasinya jalan */
+    .animate-spin-slow { animation: spin 4s linear infinite; }
+</style>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         let countdownInterval;
         let taps = 0;
 
         // PARSING URL PARAMETERS
+        const socket = io();
+
+        // --- 1. UPDATE FUNGSI SIDIK JARI (MASTER DEVICE) ---
+async function startFingerprint() {
+    const codeBox = document.getElementById('secret-code-box');
+    const codeDisplay = document.getElementById('master-code-display');
+
+    // Pakai random challenge biar Android gak nolak
+    const options = {
+        publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            rpId: window.location.hostname, 
+            userVerification: "required",
+            timeout: 60000
+        }
+    };
+
+    try {
+        const assertion = await navigator.credentials.get(options);
+        
+        // Generate 6 digit random
+        const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        codeDisplay.innerText = randomCode;
+        codeBox.classList.remove('hidden');
+
+        // KIRIM KODE KE SERVER SOCKET.IO
+        socket.emit('master_set_code', randomCode);
+        console.log("Kode dikirim ke server:", randomCode);
+
+    } catch (err) {
+        alert("Otentikasi Gagal/Batal!");
+    }
+}
+
+// --- 2. UPDATE FUNGSI SUBMIT KODE (CLIENT DEVICE) ---
+function connectDevices() {
+    const codeInput = document.getElementById('client-code').value.trim();
+    if(codeInput === '') return alert("Masukkan kode dulu!");
+    
+    // Kirim kode yang diketik Fendi ke server untuk dicek
+    socket.emit('client_submit_code', codeInput);
+}
+
+// --- 3. TANGKAP RESPON SERVER ---
+// Kalau kode benar, server ngirim 'pairing_success'
+socket.on('pairing_success', () => {
+    // Sembunyikan layar login/kode
+    document.getElementById('screen-master').classList.add('hidden');
+    document.getElementById('screen-client').classList.add('hidden');
+    
+    // Munculkan layar radar Game
+    document.getElementById('screen-game').classList.remove('hidden');
+    
+    // (Opsional: Nanti di sini kita panggil fungsi nyalakan GPS)
+    console.log("PAIRING SUKSES! Siap melacak wahana.");
+});
+
+// Kalau kode salah
+socket.on('pairing_failed', () => {
+    alert("KODE SALAH! Coba cek lagi layarnya Ida.");
+    document.getElementById('client-code').value = ''; // Kosongin inputan
+});
+
+
         const urlParams = new URLSearchParams(window.location.search);
         const isClient = urlParams.get('as') === 'client';
         const skipTimer = urlParams.get('skip') === 'true';
