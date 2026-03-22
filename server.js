@@ -79,6 +79,27 @@ const SettingV2Schema = new mongoose.Schema({
 });
 const SettingV2 = mongoose.model('SettingV2', SettingV2Schema);
 
+// --- SCHEMA V2 TAMBAHAN ---
+const LocationV2Schema = new mongoose.Schema({
+    level: Number,       // 1 sampai 5
+    name: String,        // Nama Wahana (Bisa diedit)
+    lat: Number,
+    lng: Number
+});
+const TopicV2Schema = new mongoose.Schema({
+    text: String,
+    isActive: { type: Boolean, default: true } // Fendi bisa on/off kan ini
+});
+const QuestionV2Schema = new mongoose.Schema({
+    level: Number,       // Level 1 (Mudah) sampai 5 (Susah)
+    text: String,        // Teks soal untuk dibacakan
+    answer: String       // Jawaban angka
+});
+
+const LocationV2 = mongoose.model('LocationV2', LocationV2Schema);
+const TopicV2 = mongoose.model('TopicV2', TopicV2Schema);
+const QuestionV2 = mongoose.model('QuestionV2', QuestionV2Schema);
+
 app.use(bodyParser.json());
 
 // Redirect root to /v2
