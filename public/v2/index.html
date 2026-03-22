@@ -1,308 +1,442 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Semicolon; v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-        body { 
-            font-family: 'JetBrains Mono', monospace; 
-            background-color: #050505; 
-            color: #e5e5e5; 
-            overflow: hidden; 
+      body {
+        font-family: "JetBrains Mono", monospace;
+        background-color: #050505;
+        color: #e5e5e5;
+        overflow: hidden;
+      }
+      .glitch {
+        animation: glitch 1.5s infinite;
+      }
+      @keyframes glitch {
+        0% {
+          opacity: 1;
         }
-        .glitch { animation: glitch 1.5s infinite; }
-        @keyframes glitch { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        
-        /* Efek garis scan CRT jadul */
-        .scanlines::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
+        50% {
+          opacity: 0.7;
         }
+        100% {
+          opacity: 1;
+        }
+      }
 
-        /* Animasi Transisi Layar */
-        .fade-in { animation: fadeIn 0.5s ease-in forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      /* Efek garis scan CRT jadul */
+      .scanlines::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        background:
+          linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+          linear-gradient(
+            90deg,
+            rgba(255, 0, 0, 0.06),
+            rgba(0, 255, 0, 0.02),
+            rgba(0, 0, 255, 0.06)
+          );
+        z-index: 2;
+        background-size:
+          100% 2px,
+          3px 100%;
+        pointer-events: none;
+      }
+
+      /* Animasi Transisi Layar */
+      .fade-in {
+        animation: fadeIn 0.5s ease-in forwards;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
     </style>
-</head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4 relative scanlines">
-
-    <div id="screen-countdown" class="w-full flex flex-col items-center z-10 fade-in">
-        <div class="w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg shadow-[0_0_30px_rgba(29,78,216,0.1)]">
-            <div>
-                <h1 onclick="secretSkip()" class="text-3xl font-bold glitch tracking-[0.3em] cursor-pointer select-none">SEMICOLON<span class="text-blue-500">;</span></h1>
-                <p class="text-[10px] text-blue-400 mt-2 tracking-[0.4em]">SYSTEM UPGRADE: VERSION 2.0</p>
-            </div>
-
-            <div class="py-6 border-y border-blue-900/30">
-                <p class="text-xs text-gray-500 mb-2">ESTIMATED LAUNCH IN:</p>
-                <div id="countdown" class="text-4xl sm:text-5xl font-bold tracking-widest text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]">
-                    --:--:--
-                </div>
-            </div>
-
-            <p class="text-xs text-gray-600 italic">"Menyiapkan variabel baru..."</p>
+  </head>
+  <body
+    class="flex flex-col items-center justify-center min-h-screen p-4 relative scanlines"
+  >
+    <div
+      id="screen-countdown"
+      class="w-full flex flex-col items-center z-10 fade-in"
+    >
+      <div
+        class="w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg shadow-[0_0_30px_rgba(29,78,216,0.1)]"
+      >
+        <div>
+          <h1
+            onclick="secretSkip()"
+            class="text-3xl font-bold glitch tracking-[0.3em] cursor-pointer select-none"
+          >
+            SEMICOLON<span class="text-blue-500">;</span>
+          </h1>
+          <p class="text-[10px] text-blue-400 mt-2 tracking-[0.4em]">
+            SYSTEM UPGRADE: VERSION 2.0
+          </p>
         </div>
-        <a href="/v1" class="text-sm mt-5 text-gray-400 underline hover:text-white transition">Semicolon V1 - Our Story</a>
-    </div>
 
-    <div id="screen-permission" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-yellow-900/50 bg-yellow-950/10 rounded-lg fade-in">
-        <h2 class="text-yellow-500 font-bold tracking-widest mb-4">⚠ HARDWARE ACCESS REQUIRED</h2>
-        <p class="text-xs text-gray-400 mb-6">Sistem membutuhkan sinkronisasi sensor (Audio & Optik) untuk melanjutkan protokol LDR.</p>
-        <button onclick="requestPermissions()" class="w-full bg-yellow-700 hover:bg-yellow-600 text-black font-bold py-3 rounded shadow-[0_0_15px_rgba(202,138,4,0.4)] transition">
-            GRANT ACCESS & INITIALIZE
-        </button>
-        <p id="perm-error" class="text-[10px] text-red-500 hidden mt-2">Akses ditolak. Mohon izinkan Kamera & Mic di pengaturan browser.</p>
-    </div>
-
-    <div id="screen-master" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-green-900/50 bg-green-950/10 rounded-lg fade-in">
-        <h2 class="text-green-500 font-bold tracking-widest text-xl mb-2">BIOMETRIC LOCK</h2>
-        <p class="text-xs text-gray-400 mb-8">Tempelkan jari yang terdaftar untuk mendapatkan kode dekripsi.</p>
-        
-        <button onclick="startFingerprint()" class="w-24 h-24 mx-auto rounded-full border-2 border-green-500 flex items-center justify-center hover:bg-green-900/30 transition shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-            <span class="text-4xl">👆</span>
-        </button>
-
-       <div id="secret-code-box" class="hidden mt-8 p-4 border border-green-500 bg-black">
-            <p class="text-[10px] text-green-400 mb-1">DECRYPTION KEY (6 DIGIT):</p>
-            <h1 id="master-code-display" class="text-3xl font-bold tracking-[0.2em] text-white">------</h1>
-            <p class="text-[10px] text-gray-500 mt-2">Bacakan kode ini ke Agen Fendi.</p>
+        <div class="py-6 border-y border-blue-900/30">
+          <p class="text-xs text-gray-500 mb-2">ESTIMATED LAUNCH IN:</p>
+          <div
+            id="countdown"
+            class="text-4xl sm:text-5xl font-bold tracking-widest text-blue-300 drop-shadow-[0_0_10px_rgba(147,197,253,0.5)]"
+          >
+            --:--:--
+          </div>
         </div>
+
+        <p class="text-xs text-gray-600 italic">
+          "Menyiapkan variabel baru..."
+        </p>
+      </div>
+      <a
+        href="/v1"
+        class="text-sm mt-5 text-gray-400 underline hover:text-white transition"
+        >Semicolon V1 - Our Story</a
+      >
     </div>
 
-    <div id="screen-client" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-purple-900/50 bg-purple-950/10 rounded-lg fade-in">
-        <h2 class="text-purple-500 font-bold tracking-widest mb-4">AWAITING CONNECTION</h2>
-        <p class="text-xs text-gray-400 mb-2">Masukkan Decryption Key dari device utama:</p>
-        
-        <input type="text" id="client-code" class="w-full bg-black border border-purple-600 p-3 text-center text-xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-purple-900/50 rounded uppercase" placeholder="XXX-XXX" autocomplete="off">
-        
-        <button onclick="connectDevices()" class="w-full mt-4 bg-purple-800 hover:bg-purple-700 text-white font-bold py-3 rounded transition shadow-[0_0_15px_rgba(147,51,214,0.4)]">
-            SYNC DEVICES
-        </button>
+    <div
+      id="screen-permission"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-yellow-900/50 bg-yellow-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-yellow-500 font-bold tracking-widest mb-4">
+        ⚠ HARDWARE ACCESS REQUIRED
+      </h2>
+      <p class="text-xs text-gray-400 mb-6">
+        Sistem membutuhkan sinkronisasi sensor (Audio & Optik) untuk melanjutkan
+        protokol LDR.
+      </p>
+      <button
+        onclick="requestPermissions()"
+        class="w-full bg-yellow-700 hover:bg-yellow-600 text-black font-bold py-3 rounded shadow-[0_0_15px_rgba(202,138,4,0.4)] transition"
+      >
+        GRANT ACCESS & INITIALIZE
+      </button>
+      <p id="perm-error" class="text-[10px] text-red-500 hidden mt-2">
+        Akses ditolak. Mohon izinkan Kamera & Mic di pengaturan browser.
+      </p>
     </div>
-    <div id="screen-game" class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in">
-    <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">RADAR AKTIF</h2>
-    <p class="text-xs text-gray-400 mb-8">Koneksi aman. Menunggu sinyal GPS dari target lokasi...</p>
-    
-    <div class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center">
+
+    <div
+      id="screen-master"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-green-900/50 bg-green-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-green-500 font-bold tracking-widest text-xl mb-2">
+        BIOMETRIC LOCK
+      </h2>
+      <p class="text-xs text-gray-400 mb-8">
+        Tempelkan jari yang terdaftar untuk mendapatkan kode dekripsi.
+      </p>
+
+      <button
+        onclick="startFingerprint()"
+        class="w-24 h-24 mx-auto rounded-full border-2 border-green-500 flex items-center justify-center hover:bg-green-900/30 transition shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+      >
+        <span class="text-4xl">👆</span>
+      </button>
+
+      <div
+        id="secret-code-box"
+        class="hidden mt-8 p-4 border border-green-500 bg-black"
+      >
+        <p class="text-[10px] text-green-400 mb-1">DECRYPTION KEY (6 DIGIT):</p>
+        <h1
+          id="master-code-display"
+          class="text-3xl font-bold tracking-[0.2em] text-white"
+        >
+          ------
+        </h1>
+        <p class="text-[10px] text-gray-500 mt-2">
+          Bacakan kode ini ke Agen Fendi.
+        </p>
+      </div>
+    </div>
+
+    <div
+      id="screen-client"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-purple-900/50 bg-purple-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-purple-500 font-bold tracking-widest mb-4">
+        AWAITING CONNECTION
+      </h2>
+      <p class="text-xs text-gray-400 mb-2">
+        Masukkan Decryption Key dari device utama:
+      </p>
+
+      <input
+        type="text"
+        id="client-code"
+        class="w-full bg-black border border-purple-600 p-3 text-center text-xl tracking-[0.5em] text-white focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-purple-900/50 rounded uppercase"
+        placeholder="XXX-XXX"
+        autocomplete="off"
+      />
+
+      <button
+        onclick="connectDevices()"
+        class="w-full mt-4 bg-purple-800 hover:bg-purple-700 text-white font-bold py-3 rounded transition shadow-[0_0_15px_rgba(147,51,214,0.4)]"
+      >
+        SYNC DEVICES
+      </button>
+    </div>
+    <div
+      id="screen-game"
+      class="hidden z-10 w-full max-w-md text-center space-y-6 p-8 border border-blue-900/50 bg-blue-950/10 rounded-lg fade-in"
+    >
+      <h2 class="text-blue-500 font-bold tracking-widest text-xl mb-2">
+        RADAR AKTIF
+      </h2>
+      <p class="text-xs text-gray-400 mb-8">
+        Koneksi aman. Menunggu sinyal GPS dari target lokasi...
+      </p>
+
+      <div
+        class="w-32 h-32 mx-auto rounded-full border-2 border-dashed border-blue-500 animate-spin-slow flex items-center justify-center"
+      >
         <span class="text-4xl animate-pulse">📡</span>
+      </div>
     </div>
-</div>
 
-<style>
-    /* Tambahkan ini di bagian <style> atas biar animasinya jalan */
-    .animate-spin-slow { animation: spin 4s linear infinite; }
-</style>
+    <style>
+      /* Tambahkan ini di bagian <style> atas biar animasinya jalan */
+      .animate-spin-slow {
+        animation: spin 4s linear infinite;
+      }
+    </style>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        let countdownInterval;
-        let taps = 0;
+      let countdownInterval;
+      let taps = 0;
 
-        // PARSING URL PARAMETERS
-        const socket = io();
+      // PARSING URL PARAMETERS
+      const socket = io();
 
-        // --- 1. UPDATE FUNGSI SIDIK JARI (MASTER DEVICE) ---
-async function startFingerprint() {
-    const codeBox = document.getElementById('secret-code-box');
-    const codeDisplay = document.getElementById('master-code-display');
+      // --- 1. UPDATE FUNGSI SIDIK JARI (MASTER DEVICE) ---
+      async function startFingerprint() {
+        const codeBox = document.getElementById("secret-code-box");
+        const codeDisplay = document.getElementById("master-code-display");
 
-    // Pakai random challenge biar Android gak nolak
-    const options = {
-        publicKey: {
+        // Pakai random challenge biar Android gak nolak
+        const options = {
+          publicKey: {
             challenge: crypto.getRandomValues(new Uint8Array(32)),
-            rpId: window.location.hostname, 
+            rpId: window.location.hostname,
             userVerification: "required",
-            timeout: 60000
-        }
-    };
-
-    try {
-        const assertion = await navigator.credentials.get(options);
-        
-        // Generate 6 digit random
-        const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        codeDisplay.innerText = randomCode;
-        codeBox.classList.remove('hidden');
-
-        // KIRIM KODE KE SERVER SOCKET.IO
-        socket.emit('master_set_code', randomCode);
-        console.log("Kode dikirim ke server:", randomCode);
-
-    } catch (err) {
-        alert("Otentikasi Gagal/Batal!");
-    }
-}
-
-// --- 2. UPDATE FUNGSI SUBMIT KODE (CLIENT DEVICE) ---
-function connectDevices() {
-    const codeInput = document.getElementById('client-code').value.trim();
-    if(codeInput === '') return alert("Masukkan kode dulu!");
-    
-    // Kirim kode yang diketik Fendi ke server untuk dicek
-    socket.emit('client_submit_code', codeInput);
-}
-
-// --- 3. TANGKAP RESPON SERVER ---
-// Kalau kode benar, server ngirim 'pairing_success'
-socket.on('pairing_success', () => {
-    // Sembunyikan layar login/kode
-    document.getElementById('screen-master').classList.add('hidden');
-    document.getElementById('screen-client').classList.add('hidden');
-    
-    // Munculkan layar radar Game
-    document.getElementById('screen-game').classList.remove('hidden');
-    
-    // (Opsional: Nanti di sini kita panggil fungsi nyalakan GPS)
-    console.log("PAIRING SUKSES! Siap melacak wahana.");
-});
-
-// Kalau kode salah
-socket.on('pairing_failed', () => {
-    alert("KODE SALAH! Coba cek lagi layarnya Ida.");
-    document.getElementById('client-code').value = ''; // Kosongin inputan
-});
-
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const isClient = urlParams.get('as') === 'client';
-        const skipTimer = urlParams.get('skip') === 'true';
-
-        window.onload = async () => {
-            if (skipTimer) {
-                showPermissions();
-            } else {
-                try {
-                    // Ambil jam dari database
-                    const res = await fetch('/api/v2/status');
-                    const data = await res.json();
-                    
-                    if (data.release_time) {
-                        startTimer(data.release_time);
-                    } else {
-                        document.getElementById('countdown').innerText = "SYSTEM OFFLINE";
-                    }
-                } catch (error) {
-                    document.getElementById('countdown').innerText = "CONNECTION LOST";
-                }
-            }
+            timeout: 60000,
+          },
         };
 
-        // --- COUNTDOWN LOGIC ---
-        function startTimer(isoTime) {
-            const endTime = new Date(isoTime).getTime();
-            
-            countdownInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const dist = endTime - now;
+        try {
+          const assertion = await navigator.credentials.get(options);
 
-                if (dist < 0) {
-                    clearInterval(countdownInterval);
-                    document.getElementById('countdown').innerText = "READY";
-                    document.getElementById('countdown').classList.add('text-green-400');
-                    document.getElementById('countdown').classList.remove('text-blue-300');
-                    return;
-                }
+          // Generate 6 digit random
+          const randomCode = Math.floor(
+            100000 + Math.random() * 900000,
+          ).toString();
 
-                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((dist % (1000 * 60)) / 1000);
+          codeDisplay.innerText = randomCode;
+          codeBox.classList.remove("hidden");
 
-                const format = (num) => num.toString().padStart(2, '0');
-
-                if (d > 0) {
-                    document.getElementById('countdown').innerText = `${d}D ${format(h)}:${format(m)}:${format(s)}`;
-                } else {
-                    document.getElementById('countdown').innerText = `${format(h)}:${format(m)}:${format(s)}`;
-                }
-            }, 1000);
+          // KIRIM KODE KE SERVER SOCKET.IO
+          socket.emit("master_set_code", randomCode);
+          console.log("Kode dikirim ke server:", randomCode);
+        } catch (err) {
+          alert("Otentikasi Gagal/Batal!");
         }
+      }
 
-        // --- NAVIGATION & PERMISSION LOGIC ---
-        function secretSkip() {
-            taps++;
-            if(taps >= 3) showPermissions();
-        }
+      // --- 2. UPDATE FUNGSI SUBMIT KODE (CLIENT DEVICE) ---
+      function connectDevices() {
+        const codeInput = document.getElementById("client-code").value.trim();
+        if (codeInput === "") return alert("Masukkan kode dulu!");
 
-        function showPermissions() {
-            clearInterval(countdownInterval); // Hentikan timer di background
-            document.getElementById('screen-countdown').classList.add('hidden');
-            document.getElementById('screen-permission').classList.remove('hidden');
-        }
+        // Kirim kode yang diketik Fendi ke server untuk dicek
+        socket.emit("client_submit_code", codeInput);
+      }
 
-        async function requestPermissions() {
-            try {
-                // Minta izin Mic & Kamera
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-                
-                // Matikan stream segera supaya indikator kamera HP mati lagi
-                stream.getTracks().forEach(track => track.stop());
+      // --- 3. TANGKAP RESPON SERVER ---
+      // Kalau kode benar, server ngirim 'pairing_success'
+      socket.on("pairing_success", () => {
+        // Sembunyikan layar login/kode
+        document.getElementById("screen-master").classList.add("hidden");
+        document.getElementById("screen-client").classList.add("hidden");
 
-                // Tampilkan layar sesuai role
-                document.getElementById('screen-permission').classList.add('hidden');
-                if (isClient) {
-                    document.getElementById('screen-client').classList.remove('hidden');
-                } else {
-                    document.getElementById('screen-master').classList.remove('hidden');
-                }
+        // Munculkan layar radar Game
+        document.getElementById("screen-game").classList.remove("hidden");
 
-            } catch (err) {
-                console.error(err);
-                document.getElementById('perm-error').classList.remove('hidden');
-            }
-        }
+        // (Opsional: Nanti di sini kita panggil fungsi nyalakan GPS)
+        console.log("PAIRING SUKSES! Siap melacak wahana.");
+      });
 
-        async function startFingerprint() {
-            const codeBox = document.getElementById('secret-code-box');
-            const codeDisplay = document.getElementById('master-code-display');
+      // Kalau kode salah
+      socket.on("pairing_failed", () => {
+        alert("KODE SALAH! Coba cek lagi layarnya Ida.");
+        document.getElementById("client-code").value = ""; // Kosongin inputan
+      });
 
-            const options = {
-    publicKey: {
-        challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
-        rpId: window.location.hostname, 
-        userVerification: "required",
-        timeout: 60000
-    }
-};
+      const urlParams = new URLSearchParams(window.location.search);
+      const isClient = urlParams.get("as") === "client";
+      const skipTimer = urlParams.get("skip") === "true";
 
-            try {
-                // Panggil sensor sidik jari bawaan HP
-                const assertion = await navigator.credentials.get(options);
-                
-                // Jika sidik jari Ida valid, generate 6 digit random
-                const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-                
-                // Tampilkan ke layar
-                codeDisplay.innerText = randomCode;
-                codeBox.classList.remove('hidden');
+      window.onload = async () => {
+        if (skipTimer) {
+          showPermissions();
+        } else {
+          try {
+            // Ambil jam dari database
+            const res = await fetch("/api/v2/status");
+            const data = await res.json();
 
-                // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
-
-            } catch (err) {
-                alert("Otentikasi Gagal atau Dibatalkan!");
-                console.error(err);
-            }
-        }
-
-        function connectDevices() {
-            // Nanti diisi logic Socket.io
-            const code = document.getElementById('client-code').value;
-            if(code === 'TKG-892') {
-                alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
+            if (data.release_time) {
+              startTimer(data.release_time);
             } else {
-                alert("Kode Tidak Valid!");
+              document.getElementById("countdown").innerText = "SYSTEM OFFLINE";
             }
+          } catch (error) {
+            document.getElementById("countdown").innerText = "CONNECTION LOST";
+          }
         }
+      };
+
+      // --- COUNTDOWN LOGIC ---
+      function startTimer(isoTime) {
+        const endTime = new Date(isoTime).getTime();
+
+        countdownInterval = setInterval(() => {
+          const now = new Date().getTime();
+          const dist = endTime - now;
+
+          if (dist < 0) {
+            clearInterval(countdownInterval);
+            document.getElementById("countdown").innerText = "READY";
+            document
+              .getElementById("countdown")
+              .classList.add("text-green-400");
+            document
+              .getElementById("countdown")
+              .classList.remove("text-blue-300");
+            return;
+          }
+
+          const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+          const h = Math.floor(
+            (dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+          );
+          const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((dist % (1000 * 60)) / 1000);
+
+          const format = (num) => num.toString().padStart(2, "0");
+
+          if (d > 0) {
+            document.getElementById("countdown").innerText =
+              `${d}D ${format(h)}:${format(m)}:${format(s)}`;
+          } else {
+            document.getElementById("countdown").innerText =
+              `${format(h)}:${format(m)}:${format(s)}`;
+          }
+        }, 1000);
+      }
+
+      // --- NAVIGATION & PERMISSION LOGIC ---
+      function secretSkip() {
+        taps++;
+        if (taps >= 3) showPermissions();
+      }
+
+      function showPermissions() {
+        clearInterval(countdownInterval); // Hentikan timer di background
+        document.getElementById("screen-countdown").classList.add("hidden");
+        document.getElementById("screen-permission").classList.remove("hidden");
+      }
+
+      async function requestPermissions() {
+        try {
+          // Minta izin Mic & Kamera
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true,
+          });
+
+          // Matikan stream segera supaya indikator kamera HP mati lagi
+          stream.getTracks().forEach((track) => track.stop());
+
+          // Tampilkan layar sesuai role
+          document.getElementById("screen-permission").classList.add("hidden");
+          if (isClient) {
+            document.getElementById("screen-client").classList.remove("hidden");
+          } else {
+            document.getElementById("screen-master").classList.remove("hidden");
+          }
+        } catch (err) {
+          console.error(err);
+          document.getElementById("perm-error").classList.remove("hidden");
+        }
+      }
+
+      async function startFingerprint() {
+        const codeBox = document.getElementById("secret-code-box");
+        const codeDisplay = document.getElementById("master-code-display");
+
+        const options = {
+          publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
+            rpId: window.location.hostname,
+            userVerification: "required",
+            timeout: 60000,
+          },
+        };
+
+        try {
+          // Panggil sensor sidik jari bawaan HP
+          const assertion = await navigator.credentials.get(options);
+
+          // Jika sidik jari Ida valid, generate 6 digit random
+          const randomCode = Math.floor(
+            100000 + Math.random() * 900000,
+          ).toString();
+
+          // Tampilkan ke layar
+          codeDisplay.innerText = randomCode;
+          codeBox.classList.remove("hidden");
+
+          // TODO NEXT: Kirim kode ini ke Node.js via Socket.io biar server tahu password saat ini
+        } catch (err) {
+          alert("Otentikasi Gagal atau Dibatalkan!");
+          console.error(err);
+        }
+      }
+
+      function connectDevices() {
+        // Nanti diisi logic Socket.io
+        const code = document.getElementById("client-code").value;
+        if (code === "TKG-892") {
+          alert("Sinkronisasi Sukses! Lanjut ke Game Loop...");
+        } else {
+          alert("Kode Tidak Valid!");
+        }
+      }
     </script>
-</body>
+  </body>
 </html>
