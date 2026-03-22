@@ -189,13 +189,13 @@
             const codeDisplay = document.getElementById('master-code-display');
 
             const options = {
-                publicKey: {
-                    challenge: new Uint8Array(32), // Dummy challenge lokal
-                    rpId: window.location.hostname, 
-                    userVerification: "required",
-                    timeout: 60000
-                }
-            };
+    publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
+        rpId: window.location.hostname, 
+        userVerification: "required",
+        timeout: 60000
+    }
+};
 
             try {
                 // Panggil sensor sidik jari bawaan HP

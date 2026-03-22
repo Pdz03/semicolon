@@ -126,36 +126,51 @@
 
         // --- 2. WEBAUTHN (SIDIK JARI) DEMO ---
         async function registerFingerprint() {
-            const status = document.getElementById('bio-status');
-            status.innerText = "Memanggil sensor pendaftaran...";
-            
-            const options = {
-                publicKey: {
-                    challenge: new Uint8Array(32),
-                    rp: { name: "Semicolon V2", id: window.location.hostname }, // rpId penting buat nyamain domain
-                    user: {
-                        id: new Uint8Array(16),
-                        name: "ida",
-                        displayName: "Ida"
-                    },
-                    pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-                    authenticatorSelection: { 
-                        authenticatorAttachment: "platform", 
-                        userVerification: "required" 
-                    },
-                    timeout: 60000
-                }
-            };
+    const status = document.getElementById('bio-status');
+    status.innerText = "Memanggil sensor pendaftaran...";
+    
+    // Generate Random ID & Challenge yang valid untuk Android
+    const randomChallenge = crypto.getRandomValues(new Uint8Array(32));
+    const randomUserId = crypto.getRandomValues(new Uint8Array(16));
 
-            try {
-                const credential = await navigator.credentials.create(options);
-                status.innerText = "✅ Kredensial Berhasil Didaftarkan!";
-                status.className = "text-[10px] text-green-500 mb-6 border-b border-red-900/30 pb-4 h-6";
-            } catch (err) {
-                status.innerText = "❌ Gagal/Dibatalkan: " + err.message;
-                status.className = "text-[10px] text-red-500 mb-6 border-b border-red-900/30 pb-4 h-6";
-            }
+    const options = {
+        publicKey: {
+            challenge: randomChallenge,
+            rp: { 
+                name: "Semicolon V2", 
+                id: window.location.hostname 
+            },
+            user: {
+                id: randomUserId,
+                name: "ida",
+                displayName: "Ida"
+            },
+            pubKeyCredParams: [
+                { type: "public-key", alg: -7 },   // ES256 (Default Android)
+                { type: "public-key", alg: -257 }  // RS256 (Cadangan)
+            ],
+            authenticatorSelection: { 
+                authenticatorAttachment: "platform", 
+                userVerification: "required",
+                residentKey: "required",      // <-- INI WAJIB ADA
+                requireResidentKey: true      // <-- WAJIB (Format lama)
+            },
+            timeout: 60000,
+            attestation: "none"
         }
+    };
+
+    try {
+        const credential = await navigator.credentials.create(options);
+        status.innerText = "✅ Kredensial Berhasil Didaftarkan!";
+        status.className = "text-[10px] text-green-500 mb-6 border-b border-red-900/30 pb-4 h-6";
+        console.log("Cred:", credential);
+    } catch (err) {
+        status.innerText = "❌ Gagal/Dibatalkan: " + err.message;
+        status.className = "text-[10px] text-red-500 mb-6 border-b border-red-900/30 pb-4 h-6";
+        console.error("WebAuthn Error:", err);
+    }
+}
 
         // FUNGSI BARU UNTUK NGETES LOGIN & GENERATE KODE
         async function verifyFingerprint() {
@@ -168,13 +183,13 @@
             codeBox.classList.add('hidden'); // Sembunyikan kode kalau lagi verifikasi ulang
 
             const options = {
-                publicKey: {
-                    challenge: new Uint8Array(32), // Dummy challenge untuk demo lokal
-                    rpId: window.location.hostname, // Harus persis sama dengan domain pas register
-                    userVerification: "required",
-                    timeout: 60000
-                }
-            };
+    publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)), // Pakai random juga
+        rpId: window.location.hostname, 
+        userVerification: "required",
+        timeout: 60000
+    }
+};
 
             try {
                 // Ini yang manggil prompt "Verify your identity / Use Fingerprint"
