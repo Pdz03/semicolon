@@ -130,12 +130,17 @@ io.on("connection", (socket) => {
 
   // HP Client (Dipegang Fendi) mencoba memasukkan kode
   socket.on("client_submit_code", (code) => {
+    // TAMPILKAN LOG DI TERMINAL SERVER
+    console.log(`[DEBUG] Master simpan kode: '${gameState.masterCode}'`);
+    console.log(`[DEBUG] Client kirim kode: '${code}'`);
+
     if (code === gameState.masterCode) {
       socket.join("cengklik_room");
-      // Jika benar, tembak event ke kedua HP untuk mulai game
       io.to("cengklik_room").emit("pairing_success");
+      console.log("✅ PAIRING MATCH!");
     } else {
       socket.emit("pairing_failed");
+      console.log("❌ PAIRING GAGAL!");
     }
   });
 
