@@ -484,12 +484,18 @@
         <button onclick="confirmStepAway()" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-3 rounded">SAYA SUDAH MENJAUH</button>
     </div>
 
-    <div id="endgame-chat" class="hidden flex flex-col h-[85vh] border border-blue-900/50 bg-black rounded-lg fade-in overflow-hidden">
+   <div id="endgame-chat" class="hidden flex flex-col h-[85vh] border border-blue-900/50 bg-black rounded-lg fade-in overflow-hidden">
         <div class="p-4 border-b border-blue-900/50 bg-blue-950/30 text-center shrink-0">
             <h2 class="text-blue-400 font-bold tracking-widest text-sm">SECURE CHANNEL</h2>
-            <p class="text-[10px] text-gray-400">Sampaikan apapun yang belum tersampaikan.</p>
+            <p class="text-[10px] text-gray-400">Ungkapkan apapun di sini.</p>
         </div>
         
+        <div id="chat-instruction-box" class="p-2 bg-blue-900/40 border-b border-blue-900/50 text-center shrink-0">
+            <p id="chat-instruction-text" class="text-xs text-yellow-400 font-bold animate-pulse">
+               Sampaikan apapun dalam pesan suara
+            </p>
+        </div>
+
         <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
 
         <div id="vn-review" class="hidden shrink-0 w-full p-3 bg-gray-900 border-t border-gray-700 flex items-center justify-between">
@@ -510,13 +516,18 @@
             <button id="btn-record-vn" onclick="toggleVN()" class="w-full bg-blue-700 hover:bg-blue-600 text-white rounded p-3 font-bold transition">🎙️ TEKAN UNTUK REKAM SUARA</button>
         </div>
         
-        <div class="shrink-0 flex w-full border-t border-gray-700">
-            <div class="w-1/3 bg-black flex items-center justify-center text-red-500 font-bold text-lg" id="chat-countdown-display">
+        <div class="shrink-0 flex w-full border-t border-gray-700 h-14">
+            <div class="w-1/3 bg-black flex items-center justify-center text-red-500 font-bold text-lg border-r border-gray-800" id="chat-countdown-display">
                 --:--
             </div>
-            <button onclick="endChatSession()" class="w-2/3 bg-red-900 hover:bg-red-800 text-white font-bold py-4 transition">
+            
+            <button id="btn-end-session" onclick="endChatSession()" class="hidden w-2/3 bg-red-900 hover:bg-red-800 text-white font-bold transition">
                 AKHIRI SESI
             </button>
+            
+            <div id="btn-end-placeholder" class="w-2/3 bg-gray-900 flex items-center justify-center text-[10px] text-gray-500 italic select-none">
+                Selesaikan instruksi untuk mengakhiri...
+            </div>
         </div>
     </div>
 
@@ -642,6 +653,16 @@
       const isClient = urlParams.get("as") === "client";
       const skipTimer = urlParams.get("skip") === "true";
       const myRole = isClient ? 'fendi' : 'ida';
+
+      socket.on('connect', () => {
+          if (isClient) {
+              const clientCode = document.getElementById("client-code").value.trim();
+              if (clientCode) socket.emit("client_submit_code", clientCode); 
+          } else {
+              const masterCode = document.getElementById("master-code-display").innerText;
+              if (masterCode && masterCode !== "------") socket.emit("master_set_code", masterCode);
+          }
+      });
 
       window.onload = async () => {
         if (skipTimer) {
@@ -1244,16 +1265,17 @@ async function sendVN() {
         });
         const data = await res.json();
 
-        if (data.success) {
-            // 3. Kirim URL-nya via Socket, bukan Base64 lagi
+       if (data.success) {
             socket.emit('send_media', { type: 'audio', content: data.url, sender: myRole });
             appendChat('audio', data.url, true);
-            
             cancelVN(); 
             
-            // Lanjut ke step foto
+            // Lanjut ke step foto & Ubah Teks Instruksi
             document.getElementById('btn-record-vn').classList.add('hidden');
             document.getElementById('btn-wrap-photo').classList.remove('hidden');
+            
+            document.getElementById('chat-instruction-text').innerText = "Upload foto selfie mu di tempat";
+            document.getElementById('chat-instruction-box').classList.replace('bg-blue-900/40', 'bg-green-900/40'); // Ganti warna dikit biar notice
         }
     } catch (err) {
         alert("Gagal mengunggah pesan suara.");
@@ -1290,14 +1312,18 @@ function sendPhoto(event) {
                     const data = await res.json();
 
                     if (data.success) {
-                        // Kirim URL ke Socket
-                       socket.emit('send_media', { type: 'image', content: data.url, sender: myRole });
+                        socket.emit('send_media', { type: 'image', content: data.url, sender: myRole });
                         appendChat('image', data.url, true);
                         
                         // Lanjut ke step Teks
                         document.getElementById('btn-wrap-photo').classList.add('hidden');
                         document.getElementById('chat-input-text').classList.remove('hidden');
                         document.getElementById('btn-wrap-text').classList.remove('hidden');
+
+                        // Sembunyikan Kotak Instruksi & BUKA KUNCI TOMBOL AKHIRI
+                        document.getElementById('chat-instruction-box').classList.add('hidden');
+                        document.getElementById('btn-end-placeholder').classList.add('hidden');
+                        document.getElementById('btn-end-session').classList.remove('hidden');
                     }
                 } catch (err) {
                     alert("Gagal mengunggah foto.");
