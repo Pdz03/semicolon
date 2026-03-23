@@ -96,6 +96,22 @@
       .error-shake {
         animation: errorFlash 0.3s ease-in-out 2;
       }
+
+      /* Styling Bingkai Polaroid Endgame */
+.polaroid-frame {
+    background: white;
+    padding: 8px; /* Bingkai putih */
+    padding-bottom: 20px; /* Bagian bawah lebih lebar ala polaroid */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    border: 1px solid #ddd;
+    transition: all 0.5s ease;
+}
+.polaroid-frame img {
+    width: 100%;
+    height: 150px; /* Tinggi paten biar seragam miringnya */
+    object-fit: cover;
+    border: 1px solid #999;
+}
     </style>
   </head>
   <body
@@ -440,7 +456,7 @@
     </div>
 
     <div id="endgame-paper-q" class="hidden text-center p-8 border border-white/50 bg-black rounded-lg fade-in">
-        <h2 class="text-white font-bold tracking-widest text-xl mb-6">PROTOKOL FINAL</h2>
+        <h2 class="text-white font-bold tracking-widest text-xl mb-6">LAST STAGE</h2>
         <p class="text-xs text-gray-400 mb-6 leading-relaxed">Masih ingat kah kertas misi yang diberikan?<br>Apa yang kamu lakukan terhadap kertas itu?</p>
         <textarea id="paper-answer-input" class="w-full bg-gray-900 border border-gray-700 p-3 text-white text-sm rounded focus:border-white focus:outline-none h-24 mb-4" placeholder="Ketik jawabanmu..."></textarea>
         <button onclick="submitPaperAnswer()" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-3 rounded transition">KIRIM JAWABAN</button>
@@ -450,11 +466,11 @@
         <p class="text-xs text-gray-400 mb-6">Otorisasi dibutuhkan. Masukkan 2 kode dari dokumen tersebut.</p>
         <div class="space-y-4 text-left">
             <div>
-                <label class="text-[10px] text-gray-500">KODE 1 (Hint: Hari Awal Kita)</label>
+                <label class="text-[10px] text-gray-500">KODE 1 (Hint: Kode dari Misi Rahasia)</label>
                 <input type="number" id="paper-code-1" class="w-full bg-gray-900 border border-gray-700 p-3 text-white text-center tracking-[0.5em] rounded">
             </div>
             <div>
-                <label class="text-[10px] text-gray-500">KODE 2 (Hint: Tahun Dimulainya Cerita)</label>
+                <label class="text-[10px] text-gray-500">KODE 2 (Hint: Pertanyaan Random)</label>
                 <input type="number" id="paper-code-2" class="w-full bg-gray-900 border border-gray-700 p-3 text-white text-center tracking-[0.5em] rounded">
             </div>
             <button onclick="submitPaperCodes()" class="w-full mt-4 bg-white text-black font-bold py-3 rounded">VERIFIKASI</button>
@@ -498,8 +514,8 @@
             <div class="w-1/3 bg-black flex items-center justify-center text-red-500 font-bold text-lg" id="chat-countdown-display">
                 --:--
             </div>
-            <button onclick="endChatSession()" class="w-2/3 bg-red-900 hover:bg-red-800 text-white font-bold py-4 transition">
-                AKHIRI SESI
+            <button onclick="goToTheEnd()" class="text-[10px] bg-white text-black px-6 py-3 rounded-full font-bold shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:bg-gray-200 transition tracking-widest">
+                    NEXT ➔
             </button>
         </div>
     </div>
@@ -514,8 +530,42 @@
         </div>
         <button id="btn-submit-cal" onclick="submitCalendar()" class="hidden w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded">KONFIRMASI</button>
     </div>
-</div>
 
+    <div id="endgame-souvenir" class="hidden text-center fade-in space-y-8">
+        
+        <div id="souvenir-countdown" class="h-64 flex items-center justify-center">
+            <h1 class="text-8xl font-bold text-white animate-pulse" id="final-countdown-number">3</h1>
+        </div>
+
+        <div id="souvenir-content" class="hidden space-y-12">
+            
+            <div class="relative w-full h-[220px] flex items-center justify-center mt-10">
+                <div id="frame-fendi" class="polaroid-frame absolute w-[160px] left-8 -rotate-12 translate-y-4 z-10 opacity-0">
+                    <img id="img-souvenir-fendi" src="" alt="Memori Fendi">
+                </div>
+                
+                <div id="frame-ida" class="polaroid-frame absolute w-[160px] right-8 rotate-12 -translate-y-4 z-20 opacity-0">
+                    <img id="img-souvenir-ida" src="" alt="Memori Ida">
+                </div>
+            </div>
+
+            <div class="space-y-3 px-4 border-t border-gray-800 pt-8 mt-12">
+                <p class="text-[10px] text-gray-400 tracking-widest uppercase">Waduk Cengklik Park - 24 Maret 2026</p>
+                <p class="text-sm font-bold text-white leading-relaxed italic px-2">
+                    "Satu lokasi terselesaikan, banyak momen tercipta, hubungan kan semakin erat"
+                </p>
+            </div>
+            
+            <a href="#" class="inline-block mt-10 text-[10px] bg-gray-900 border border-gray-700 text-gray-500 py-2 px-6 rounded-full hover:text-white hover:border-white transition">
+                AKHIRI MISI SEMICOLON v2
+            </a>
+        </div>
+    </div>
+</div>
+<div id="screen-the-end" class="hidden fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center fade-in">
+    <h1 class="text-6xl font-bold text-white tracking-[0.2em] mb-6 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">THE END</h1>
+    <p class="text-sm text-gray-400 italic font-serif tracking-wide">Ready for The Next Moment?</p>
+</div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
       let countdownInterval;
@@ -993,7 +1043,7 @@ socket.on('unlock_deeptalk', (state) => {
 
         if (currentLevel > 5) {
           // TODO: MASUK KE ENDGAME SCENE (Voice Note & Kalender)
-          alert("SEMUA WAHANA SELESAI! Beralih ke protokol final...");
+          alert("SEMUA WAHANA SELESAI! Beralih ke last stage...");
           // Nanti kita buat fungsi startEndgame() di sini
         } else {
           startRadar(); // Nyalakan GPS lagi buat cari level selanjutnya
@@ -1188,7 +1238,7 @@ async function sendVN() {
 
     try {
         // 2. Upload ke API
-        const res = await fetch('/api/upload-media', {
+        const res = await fetch('https://dev.sajakkode.com/api/upload-media', {
             method: 'POST',
             body: formData
         });
@@ -1233,7 +1283,7 @@ function sendPhoto(event) {
 
                 try {
                     // Upload ke API
-                    const res = await fetch('/api/upload-media', {
+                    const res = await fetch('https://dev.sajakkode.com/api/upload-media', {
                         method: 'POST',
                         body: formData
                     });
@@ -1303,24 +1353,123 @@ function toggleWeek(element, weekName) {
     else btnSubmit.classList.add('hidden');
 }
 
-function submitCalendar() {
+// --- 1. HP IDA: SUBMIT CALENDAR & MULAI COUNTDOWN ---
+async function submitCalendar() {
     socket.emit('submit_calendar', selectedWeeks);
-    document.getElementById('endgame-calendar').innerHTML = `<h2 class="text-green-400 font-bold mt-10">TERKIRIM.</h2><p class="text-xs text-gray-400 mt-2">Silakan temui partner Anda.</p>`;
+    
+    // Tampilkan tulisan Terkirim
+    const calEl = document.getElementById('endgame-calendar');
+    calEl.innerHTML = `<h2 class="text-green-400 font-bold mt-10">TERKIRIM.</h2><p class="text-xs text-gray-400 mt-2">Menyiapkan memori...</p>`;
+    
+    // Mulai flow Souvenir setelah jeda 1 detik biar Ida sempat baca "Terkirim"
+    setTimeout(() => startFinalSouvenirFlow(), 1000);
 }
 
+// --- 2. HP FENDI: TERIMA CALENDAR & MULAI COUNTDOWN ---
 socket.on('fendi_receive_calendar', (weeks) => {
     if(isClient) {
+        // Tampilkan dulu minggu pilihan Ida (Biar Fendi tau)
         document.getElementById('endgame-waiting').classList.add('hidden');
-        document.getElementById('endgame-calendar').classList.remove('hidden');
-        document.getElementById('endgame-calendar').innerHTML = `
+        const calEl = document.getElementById('endgame-calendar');
+        calEl.classList.remove('hidden'); // Pinjam layar kalender buat nampilin hasil
+        calEl.innerHTML = `
             <h2 class="text-purple-400 font-bold tracking-widest text-lg mb-4">PILIHAN PARTNER</h2>
-            <div class="space-y-2 mb-8 mt-4">
-                <div class="p-4 bg-purple-900/50 rounded border border-purple-500 text-white font-bold">${weeks[0]}</div>
-                <div class="p-4 bg-purple-900/50 rounded border border-purple-500 text-white font-bold">${weeks[1]}</div>
+            <div class="space-y-2 mb-8 mt-4 text-left">
+                <div class="p-3 bg-purple-900/50 rounded border border-purple-500 text-white font-bold text-sm">✓ ${weeks[0]}</div>
+                <div class="p-3 bg-purple-900/50 rounded border border-purple-500 text-white font-bold text-sm">✓ ${weeks[1]}</div>
             </div>
-            <p class="text-[10px] text-gray-500 italic">"Sampaikan keputusanmu padanya secara langsung."</p>
+            <p class="text-[10px] text-gray-400 animate-pulse">Menyiapkan memori...</p>
         `;
+        
+        // Mulai flow Souvenir setelah Fendi melihat minggu pilihannya (jeda 2 detik)
+        setTimeout(() => startFinalSouvenirFlow(), 2000);
     }
+});
+
+// --- 3. FUNGSI INTI: COUNTDOWN & AMBIL FOTO MEMORI (TAMPIL DI KEDUA HP) ---
+async function startFinalSouvenirFlow() {
+    // Sembunyikan semua layar endgame lain
+    document.getElementById('endgame-calendar').classList.add('hidden');
+    document.getElementById('endgame-waiting').classList.add('hidden');
+    
+    // Buka layar Souvenir (Baru buka area Countdown)
+    document.getElementById('endgame-souvenir').classList.remove('hidden');
+
+    // -- A. Jalankan Countdown 3 Detik secara Visual --
+    let count = 3;
+    const countNum = document.getElementById('final-countdown-number');
+    
+    // Mulai Interval Countdown
+    const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+            countNum.innerText = count;
+        } else {
+            clearInterval(interval);
+            countNum.innerText = "0"; // Opsional: Tulis BOOM atau simbol
+            // Langsung panggil fungsi nampilin konten
+            showMemoriPhotos(); 
+        }
+    }, 1000);
+}
+
+// --- 4. AMBIL DATA DARI API & TAMPILKAN FOTO BINGKAI ---
+async function showMemoriPhotos() {
+    // Sembunyikan angka countdown, buka area konten
+    document.getElementById('souvenir-countdown').classList.add('hidden');
+    const content = document.getElementById('souvenir-content');
+    content.classList.remove('hidden');
+
+    try {
+        // -- A. Panggil API untuk Ambil Foto Sesi --
+        const res = await fetch('/api/v2/endgame/get-photos');
+        const data = await res.json();
+
+        if (data.ida && data.fendi) {
+            // Pasang Source Gambar ke Bingkai
+            document.getElementById('img-souvenir-fendi').src = data.fendi;
+            document.getElementById('img-souvenir-ida').src = data.ida;
+
+            // -- B. Efek Animasi Muncul Berurutan Ala Polaroid --
+            // Munculkan Foto Fendi dulu
+            const frameF = document.getElementById('frame-fendi');
+            frameF.classList.remove('opacity-0');
+            frameF.classList.add('fade-in'); 
+
+            // Setengah detik kemudian, munculkan Foto Ida (di atasnya)
+            setTimeout(() => {
+                const frameI = document.getElementById('frame-ida');
+                frameI.classList.remove('opacity-0');
+                frameI.classList.add('fade-in'); 
+            }, 500);
+
+        } else {
+            // Fallback kalau data foto nggak ketemu di DB (misal mode Dev skip)
+            content.innerHTML = `<p class="text-xs text-red-500 mt-20">Gagal memuat foto memori.</p>${content.innerHTML}`;
+        }
+
+    } catch (e) {
+        console.error("Endgame error:", e);
+    }
+}
+
+function goToTheEnd() {
+    // Tembak event ke server biar HP Ida juga ikut berubah
+    socket.emit('trigger_the_end');
+}
+
+// Menangkap perintah dari server untuk menampilkan The End
+socket.on('show_the_end', () => {
+    // Sembunyikan layar endgame
+    document.getElementById('screen-endgame').classList.add('hidden');
+    
+    // Sembunyikan container utama (jika perlu) biar hitam pekat
+    const mainContainer = document.querySelector('.min-h-screen');
+    if(mainContainer) mainContainer.classList.remove('bg-gray-950');
+    if(mainContainer) mainContainer.classList.add('bg-black');
+
+    // Munculkan layar The End
+    document.getElementById('screen-the-end').classList.remove('hidden');
 });
 
       //   async function startFingerprint() {

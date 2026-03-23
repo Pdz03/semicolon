@@ -321,6 +321,10 @@ io.on("connection", (socket) => {
     // Kirim pilihan minggu Ida ke HP Fendi
     socket.broadcast.to("cengklik_room").emit("show_fendi_response", weeks);
   });
+
+  socket.on('trigger_the_end', () => {
+        io.to('cengklik_room').emit('show_the_end');
+    });
 });
 
 app.use(bodyParser.json());
@@ -690,6 +694,33 @@ app.post("/api/v2/admin/update-topic", async (req, res) => {
     return res.status(403).json({ error: "Ditolak" });
   await TopicV2.findByIdAndUpdate(id, { text, isActive });
   res.json({ success: true });
+});
+
+// --- API ENDGAME: AMBIL FOTO MEMORI SESI AKTIF ---
+app.get('/api/v2/endgame/get-photos', async (req, res) => {
+    try {
+        // 1. Ambil nama sesi aktif saat ini
+        const config = await SettingV2.findOne({ key: 'config_v2' });
+        const sessId = config.current_session;
+
+        if(!sessId) return res.status(404).json({error: "Sesi tidak ditemukan"});
+
+        // 2. Query MongoDB: Cari 1 foto terakhir dari Ida, 1 dari Fendi
+        // di sesi tersebut, sort berdasarkan waktu terbaru.
+        const photoIda = await ChatMessage.findOne({ session_id: sessId, sender: 'ida', type: 'image' })
+                                         .sort({ created_at: -1 });
+        const photoFendi = await ChatMessage.findOne({ session_id: sessId, sender: 'fendi', type: 'image' })
+                                           .sort({ created_at: -1 });
+
+        // Kembalikan URL foto-fotonya (jika ada)
+        res.json({
+            ida: photoIda ? photoIda.content : null,
+            fendi: photoFendi ? photoFendi.content : null
+        });
+
+    } catch (e) {
+        res.status(500).json({error: e.message});
+    }
 });
 
 // Ambil status v2 (bisa disesuaikan jika ingin beda config)
