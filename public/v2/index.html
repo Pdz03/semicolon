@@ -247,7 +247,9 @@
       >
         JARAK: MENGHITUNG...
       </p>
-
+<button id="btn-start-mission" onclick="startMission()" class="hidden w-full bg-green-700 hover:bg-green-600 text-white font-bold py-3 rounded mt-4 animate-bounce shadow-[0_0_15px_rgba(21,128,61,0.5)]">
+        TARGET DICAPAI - MULAI MISI
+    </button>
       <p
         onclick="forceArrive()"
         id="cheat-btn"
@@ -756,6 +758,14 @@
             icon: targetIcon,
           }).addTo(map);
 
+          // TAMBAHKAN LINGKARAN RADIUS 20 METER DI SINI
+          L.circle([target.lat, target.lng], {
+            color: '#ef4444',      // Garis merah
+            fillColor: '#ef4444',  // Isi merah
+            fillOpacity: 0.2,      // Transparan
+            radius: 10             // Jarak 20 meter
+          }).addTo(map);
+
           // Icon Player (Kalian berdua)
           const playerIcon = L.divIcon({
             className: "bg-transparent",
@@ -811,7 +821,7 @@
                 `JARAK: ${distance} METER`;
 
               // Jika masuk radius 20 meter
-              if (distance <= 20 && !isArrived) triggerArrival();
+              if (distance <= 10 && !isArrived) triggerArrival();
             },
             (error) => {
               document.getElementById("distance-indicator").innerText =
@@ -824,15 +834,26 @@
 
       // --- EKSEKUSI SAAT SAMPAI ---
       function triggerArrival() {
-        isArrived = true; // Kunci biar gak spam
-        if (watchId) navigator.geolocation.clearWatch(watchId); // Matikan radar sementara
-        document.getElementById("radar-status").innerText = "TARGET DITEMUKAN!";
-        document.getElementById("distance-indicator").innerText =
-          "MEMBUKA ENKRIPSI...";
+    isArrived = true; 
+    if(watchId) navigator.geolocation.clearWatch(watchId); // Matikan radar
+    
+    document.getElementById('radar-status').innerText = "TARGET DITEMUKAN!";
+    document.getElementById('distance-indicator').innerText = "DALAM JANGKAUAN RADIUS";
+    
+    // Munculkan tombol mulai, sembunyikan tombol cheat
+    document.getElementById('btn-start-mission').classList.remove('hidden');
+    document.getElementById('cheat-btn').classList.add('hidden');
+}
 
-        // Tembak ke server
-        socket.emit("gps_arrived", currentLevel);
-      }
+// --- EKSEKUSI SAAT TOMBOL MULAI DIKLIK ---
+function startMission() {
+    // Sembunyikan tombol lagi buat level berikutnya
+    document.getElementById('btn-start-mission').classList.add('hidden');
+    document.getElementById('cheat-btn').classList.remove('hidden');
+    
+    // Tembak event ke server untuk buka soal
+    socket.emit('gps_arrived', currentLevel);
+}
 
       // --- CHEAT BUTTON (Kalau GPS error saat field test) ---
       // --- CHEAT BUTTON / BYPASS (Membutuhkan Kode dari Ida) ---

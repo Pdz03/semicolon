@@ -12,6 +12,8 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
       body {
@@ -290,6 +292,9 @@
         <h2 class="text-sm text-green-400 mb-2">
           > WAHANA WAYPOINTS (5 LEVEL)
         </h2>
+        <div class="w-full h-64 border border-green-900/50 rounded z-0 relative">
+        <div id="admin-map" class="w-full h-full bg-gray-900 rounded"></div>
+    </div>
         <div id="loc-list" class="space-y-3"></div>
       </div>
 
@@ -323,26 +328,25 @@
     <script>
       // --- TAB LOGIC ---
       function switchTab(tabName) {
-        [
-          "timer",
-          "biometric",
-          "chat",
-          "locations",
-          "topics",
-          "questions",
-        ].forEach((name) => {
-          document.getElementById("content-" + name).classList.add("hidden");
-          document.getElementById("tab-" + name).classList.remove("tab-active");
-          document.getElementById("tab-" + name).classList.add("tab-inactive");
-        });
-        document
-          .getElementById("content-" + tabName)
-          .classList.remove("hidden");
-        document.getElementById("tab-" + tabName).classList.add("tab-active");
-        document
-          .getElementById("tab-" + tabName)
-          .classList.remove("tab-inactive");
-      }
+            ['timer', 'biometric', 'chat', 'locations', 'topics', 'questions'].forEach(name => {
+                const el = document.getElementById('content-' + name);
+                if(el) el.classList.add('hidden');
+                
+                const tab = document.getElementById('tab-' + name);
+                if(tab) {
+                    tab.classList.remove('tab-active');
+                    tab.classList.add('tab-inactive');
+                }
+            });
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            document.getElementById('tab-' + tabName).classList.add('tab-active');
+            document.getElementById('tab-' + tabName).classList.remove('tab-inactive');
+
+            // Fix ukuran peta admin saat tab dibuka
+            if(tabName === 'locations' && adminMap) {
+                setTimeout(() => adminMap.invalidateSize(), 200);
+            }
+        }
 
       // --- 1. TIMER LOGIC ---
       async function updateTimer() {
@@ -610,24 +614,64 @@ async function toggleDevMode() {
 }
 
       // Render Lokasi
-      function renderLocations(locs) {
-        const container = document.getElementById("loc-list");
-        container.innerHTML = locs
-          .map(
-            (l) => `
+     let adminMap;
+let adminLayerGroup;
+
+// Render List Input
+function renderLocations(locs) {
+    const container = document.getElementById('loc-list');
+    container.innerHTML = locs.map(l => `
         <div class="p-3 bg-green-950/10 border border-green-900/30 rounded">
             <p class="text-xs text-green-500 font-bold mb-2">LEVEL ${l.level}</p>
-            <input type="text" id="loc-name-${l._id}" value="${l.name}" class="w-full bg-black border border-gray-700 p-2 text-xs text-white mb-2" placeholder="Nama Wahana">
+            <input type="text" id="loc-name-${l._id}" value="${l.name}" oninput="updateAdminMap()" class="w-full bg-black border border-gray-700 p-2 text-xs text-white mb-2" placeholder="Nama Wahana">
             <div class="flex space-x-2 mb-2">
-                <input type="number" step="any" id="loc-lat-${l._id}" value="${l.lat}" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Latitude">
-                <input type="number" step="any" id="loc-lng-${l._id}" value="${l.lng}" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Longitude">
+                <input type="number" step="any" id="loc-lat-${l._id}" value="${l.lat}" oninput="updateAdminMap()" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Latitude">
+                <input type="number" step="any" id="loc-lng-${l._id}" value="${l.lng}" oninput="updateAdminMap()" class="w-1/2 bg-black border border-gray-700 p-2 text-xs text-white" placeholder="Longitude">
             </div>
             <button onclick="saveLoc('${l._id}')" class="w-full bg-green-900/50 hover:bg-green-800 text-green-400 text-xs py-2 border border-green-700 rounded">SAVE LOCATION</button>
         </div>
-    `,
-          )
-          .join("");
-      }
+    `).join('');
+
+    // Inisialisasi peta setelah inputan selesai dirender
+    if (!adminMap) {
+        adminMap = L.map('admin-map').setView([-7.518, 110.725], 18);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(adminMap);
+        adminLayerGroup = L.layerGroup().addTo(adminMap);
+    }
+    updateAdminMap(); // Gambar titiknya
+}
+
+// Fungsi Menggambar ulang titik tiap kali admin ngetik
+function updateAdminMap() {
+    if(!adminMap) return;
+    adminLayerGroup.clearLayers(); // Bersihkan marker lama
+
+    const locInputs = document.querySelectorAll('[id^="loc-lat-"]');
+    let bounds = [];
+
+    locInputs.forEach(latInput => {
+        const id = latInput.id.replace('loc-lat-', '');
+        const lat = parseFloat(latInput.value);
+        const lng = parseFloat(document.getElementById(`loc-lng-${id}`).value);
+        const name = document.getElementById(`loc-name-${id}`).value;
+        const levelRaw = latInput.closest('.p-3').querySelector('p').innerText;
+
+        if(lat && lng && !isNaN(lat) && !isNaN(lng)) {
+            // Pasang Marker
+            L.marker([lat, lng])
+             .addTo(adminLayerGroup)
+             .bindPopup(`<b>${levelRaw}</b><br>${name}`);
+            
+            // Pasang Lingkaran Radius 20m warna Hijau di Admin
+            L.circle([lat, lng], { color: '#22c55e', radius: 20 }).addTo(adminLayerGroup);
+            
+            bounds.push([lat, lng]);
+        }
+    });
+
+    // Zoom otomatis agar semua titik kelihatan
+    if(bounds.length > 0) adminMap.fitBounds(bounds, {padding: [30,30]});
+}
 
       async function saveLoc(id) {
         const name = document.getElementById(`loc-name-${id}`).value;
