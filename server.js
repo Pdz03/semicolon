@@ -580,6 +580,64 @@ app.get("/init-v2", async (req, res) => {
 
   res.send("Database V2 Initialized with Locations, Topics, and Questions!");
 });
+// --- INIT DATA V2 FULL (Buka /init-v2 di browser) ---
+app.get("/init-v2-final", async (req, res) => {
+
+  // 2. Init Lokasi (5 Wahana Kosong untuk diisi di Admin)
+  await LocationV2.deleteMany({});
+    const locs = [
+        { level: 1, name: "Monorail", lat: -7.518464688988802, lng: 110.7255267018217 },
+        { level: 2, name: "Rainbow Slide", lat: -7.518692120953196, lng: 110.72549039015423 },
+        { level: 3, name: "Labirin Kaca & Rumah Terbalik", lat: -7.5186888715260585, lng: 110.7259338377485 },
+        { level: 4, name: "Komidi Putar", lat: -7.518454826563591, lng: 110.72600431415573 },
+        { level: 5, name: "Taman Sakura (Protokol Final)", lat: -7.518218651640496, lng: 110.7254041872245 }
+    ];
+    await LocationV2.insertMany(locs);
+
+  // 3. Init 25 Topik Deep Talk
+
+  // 4. Init 25 Bank Soal Matematika (5 Per Level) - Didesain untuk di-diktekan Fendi ke Ida
+  await QuestionV2.deleteMany({});
+    const questions = [
+        // Level 1: Basic Math (Pemanasan)
+        { level: 1, text: "45 + 55 - 20 = ?", answer: "80" },
+        { level: 1, text: "12 x 5 + 10 = ?", answer: "70" },
+        { level: 1, text: "(100 - 25) / 3 = ?", answer: "25" },
+        { level: 1, text: "(60 / 4) x 2 = ?", answer: "30" },
+        { level: 1, text: "15 + 15 + 15 + 15 = ?", answer: "60" },
+        
+        // Level 2: Pangkat & Akar Ringan
+        { level: 2, text: "√64 x 5 = ?", answer: "40" },
+        { level: 2, text: "6² - 16 = ?", answer: "20" },
+        { level: 2, text: "3³ + 3 = ?", answer: "30" },
+        { level: 2, text: "(√100 + 5) x 2 = ?", answer: "30" },
+        { level: 2, text: "8² / 4 = ?", answer: "16" },
+        
+        // Level 3: Aljabar Dasar (Cari Nilai Variabel)
+        { level: 3, text: "5a - 10 = 40. Berapa a?", answer: "10" },
+        { level: 3, text: "(b / 2) + 15 = 25. Berapa b?", answer: "20" },
+        { level: 3, text: "30% dari 200 = ?", answer: "60" },
+        { level: 3, text: "7c = 49. Maka c x 2 = ?", answer: "14" },
+        { level: 3, text: "100 - 4y = 60. Berapa y?", answer: "10" },
+        
+        // Level 4: Logika Tipuan (Awas Terkecoh!)
+        { level: 4, text: "5 + 5 x 5 = ?", answer: "30" }, 
+        { level: 4, text: "10 - 10 x 0 + 10 = ?", answer: "20" },
+        { level: 4, text: "Setengah dari 50, dikali 2 = ?", answer: "50" },
+        { level: 4, text: "√81 + 2 x 5 = ?", answer: "19" },
+        { level: 4, text: "(20 / 2) + 5 x 0 = ?", answer: "10" },
+        
+        // Level 5: Konsentrasi Penuh (Endgame Prep)
+        { level: 5, text: "((100 / 4) x 3) - 15 = ?", answer: "60" },
+        { level: 5, text: "(√400 x 3) - 10 = ?", answer: "50" },
+        { level: 5, text: "(2026 - 2000) x 2 = ?", answer: "52" },
+        { level: 5, text: "(10³ / 100) + 15 = ?", answer: "25" },
+        { level: 5, text: "(50 + 50) x (10 / 5) = ?", answer: "200" }
+    ];
+    await QuestionV2.insertMany(questions);
+
+  res.send("Database V2 Initialized with New Locations and Questions!");
+});
 
 // --- API ROUTES ---
 

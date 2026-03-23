@@ -667,27 +667,27 @@ async function toggleDevMode() {
       }
 
       // Render Bank Soal
-      function renderQuestions(questions) {
-        const container = document.getElementById("question-list");
-        // Group by level
-        let html = "";
-        for (let i = 1; i <= 5; i++) {
-          const qLvl = questions.filter((q) => q.level === i);
-          html += `<div class="mb-4"><p class="text-xs font-bold text-purple-500 mb-2 border-b border-purple-900/50 pb-1">LEVEL ${i} (${qLvl.length} Soal)</p>`;
-          html += qLvl
-            .map(
-              (q) => `
+      // Render Bank Soal (Dengan Jawaban Disembunyikan / Blur)
+function renderQuestions(questions) {
+    const container = document.getElementById('question-list');
+    let html = '';
+    
+    for(let i=1; i<=5; i++) {
+        const qLvl = questions.filter(q => q.level === i);
+        html += `<div class="mb-4"><p class="text-xs font-bold text-purple-500 mb-2 border-b border-purple-900/50 pb-1">LEVEL ${i} (${qLvl.length} Soal)</p>`;
+        
+        html += qLvl.map(q => `
             <div class="mb-2 p-2 bg-black border border-gray-800 rounded">
                 <p class="text-[10px] text-gray-400">Q: ${q.text}</p>
-                <p class="text-[10px] text-green-400 mt-1">A: ${q.answer}</p>
+                <p class="text-[10px] text-green-400 mt-1 blur-sm hover:blur-none transition-all cursor-help w-fit select-none" title="Tahan kursor di sini untuk mengintip">
+                    A: [ ${q.answer} ]
+                </p>
             </div>
-        `,
-            )
-            .join("");
-          html += `</div>`;
-        }
-        container.innerHTML = html;
-      }
+        `).join('');
+        html += `</div>`;
+    }
+    container.innerHTML = html;
+}
 
 
     </script>
