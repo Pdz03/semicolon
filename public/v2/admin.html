@@ -567,13 +567,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
         const res = await fetch('/api/v2/admin/data');
         const data = await res.json();
-        // ... (kode yang sudah ada)
+          document.getElementById('dev-mode-toggle').checked = data.config.dev_mode; // Set toggle awal
+          
+          renderLocations(data.locs);
+          renderTopics(data.topics);
+          renderQuestions(data.questions);
         document.getElementById('current-session-display').innerText = `SESI AKTIF: ${data.config.current_session}`;
         document.getElementById('session-input').value = data.config.current_session;
-
-        renderLocations(data.locations);
-        renderTopics(data.topics);
-        renderQuestions(data.questions);
     } catch(e) {}
 });
 
