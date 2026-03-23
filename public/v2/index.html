@@ -1165,12 +1165,20 @@ function confirmStepAway() {
 
 // --- 3. WALKIE TALKIE (CHAT) & SEQUENTIAL MEDIA ---
 socket.on('open_chat_session', () => {
+    // 1. MATIKAN TIMER SEBELUMNYA DI KEDUA HP BIAR GAK JADI HANTU
+    clearInterval(stepInterval); 
+    
+    // 2. Bersihkan UI (Sembunyikan layar lain yang mungkin nyangkut)
     document.getElementById('endgame-timer').classList.add('hidden');
+    document.getElementById('endgame-calendar').classList.add('hidden'); 
+    document.getElementById('endgame-waiting').classList.add('hidden'); 
+    
+    // 3. Buka Chat
     document.getElementById('endgame-chat').classList.remove('hidden');
     document.getElementById('screen-endgame').classList.remove('max-w-md'); 
     document.getElementById('screen-endgame').classList.add('max-w-lg');
     
-    // Mulai Timer Sesi Chat (Misal: 10 Menit = 600 detik)
+    // Mulai Timer Sesi Chat
     startChatTimer(600); 
 });
 
@@ -1350,6 +1358,10 @@ function endChatSession() {
 }
 
 socket.on('open_calendar', () => {
+    // 1. MATIKAN TIMER CHAT DI KEDUA HP BIAR GAK NEMBAK LAGI
+    clearInterval(chatInterval);
+    
+    // 2. Tutup Chat
     document.getElementById('endgame-chat').classList.add('hidden');
     
     if (isClient) {
