@@ -155,6 +155,10 @@
         class="text-sm mt-5 text-gray-400 underline hover:text-white transition"
         >Semicolon V1 - Our Story</a
       >
+      <button onclick="openOngoingChat()" class="mt-8 text-xs bg-gray-900 hover:bg-gray-800 text-gray-300 py-3 px-6 rounded-full border border-gray-700 transition shadow-[0_0_15px_rgba(255,255,255,0.1)] flex items-center space-x-2">
+          <span>✉️</span>
+          <span class="tracking-widest">BUKA MEMORI OBROLAN</span>
+      </button>
     </div>
 
     <div
@@ -576,6 +580,32 @@
 <div id="screen-the-end" class="hidden fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center fade-in">
     <h1 class="text-6xl font-bold text-white tracking-[0.2em] mb-6 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">THE END</h1>
     <p class="text-sm text-gray-400 italic font-serif tracking-wide">Ready for The Next Moment?</p>
+</div>
+<div id="screen-ongoing-chat" class="hidden fixed inset-0 z-[110] bg-[#050505] flex flex-col fade-in">
+    <div class="p-4 border-b border-gray-800 bg-black flex justify-between items-center shrink-0">
+        <button onclick="closeOngoingChat()" class="text-gray-400 text-2xl hover:text-white transition">←</button>
+        <h2 class="text-white font-bold tracking-widest text-sm">SECURE CHANNEL</h2>
+        <div class="w-6"></div> </div>
+    
+    <div id="ongoing-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0a0a0a] pb-10">
+        </div>
+
+    <div id="ongoing-vn-review" class="hidden shrink-0 w-full p-3 bg-gray-900 border-t border-gray-800 flex items-center justify-between">
+        <button onclick="cancelOngoingVN()" class="text-red-500 p-2 text-xl">🗑️</button>
+        <audio id="ongoing-vn-preview" controls class="h-8 w-48"></audio>
+        <button onclick="sendOngoingVN()" class="text-green-500 p-2 text-xl">✈️</button>
+    </div>
+
+    <div class="shrink-0 w-full p-3 border-t border-gray-800 bg-black flex items-center space-x-2">
+        <label class="cursor-pointer text-gray-400 hover:text-white p-2">
+            📷 <input type="file" accept="image/*" class="hidden" onchange="sendOngoingPhoto(event)">
+        </label>
+        
+        <input type="text" id="ongoing-chat-input" placeholder="Ketik pesan..." class="flex-1 bg-gray-900 border border-gray-700 p-3 text-sm text-white rounded focus:outline-none focus:border-blue-500">
+        <button onclick="sendOngoingText()" class="text-blue-400 hover:text-blue-300 p-2 text-lg">➤</button>
+        
+        <button id="btn-ongoing-vn" onclick="toggleOngoingVN()" class="bg-gray-800 hover:bg-gray-700 text-white rounded-full w-12 h-12 flex items-center justify-center transition">🎙️</button>
+    </div>
 </div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -1509,6 +1539,173 @@ socket.on('show_the_end', () => {
     // Munculkan layar The End
     document.getElementById('screen-the-end').classList.remove('hidden');
 });
+
+// ==========================================
+// LOGIKA ONGOING CHAT (BUKU KENANGAN)
+// ==========================================
+
+let ongoingVnRecorder;
+let ongoingVnChunks = [];
+let ongoingVnBlob = null;
+let isOngoingRecording = false;
+
+// 1. Render Bubble Chat (Bisa bedain 'me' dan 'partner' berdasarkan myRole)
+function appendOngoingChat(type, content, senderCode) {
+    const chatBox = document.getElementById('ongoing-chat-messages');
+    let mediaHTML = '';
+    if (type === 'text') mediaHTML = `<p class="text-sm text-white">${content}</p>`;
+    if (type === 'audio') mediaHTML = `<audio controls src="${content}" class="h-10 w-48"></audio>`;
+    if (type === 'image') mediaHTML = `<img src="${content}" class="max-w-[200px] rounded">`;
+
+    // Cek apakah yang ngirim ini diri sendiri atau partner
+    const isMe = (senderCode === myRole);
+    const align = isMe ? 'justify-end' : 'justify-start';
+    const bg = isMe ? 'bg-blue-900/60 border-blue-500 rounded-l-xl rounded-tr-xl' : 'bg-gray-800 border-gray-600 rounded-r-xl rounded-tl-xl';
+    const senderName = isMe ? 'Kamu' : 'Partner';
+
+    chatBox.innerHTML += `
+        <div class="flex w-full ${align}">
+            <div class="p-2 border ${bg} max-w-[85%] shadow-lg">
+                <p class="text-[8px] text-gray-400 mb-1">${senderName}</p>
+                ${mediaHTML}
+            </div>
+        </div>
+    `;
+    setTimeout(() => chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' }), 100);
+}
+
+// 2. Buka Chat & Tarik History dari Database
+async function openOngoingChat() {
+    socket.emit('join_ongoing_chat'); // Gabung jalur komunikasi
+    
+    document.getElementById('screen-ongoing-chat').classList.remove('hidden');
+    const chatBox = document.getElementById('ongoing-chat-messages');
+    chatBox.innerHTML = '<p class="text-center text-xs text-gray-500 my-10 animate-pulse">Menarik memori dari database...</p>';
+    
+    try {
+        // Cek sesi aktif
+        const statRes = await fetch('/api/v2/status');
+        const statData = await statRes.json();
+        
+        // Tarik chat history
+        const histRes = await fetch(`/api/v2/chat-history/${statData.current_session}`);
+        const history = await histRes.json();
+        
+        chatBox.innerHTML = ''; // Bersihkan loading
+        if(history.length === 0) {
+            chatBox.innerHTML = '<p class="text-center text-xs text-gray-600 mt-10">Belum ada memori tercipta di sesi ini.</p>';
+        } else {
+            // Render satu per satu
+            history.forEach(msg => {
+                appendOngoingChat(msg.type, msg.content, msg.sender);
+            });
+        }
+    } catch (e) {
+        chatBox.innerHTML = '<p class="text-center text-xs text-red-500 my-10">Gagal terhubung ke database.</p>';
+    }
+}
+
+function closeOngoingChat() {
+    document.getElementById('screen-ongoing-chat').classList.add('hidden');
+}
+
+// 3. Tangkap Chat Masuk Secara Real-Time
+// (Timpa socket.on('receive_media') yang lama dengan yang baru ini)
+socket.off('receive_media'); // Bersihkan listener lama
+socket.on('receive_media', (data) => {
+    appendChat(data.type, data.content, false); // Nambah di chat Endgame (kalau lagi buka)
+    appendOngoingChat(data.type, data.content, data.sender); // Nambah di chat Ongoing
+});
+
+// 4. Kirim Pesan Teks
+function sendOngoingText() {
+    const input = document.getElementById('ongoing-chat-input');
+    if(input.value.trim() === '') return;
+    
+    socket.emit('send_media', { type: 'text', content: input.value, sender: myRole });
+    appendOngoingChat('text', input.value, myRole);
+    input.value = '';
+}
+
+// 5. Kirim Foto Selfie
+function sendOngoingPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = 500 / img.width;
+            canvas.width = 500; canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'foto_ongoing.jpg');
+                try {
+                    const res = await fetch('https://dev.sajakkode.com/api/upload-media', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.success) {
+                        socket.emit('send_media', { type: 'image', content: data.url, sender: myRole });
+                        appendOngoingChat('image', data.url, myRole);
+                    }
+                } catch (err) { alert("Gagal kirim foto"); }
+            }, 'image/jpeg', 0.8);
+        }
+    }
+}
+
+// 6. Kirim Voice Note
+async function toggleOngoingVN() {
+    const btn = document.getElementById('btn-ongoing-vn');
+    if (!isOngoingRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            ongoingVnRecorder = new MediaRecorder(stream);
+            ongoingVnChunks = [];
+            ongoingVnRecorder.ondataavailable = e => ongoingVnChunks.push(e.data);
+            ongoingVnRecorder.onstop = () => {
+                ongoingVnBlob = new Blob(ongoingVnChunks, { type: 'audio/webm' });
+                document.getElementById('ongoing-vn-preview').src = URL.createObjectURL(ongoingVnBlob);
+                document.getElementById('ongoing-vn-review').classList.remove('hidden');
+                stream.getTracks().forEach(t => t.stop());
+            };
+            ongoingVnRecorder.start();
+            isOngoingRecording = true;
+            btn.innerHTML = "🔴";
+            btn.classList.add('animate-pulse', 'bg-red-600');
+        } catch (err) { alert("Izinkan Mic!"); }
+    } else {
+        ongoingVnRecorder.stop();
+        isOngoingRecording = false;
+        btn.innerHTML = "🎙️";
+        btn.classList.remove('animate-pulse', 'bg-red-600');
+    }
+}
+
+function cancelOngoingVN() {
+    ongoingVnBlob = null;
+    document.getElementById('ongoing-vn-review').classList.add('hidden');
+}
+
+async function sendOngoingVN() {
+    if(!ongoingVnBlob) return;
+    const formData = new FormData();
+    formData.append('file', ongoingVnBlob, 'vn_ongoing.webm');
+    try {
+        const res = await fetch('https://dev.sajakkode.com/api/upload-media', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            socket.emit('send_media', { type: 'audio', content: data.url, sender: myRole });
+            appendOngoingChat('audio', data.url, myRole);
+            cancelOngoingVN(); 
+        }
+    } catch (err) { alert("Gagal kirim Voice Note"); }
+}
 
       //   async function startFingerprint() {
       //     const codeBox = document.getElementById("secret-code-box");

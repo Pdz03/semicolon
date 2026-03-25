@@ -253,6 +253,11 @@ io.on("connection", (socket) => {
             }
         }
     });
+
+    // Masuk ke room secara diam-diam dari halaman awal untuk Ongoing Chat
+  socket.on("join_ongoing_chat", () => {
+    socket.join("cengklik_room");
+  });
   // ==========================================
   // TAHAP 3: THE ENDGAME SCENE
   // ==========================================
