@@ -121,6 +121,44 @@ const LocationV2 = mongoose.model("LocationV2", LocationV2Schema);
 const TopicV2 = mongoose.model("TopicV2", TopicV2Schema);
 const QuestionV2 = mongoose.model("QuestionV2", QuestionV2Schema);
 
+// --- SCHEMA V3 (BARU) ---
+const SettingV3Schema = new mongoose.Schema({
+    key: String,
+    release_time: Date
+});
+const SettingV3 = mongoose.model("SettingV3", SettingV3Schema);
+
+// --- API ROUTES V3 (BARU) ---
+// Ambil Status Waktu V3
+app.get('/api/v3/status', async (req, res) => {
+    let config = await SettingV3.findOne({ key: 'config_v3' });
+    // Auto-create jika belum ada di database
+    if (!config) {
+        config = await SettingV3.create({ 
+            key: 'config_v3', 
+            release_time: new Date("2026-05-15T09:00:00+07:00") 
+        });
+    }
+    res.json(config);
+});
+
+// Admin V3: Update Waktu
+app.post('/api/v3/admin/update-time', async (req, res) => {
+    const { new_time, secret } = req.body;
+    
+    if (secret !== "sajak-admin") {
+        return res.status(403).json({ error: "Akses Ditolak: Kode Admin Salah" });
+    }
+
+    await SettingV3.findOneAndUpdate(
+        { key: 'config_v3' }, 
+        { release_time: new Date(new_time) },
+        { upsert: true }
+    );
+
+    res.json({ success: true, message: "Waktu V3 berhasil diupdate!" });
+});
+
 let gameState = {
     masterCode: null,
     currentLevel: 1,
@@ -334,9 +372,9 @@ io.on("connection", (socket) => {
 
 app.use(bodyParser.json());
 
-// Redirect root to /v2
+// Redirect root to /v3
 app.get("/", (req, res) => {
-  res.redirect("/v2");
+  res.redirect("/v3");
 });
 
 // Fix asset paths for v1 (supporting relative paths like images/ and music/)
