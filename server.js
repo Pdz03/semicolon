@@ -136,7 +136,7 @@ app.get('/api/v3/status', async (req, res) => {
     if (!config) {
         config = await SettingV3.create({ 
             key: 'config_v3', 
-            release_time: new Date("2026-05-15T09:00:00+07:00") 
+            release_time: new Date("2026-04-12T09:00:00+07:00") 
         });
     }
     res.json(config);
