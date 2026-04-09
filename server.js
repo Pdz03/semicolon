@@ -144,6 +144,7 @@ app.get('/api/v3/status', async (req, res) => {
 
 // Admin V3: Update Waktu
 app.post('/api/v3/admin/update-time', async (req, res) => {
+    console.log(req.body); // Debug: Lihat data yang masuk
     const { new_time, secret } = req.body;
     
     if (secret !== "sajak-admin") {
