@@ -180,7 +180,7 @@
             </h2>
         </div>
 
-        <div class="flex space-x-3 md:space-x-6 justify-center py-4">
+        <div class="flex space-x-3 md:space-x-6 justify-center py-4" onclick="handleTimerClick()">
             <div class="flex flex-col items-center">
                 <div id="days" class="text-4xl md:text-6xl font-bold time-val w-14 md:w-24">00</div>
                 <span class="text-[10px] md:text-xs text-gray-500 tracking-widest mt-2">DAYS</span>
@@ -233,35 +233,105 @@
             </a>
         </div>
         -->
+        
     </div>
+
+    <!-- STAGE 1: PASSCODE INPUT -->
+        <div id="stage-passcode" class="hidden fade-in text-center space-y-6 p-10 border border-blue-900 bg-blue-950/10 rounded-xl backdrop-blur-md">
+            <h3 class="text-blue-400 font-bold tracking-widest text-sm">ENCRYPTION KEY REQUIRED</h3>
+            <input type="password" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.8em] text-xl rounded focus:outline-none focus:border-blue-400" placeholder="••••••">
+            <button onclick="checkPasscode()" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-bold py-4 rounded transition shadow-[0_0_15px_rgba(30,58,138,0.5)]">DECRYPT PROTOCOL</button>
+            <p id="pass-error" class="text-red-500 text-[10px] hidden">INVALID ACCESS KEY</p>
+        </div>
+
+        <!-- STAGE 2: PLAYER SELECTION -->
+        <div id="stage-player" class="hidden fade-in text-center space-y-8 p-10 border border-gray-800 bg-gray-900/20 rounded-xl">
+            <div class="space-y-2">
+                <h3 class="text-gray-400 text-xs tracking-widest">IDENTIFY USER ROLE</h3>
+                <p class="text-white font-bold">Siapa yang sedang mengakses?</p>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="selectPlayer('fendi')" class="p-6 border border-green-800 hover:bg-green-900/20 rounded-lg group transition">
+                    <div class="text-2xl mb-2 grayscale group-hover:grayscale-0">👨‍💻</div>
+                    <div class="text-xs text-green-500 font-bold uppercase">Fendi</div>
+                </button>
+                <button onclick="selectPlayer('ida')" class="p-6 border border-yellow-800 hover:bg-yellow-900/20 rounded-lg group transition">
+                    <div class="text-2xl mb-2 grayscale group-hover:grayscale-0">👩‍🏫</div>
+                    <div class="text-xs text-yellow-500 font-bold uppercase">Ida</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- STAGE 3: SYNC GAME -->
+        <div id="stage-sync" class="hidden fade-in text-center space-y-6 p-8 border border-purple-900 bg-purple-950/10 rounded-xl">
+            <div id="fendi-sync-ui" class="hidden space-y-6">
+                <h3 class="text-purple-400 text-xs tracking-widest">HANDSHAKE GENERATOR</h3>
+                <p class="text-[10px] text-gray-500">Beritahukan angka ini kepada Ida:</p>
+                <div id="random-number-display" class="text-6xl font-bold text-white tracking-widest py-4">----</div>
+                <button onclick="generateRandom()" class="text-[10px] border border-purple-800 px-4 py-2 text-purple-300 rounded hover:bg-purple-900/30">GENERATE NEW KEY</button>
+            </div>
+
+            <div id="ida-sync-ui" class="hidden space-y-6">
+                <h3 class="text-purple-400 text-xs tracking-widest">HANDSHAKE VERIFICATION</h3>
+                <p class="text-[10px] text-gray-500">Masukkan angka yang muncul di HP Fendi:</p>
+                <input type="number" id="ida-input-num" class="w-full bg-black border border-purple-700 p-4 text-center tracking-[1em] text-2xl rounded text-white" placeholder="0000">
+                <button onclick="submitSync()" class="w-full bg-purple-800 text-white font-bold py-4 rounded shadow-lg">SYNC PERMISSION</button>
+                <p id="sync-error" class="text-red-500 text-[10px] hidden">NUMERIC MISMATCH DETECTED</p>
+            </div>
+        </div>
 
     </div>
 
      <script>
         // Fallback sementara (jika server sedang mati/loading)
+        const socket = io();
+        let clickCount = 0;
+        let currentPlayer = localStorage.getItem('v3_player');
         let targetDate = new Date("2026-04-12T09:00:00").getTime();
-
-        function updateTimer() {
-            const now = new Date().getTime();
-            const distance = targetDate - now;
-
-            if (distance < 0) {
-                document.getElementById("days").innerText = "00";
-                document.getElementById("hours").innerText = "00";
-                document.getElementById("minutes").innerText = "00";
-                document.getElementById("seconds").innerText = "00";
-                return;
+        
+        // Logic Session & Stage
+        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync'];
+        
+        window.onload = async () => {
+            socket.emit("v3_join");
+            await fetchStatus();
+            
+            // Restore Session
+            const savedStage = localStorage.getItem('v3_stage');
+            if (savedStage) {
+                switchStage(savedStage);
             }
+        };
 
-            const d = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((distance % (1000 * 60)) / 1000);
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/v3/status');
+                const data = await res.json();
+                targetDate = new Date(data.release_time).getTime();
+                startCountdown();
+            } catch(e) {}
+        }
 
-            document.getElementById("days").innerText = String(d).padStart(2, '0');
-            document.getElementById("hours").innerText = String(h).padStart(2, '0');
-            document.getElementById("minutes").innerText = String(m).padStart(2, '0');
-            document.getElementById("seconds").innerText = String(s).padStart(2, '0');
+
+        function startCountdown() {
+            setInterval(() => {
+                const now = new Date().getTime();
+                const dist = targetDate - now;
+                if (dist < 0) {
+                    document.getElementById('days').innerText = "00";
+                    // Otomatis pindah ke passcode kalau waktu habis
+                    if (!localStorage.getItem('v3_stage')) switchStage('stage-passcode');
+                    return;
+                }
+                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((dist % (1000 * 60)) / 1000);
+                document.getElementById("days").innerText = String(d).padStart(2, '0');
+                document.getElementById("hours").innerText = String(h).padStart(2, '0');
+                document.getElementById("minutes").innerText = String(m).padStart(2, '0');
+                document.getElementById("seconds").innerText = String(s).padStart(2, '0');
+            }, 1000);
         }
 
         // Fungsi baru untuk mengambil waktu dari Database
@@ -283,6 +353,71 @@
 
         // Jalankan saat web dibuka
         initCountdown();
+
+        function handleTimerClick() {
+            clickCount++;
+            if (clickCount >= 3) {
+                switchStage('stage-passcode');
+            }
+        }
+
+        function switchStage(id) {
+            stages.forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+            localStorage.setItem('v3_stage', id);
+            
+            // UI khusus stage sync
+            if(id === 'stage-sync') {
+                if(currentPlayer === 'fendi') {
+                    document.getElementById('fendi-sync-ui').classList.remove('hidden');
+                } else {
+                    document.getElementById('ida-sync-ui').classList.remove('hidden');
+                }
+            }
+        }
+
+        function checkPasscode() {
+            const input = document.getElementById('v3-passcode').value;
+            // Password V3: 191025 (Bisa diganti nanti)
+            if (input === '191025') {
+                switchStage('stage-player');
+            } else {
+                document.getElementById('pass-error').classList.remove('hidden');
+            }
+        }
+
+        function selectPlayer(p) {
+            currentPlayer = p;
+            localStorage.setItem('v3_player', p);
+            switchStage('stage-sync');
+        }
+
+         // ================== SOCKET LOGIC ==================
+        
+        function generateRandom() {
+            socket.emit("v3_generate_number");
+        }
+
+        function submitSync() {
+            const val = document.getElementById('ida-input-num').value;
+            socket.emit("v3_submit_sync", val);
+        }
+
+        socket.on("v3_receive_number", (num) => {
+            if(currentPlayer === 'fendi') {
+                document.getElementById('random-number-display').innerText = num;
+            }
+        });
+
+        socket.on("v3_sync_failed", () => {
+            document.getElementById('sync-error').classList.remove('hidden');
+        });
+
+        socket.on("v3_sync_success", () => {
+            alert("HANDSHAKE SUCCESS! Menuju Misi Utama...");
+            // Di sini nanti arahkan ke Stage 1 (Pilih Nama & Lokasi)
+            // localStorage.setItem('v3_stage', 'stage-quest-1');
+        });
     </script>
 
 </body>
