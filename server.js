@@ -46,6 +46,9 @@ async function connectDB() {
   return cached.conn;
 }
 
+app.use(express.json()); 
+app.use(bodyParser.json()); 
+
 // Panggil fungsi connect di setiap request agar aman
 app.use(async (req, res, next) => {
   await connectDB();
@@ -370,8 +373,6 @@ io.on("connection", (socket) => {
         io.to('cengklik_room').emit('show_the_end');
     });
 });
-
-app.use(bodyParser.json());
 
 // Redirect root to /v3
 app.get("/", (req, res) => {
