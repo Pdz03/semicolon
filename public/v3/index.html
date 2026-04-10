@@ -333,24 +333,7 @@
                 document.getElementById("seconds").innerText = String(s).padStart(2, '0');
             }, 1000);
         }
-
-        // Fungsi baru untuk mengambil waktu dari Database
-        async function initCountdown() {
-            try {
-                const res = await fetch('/api/v3/status');
-                const data = await res.json();
-                if (data.release_time) {
-                    targetDate = new Date(data.release_time).getTime();
-                }
-            } catch (err) {
-                console.error("Gagal mengambil waktu dari server, menggunakan fallback lokal.");
-            }
-            
-            // Jalankan timer setelah waktu berhasil didapat
-            setInterval(updateTimer, 1000);
-            updateTimer(); 
-        }
-
+        
         // Jalankan saat web dibuka
         initCountdown();
 
