@@ -377,6 +377,26 @@ io.on("connection", (socket) => {
   socket.on('trigger_the_end', () => {
         io.to('cengklik_room').emit('show_the_end');
     });
+
+    socket.on("v3_join", () => {
+    socket.join("v3_room");
+  });
+
+  // Fendi men-generate angka random
+  socket.on("v3_generate_number", () => {
+    const num = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+    v3State.current_number = num;
+    io.to("v3_room").emit("v3_receive_number", num);
+  });
+
+  // Ida memasukkan angka
+  socket.on("v3_submit_sync", (inputNum) => {
+    if (parseInt(inputNum) === v3State.current_number) {
+        io.to("v3_room").emit("v3_sync_success");
+    } else {
+        socket.emit("v3_sync_failed");
+    }
+  });
 });
 
 // Redirect root to /v3
@@ -801,25 +821,7 @@ app.post("/api/v2/update-time", async (req, res) => {
   // TAHAP V3: METAMORPHOSIS SYNC
   // ==========================================
   
-  socket.on("v3_join", () => {
-    socket.join("v3_room");
-  });
-
-  // Fendi men-generate angka random
-  socket.on("v3_generate_number", () => {
-    const num = Math.floor(1000 + Math.random() * 9000); // 4 digit random
-    v3State.current_number = num;
-    io.to("v3_room").emit("v3_receive_number", num);
-  });
-
-  // Ida memasukkan angka
-  socket.on("v3_submit_sync", (inputNum) => {
-    if (parseInt(inputNum) === v3State.current_number) {
-        io.to("v3_room").emit("v3_sync_success");
-    } else {
-        socket.emit("v3_sync_failed");
-    }
-  });
+  
 
 // Cek Waktu & Status (Public)
 app.get("/api/status", async (req, res) => {
