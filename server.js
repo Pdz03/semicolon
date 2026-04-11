@@ -143,10 +143,20 @@ let v3State = {
         suwit_score: { fendi: 0, ida: 0 },
         suwit_choices: { fendi: null, ida: null },
         winner_bo5: null,
-        selected_color: null, // 'biru' atau 'kuning'
-        hiding_timer_started: false,
-        finding_results: [] // Menyimpan siapa yang paling cepat menemukan
-    }
+        selected_color: null,
+        finding_results: [],
+        current_pair_index: 1,
+        fendi_scanned: false,
+        ida_scanned: false
+    },
+};
+
+const pairingMap = {
+    1: { fendi: "V3B1", ida: "V3Y1", type: "question", content: "Apa impresi pertamamu pas pertama kali kita sepedaan ke Colomadu?" },
+    2: { fendi: "V3B2", ida: "V3Y2", type: "puzzle", content: [1, 2] },
+    3: { fendi: "V3B3", ida: "V3Y3", type: "question", content: "Dari semua momen LDR, hal kecil apa yang paling bikin kamu ngerasa disayang?" },
+    4: { fendi: "V3B4", ida: "V3Y4", type: "puzzle", content: [3, 4] },
+    5: { fendi: "V3B5", ida: "V3Y5", type: "question", content: "Apa satu janji kecil yang pengen kita jaga barely-bareng setelah PPG ini selesai?" }
 };
 
 
@@ -513,10 +523,42 @@ io.on("connection", (socket) => {
       io.to("v3_room").emit("v3_tg_hiding_go");
   });
 
-  socket.on("v3_tg_finding_done", (data) => {
-      v3State.telur_gulung.finding_results.push(data.player);
-      io.to("v3_room").emit("v3_tg_finding_update", v3State.telur_gulung.finding_results);
-  });
+  socket.on("v3_tg_finding_done", (d) => {
+        if(!v3State.telur_gulung.finding_results.includes(d.player)) v3State.telur_gulung.finding_results.push(d.player);
+        io.to("v3_room").emit("v3_tg_finding_update", v3State.telur_gulung.finding_results);
+    });
+
+    // TELUR GULUNG: SCANNING
+    socket.on("v3_tb_scan_qr", (data) => {
+        const pair = pairingMap[v3State.telur_gulung.current_pair_index];
+        const expected = (data.player === 'fendi') ? pair.fendi : pair.ida;
+        if (data.qr_code !== expected) return socket.emit("v3_tb_scan_error", "Bukan kodenya!");
+        
+        if (data.player === 'fendi') v3State.telur_gulung.fendi_scanned = true;
+        else v3State.telur_gulung.ida_scanned = true;
+
+        io.to("v3_room").emit("v3_tb_partial_success", { player: data.player, fendi_ok: v3State.telur_gulung.fendi_scanned, ida_ok: v3State.telur_gulung.ida_scanned });
+
+        if (v3State.telur_gulung.fendi_scanned && v3State.telur_gulung.ida_scanned) {
+            io.to("v3_room").emit("v3_tb_pair_complete", { index: v3State.telur_gulung.current_pair_index, type: pair.type, content: pair.content });
+        }
+    });
+    socket.on("v3_tb_next_pair", () => {
+        v3State.telur_gulung.current_pair_index++;
+        v3State.telur_gulung.fendi_scanned = false;
+        v3State.telur_gulung.ida_scanned = false;
+        io.to("v3_room").emit("v3_tb_status", { idx: v3State.telur_gulung.current_pair_index });
+    });
+
+    // --- STAGE 3: TERANG BULAN (RADAR) ---
+    socket.on("v3_trb_init", () => {
+        io.to("v3_room").emit("v3_trb_data", { coords: v3State.jasuke.coordinates, collected: v3State.terang_bulan.collected_flags });
+    });
+    socket.on("v3_trb_collect", (idx) => {
+        if(!v3State.terang_bulan.collected_flags.includes(idx)) v3State.terang_bulan.collected_flags.push(idx);
+        io.to("v3_room").emit("v3_trb_collected", v3State.terang_bulan.collected_flags);
+        if(v3State.terang_bulan.collected_flags.length === 3) io.to("v3_room").emit("v3_trb_all_finish");
+    });
 });
 
 // Redirect root to /v3

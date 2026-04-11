@@ -7,6 +7,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
@@ -95,6 +96,12 @@
     .btn-suwit { border: 1px solid #444; padding: 20px; border-radius: 12px; transition: all 0.3s; }
     .btn-suwit.selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); transform: scale(1.05); }
     .btn-suwit.locked { opacity: 0.5; pointer-events: none; border-color: #00ff00; }
+    .win-fendi { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+        .win-ida { background: #eab308; box-shadow: 0 0 8px #eab308; }
+        .puzzle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; width: 160px; margin: 0 auto; }
+        .piece { background: #111; border: 1px solid #333; height: 80px; display: flex; items-center; justify-center; font-size: 10px; color: #444; border-radius: 4px; transition: 0.5s; }
+        .piece-active { border-color: #3b82f6; color: white; background: rgba(59, 130, 246, 0.2); }
+
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center relative px-4">
@@ -300,12 +307,7 @@
             </div>
         </div>
 
-        <!-- TOMBOL RESET SESSION (Hanya muncul jika sudah lewat stage 0) -->
-        <div id="reset-trigger" class="hidden mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
-            <button onclick="resetSession()" class="text-[9px] text-gray-500 hover:text-red-400 border-b border-gray-800 pb-1 uppercase tracking-widest">
-                [ RESET_LOCAL_SESSION ]
-            </button>
-        </div>
+
 
         <!-- STAGE 5: TELUR GULUNG -->
 <div id="stage-telur-gulung" class="hidden fade-in space-y-6 w-full max-w-md">
@@ -374,10 +376,35 @@
             <div id="finding-leaderboard" class="space-y-2 mt-4 pt-4 border-t border-purple-900/30">
                 <!-- Hasil adu cepat -->
             </div>
+             <!-- SCAN AREA (Muncul Setelah Finding) -->
+                    <div id="scan-flow" class="hidden pt-6 border-t border-gray-800 space-y-4">
+                        <p class="text-[9px] text-blue-300 font-bold uppercase" id="scan-status-msg">Scan Kupu-Kupu Pasangan!</p>
+                        <div class="puzzle-grid mb-4">
+                            <div id="piece-1" class="piece">1</div><div id="piece-2" class="piece">2</div>
+                            <div id="piece-3" class="piece">3</div><div id="piece-4" class="piece">4</div>
+                        </div>
+                        <div id="reader" style="width:100%; border-radius:8px; overflow:hidden;"></div>
+                        <button onclick="startScanning()" id="btn-open-camera" class="w-full bg-blue-700 py-3 rounded text-[10px] font-bold uppercase">Buka Kamera</button>
+                    </div>
         </div>
 
     </div>
 </div>
+
+        <!-- TOMBOL RESET SESSION (Hanya muncul jika sudah lewat stage 0) -->
+        <div id="reset-trigger" class="hidden mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
+            <button onclick="resetSession()" class="text-[9px] text-gray-500 hover:text-red-400 border-b border-gray-800 pb-1 uppercase tracking-widest">
+                [ RESET_LOCAL_SESSION ]
+            </button>
+        </div>
+
+        <!-- REWARD MODAL -->
+        <div id="reward-modal" class="fixed inset-0 z-[100] bg-black hidden flex flex-col items-center justify-center p-8 text-center">
+            <h4 id="reward-title" class="text-blue-400 font-bold uppercase text-xs mb-4">Progress Memori</h4>
+            <div id="reward-content" class="text-white text-sm italic mb-8"></div>
+            <button onclick="closeReward()" class="px-8 py-3 bg-white text-black font-bold rounded-full text-[10px] uppercase">Lanjut</button>
+            <button onclick="finishTelurGulung()" id="btn-to-trb" class="hidden px-8 py-3 bg-blue-600 text-white font-bold rounded-full text-[10px] uppercase">Buka Terang Bulan</button>
+        </div>
 
     </div>
 
@@ -393,7 +420,8 @@
     let hidingInterval = null;
     let findingStartTime = 0;
     let findingInterval = null;
-
+    let currentPairIdx = 1;
+let html5QrCode = null;
         
         const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke','stage-telur-gulung'];
         
@@ -750,29 +778,77 @@
         }, 50);
     }
 
-    function stopFinding() {
-        clearInterval(findingInterval);
-        socket.emit("v3_tg_finding_done", { player: currentPlayer });
-    }
+    function stopFinding() { clearInterval(stopwatchInt); socket.emit("v3_tg_finding_done", {player:currentPlayer}); document.getElementById('btn-stop-finding').classList.add('hidden'); document.getElementById('scan-flow').classList.remove('hidden'); }
 
-    socket.on("v3_tg_finding_update", (results) => {
-        const lb = document.getElementById('finding-leaderboard');
-        lb.innerHTML = '<p class="text-[10px] text-gray-500 uppercase">Urutan Menemukan:</p>';
-        results.forEach((name, idx) => {
-            lb.innerHTML += `<p class="text-sm font-bold text-white">${idx + 1}. ${name.toUpperCase()}</p>`;
+        // SCRIPT LEADERBOARD YANG HILANG DIMASUKKAN KEMBALI
+        socket.on("v3_tg_finding_update", (results) => {
+            const lb = document.getElementById('finding-leaderboard');
+            if(!lb) return;
+            lb.innerHTML = '<p class="text-[8px] text-gray-500 uppercase tracking-widest mt-2 mb-1">Urutan Menemukan:</p>';
+            results.forEach((name, idx) => {
+                lb.innerHTML += `<p class="text-[10px] font-bold text-white">${idx + 1}. ${name.toUpperCase()}</p>`;
+            });
+            if(results.length === 2) {
+                alert(`Selesai! Giliran pertama scan QR adalah: ${results[0].toUpperCase()}`);
+            }
         });
-        
-        if(results.length === 2) {
-            alert(`Selesai! Giliran pertama scan QR adalah: ${results[0].toUpperCase()}`);
-            // Lanjut ke stage Terang Bulan nanti
-        }
-    });
 
     // Panggil initBO5 saat pindah ke stage ini
     socket.on("v3_jasuke_all_success", () => {
         switchStage('stage-telur-gulung');
         initBO5();
     });
+
+    // --- SCANNING ---
+        function startScanning() {
+            document.getElementById('btn-open-camera').classList.add('hidden');
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+                html5QrCode.pause();
+                socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
+                setTimeout(() => html5QrCode.resume(), 2000);
+            });
+        }
+        socket.on("v3_tb_pair_complete", (r) => {
+            document.getElementById('reward-modal').classList.remove('hidden');
+            const c = document.getElementById('reward-content');
+            if(r.type==='question') c.innerText = r.content;
+            else { c.innerText = "Puzzle kepingan " + r.content.join(' & ') + " terbuka!"; r.content.forEach(n => document.getElementById(`piece-${n}`).classList.add('piece-active')); }
+            if(r.index === 5) { document.querySelector('#reward-modal button').classList.add('hidden'); document.getElementById('btn-to-trb').classList.remove('hidden'); }
+        });
+        function closeReward() { document.getElementById('reward-modal').classList.add('hidden'); socket.emit("v3_tb_next_pair"); }
+        function finishTelurGulung() { document.getElementById('reward-modal').classList.add('hidden'); switchStage('stage-terang-bulan'); }
+
+        // --- TERANG BULAN (RADAR) ---
+        function initRadar() { socket.emit("v3_trb_init"); }
+        socket.on("v3_trb_data", (d) => {
+            const cont = document.getElementById('radar-container');
+            cont.innerHTML = '';
+            navigator.geolocation.watchPosition(p => {
+                cont.innerHTML = '';
+                d.coords.forEach((coord, i) => {
+                    const dist = calculateDistance(p.coords.latitude, p.coords.longitude, coord.lat, coord.lng);
+                    const div = document.createElement('div');
+                    div.className = "p-4 border border-blue-900 rounded mb-2 flex justify-between items-center";
+                    const isCol = d.collected.includes(i);
+                    div.innerHTML = `<div class="text-left"><p class="text-[10px]">BENDERA ${i+1}</p><p class="text-xl font-bold ${isCol?'text-green-500':'text-blue-400'}">${isCol?'✓ COLLECTED':Math.round(dist)+'m'}</p></div>`;
+                    if(!isCol && dist < 10) {
+                        const btn = document.createElement('button');
+                        btn.className = "bg-green-600 px-4 py-2 rounded text-[10px] font-bold";
+                        btn.innerText = "COLLECT";
+                        btn.onclick = () => socket.emit("v3_trb_collect", i);
+                        div.appendChild(btn);
+                    }
+                    cont.appendChild(div);
+                });
+            }, null, {enableHighAccuracy:true});
+        });
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        socket.on("v3_trb_all_finish", () => alert("Semicolon V3 Complete! Metamorphosis Sukses."));
     
     </script>
 </body>
