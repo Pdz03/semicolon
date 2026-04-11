@@ -208,7 +208,8 @@
         <!-- STAGE 1: PASSCODE INPUT -->
         <div id="stage-passcode" class="hidden fade-in text-center space-y-6 p-10 border border-blue-900 bg-blue-950/10 rounded-xl backdrop-blur-md">
             <h3 class="text-blue-400 font-bold tracking-widest text-sm uppercase">Encryption Key Required</h3>
-            <input type="password" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.8em] text-xl rounded focus:outline-none focus:border-blue-400 text-white" placeholder="••••••">
+            <p class="text-gray-500 text-[10px]">HINT: Bungkus sunscreen</p>
+            <input type="text" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.8em] text-xl rounded focus:outline-none focus:border-blue-400 text-white" placeholder="••••••">
             <button onclick="checkPasscode()" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-bold py-4 rounded transition shadow-[0_0_15px_rgba(30,58,138,0.5)]">DECRYPT PROTOCOL</button>
             <p id="pass-error" class="text-red-500 text-[10px] hidden mt-2">INVALID ACCESS KEY</p>
         </div>
@@ -249,6 +250,54 @@
             </div>
         </div>
 
+        <!-- STAGE 4: JASUKE (PLANTING FLAGS) -->
+        <div id="stage-jasuke" class="hidden fade-in text-center space-y-6 p-8 border border-yellow-600 bg-yellow-900/10 rounded-xl backdrop-blur-md">
+            <div class="flex justify-between items-center pb-4 border-b border-yellow-900/50">
+                <div class="text-left">
+                    <h3 class="text-yellow-500 font-bold tracking-widest text-xs uppercase">Stage 1: JASUKE</h3>
+                    <p class="text-[9px] text-gray-500 uppercase">Jejak Langkah Protocol</p>
+                </div>
+                <div class="flex space-x-2">
+                    <span id="flag-1" class="flag-icon text-xl">🚩</span>
+                    <span id="flag-2" class="flag-icon text-xl">🚩</span>
+                    <span id="flag-3" class="flag-icon text-xl">🚩</span>
+                </div>
+            </div>
+
+            <!-- UI Fendi (Waiting) -->
+            <div id="fendi-jasuke-ui" class="hidden space-y-6 pt-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest">Radar Standby:</p>
+                <div class="py-8">
+                    <p class="text-yellow-500 font-bold animate-pulse tracking-widest text-lg">MENUNGGU IDA...</p>
+                    <p class="text-xs text-gray-400 mt-2">Menyimpan titik koordinat bendera fisik</p>
+                </div>
+                <p class="text-[9px] text-gray-500/50 italic tracking-tighter border-t border-yellow-900/50 pt-4">Pastikan Ida mengaktifkan GPS di browsernya.</p>
+            </div>
+
+            <!-- UI Ida (Action: Save Coordinates) -->
+            <div id="ida-jasuke-ui" class="hidden space-y-6 pt-4 text-center">
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest">Tancapkan Bendera Fisik</p>
+                <div class="bg-black/80 p-4 border border-dashed border-yellow-700 rounded-lg">
+                    <p class="text-xs font-bold text-white tracking-widest leading-relaxed">
+                        Jika bendera sudah tertancap manis di tanah, tekan tombol ini untuk merekam lokasinya!
+                    </p>
+                </div>
+                <button id="btn-plant-flag" onclick="plantFlag()" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 rounded transition shadow-lg uppercase tracking-widest text-xs flex justify-center items-center gap-2">
+                    <span class="text-lg">📍</span> SIMPAN KOORDINAT
+                </button>
+                
+                <!-- Loading State -->
+                <div id="gps-status" class="hidden py-4">
+                    <p class="text-yellow-500 text-xs animate-pulse font-bold tracking-widest">MENGAKSES SATELIT GPS...</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Pastikan izin lokasi (Location) diizinkan di browser ini.</p>
+                </div>
+                
+                <p id="gps-error" class="text-red-500 text-[10px] hidden mt-2 border border-red-900/50 p-2 bg-red-900/20 rounded">
+                    Gagal membaca GPS. Tolong cek pengaturan lokasi HP/Browser kamu ya!
+                </p>
+            </div>
+        </div>
+
         <!-- TOMBOL RESET SESSION (Hanya muncul jika sudah lewat stage 0) -->
         <div id="reset-trigger" class="hidden mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
             <button onclick="resetSession()" class="text-[9px] text-gray-500 hover:text-red-400 border-b border-gray-800 pb-1 uppercase tracking-widest">
@@ -263,8 +312,9 @@
         let clickCount = 0;
         let currentPlayer = localStorage.getItem('v3_player');
         let targetDate = new Date("2026-04-12T09:00:00").getTime();
+        let currentFlag = parseInt(localStorage.getItem('v3_jasuke_flag')) || 1;
         
-        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync'];
+        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke'];
         
         window.onload = async () => {
             socket.emit("v3_join");
@@ -354,6 +404,21 @@
                     document.getElementById('fendi-sync-ui').classList.add('hidden');
                 }
             }
+
+            if(id === 'stage-jasuke') {
+                updateFlagUI();
+                document.getElementById(currentPlayer === 'fendi' ? 'fendi-jasuke-ui' : 'ida-jasuke-ui').classList.remove('hidden');
+                document.getElementById(currentPlayer === 'fendi' ? 'ida-jasuke-ui' : 'fendi-jasuke-ui').classList.add('hidden');
+            }
+        }
+
+        function updateFlagUI() {
+            for(let i=1; i<=3; i++) {
+                const el = document.getElementById(`flag-${i}`);
+                el.classList.remove('flag-active', 'flag-planted');
+                if (i < currentFlag) el.classList.add('flag-planted');
+                if (i === currentFlag) el.classList.add('flag-active');
+            }
         }
 
         function checkPasscode() {
@@ -406,6 +471,55 @@
         socket.on("v3_sync_success", () => {
             alert("HANDSHAKE SUCCESS! Menuju Misi Utama...");
             // Lanjut ke Stage 1 Quest nanti di sini
+        });
+
+        // ================== STAGE 1: JASUKE LOGIC ==================
+        function plantFlag() {
+            const btn = document.getElementById('btn-plant-flag');
+            const status = document.getElementById('gps-status');
+            const err = document.getElementById('gps-error');
+
+            btn.classList.add('hidden');
+            status.classList.remove('hidden');
+            err.classList.add('hidden');
+
+            if(navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    // Kirim ke server
+                    socket.emit("v3_jasuke_submit", coords);
+                }, (error) => {
+                    console.error("GPS Error:", error);
+                    btn.classList.remove('hidden');
+                    status.classList.add('hidden');
+                    err.classList.remove('hidden');
+                }, { enableHighAccuracy: true });
+            } else {
+                err.innerText = "Browser tidak mendukung fitur GPS.";
+                err.classList.remove('hidden');
+                btn.classList.remove('hidden');
+                status.classList.add('hidden');
+            }
+        }
+
+        // Menerima sinyal kalau bendera sukses tertanam (dikirim oleh server ke kedua device)
+        socket.on("v3_jasuke_flag_success", (res) => {
+            alert(`Bendera ke-${currentFlag} sukses tertancap! Koordinat tersimpan.`);
+            currentFlag = res.next_flag;
+            localStorage.setItem('v3_jasuke_flag', currentFlag);
+            updateFlagUI();
+
+            // Reset UI Ida untuk bendera berikutnya
+            if(currentPlayer === 'ida') {
+                document.getElementById('btn-plant-flag').classList.remove('hidden');
+                document.getElementById('gps-status').classList.add('hidden');
+            }
+        });
+
+        // Semua bendera sudah tertanam
+        socket.on("v3_jasuke_all_success", () => {
+            alert("STAGE 1 CLEAR! Tiga bendera berhasil dipasang. Lanjut ke Telur Gulung!");
+            // Nanti kita buat fungsi switchStage('stage-telur-gulung');
         });
     </script>
 </body>

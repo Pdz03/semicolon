@@ -133,7 +133,8 @@ const SettingV3 = mongoose.model("SettingV3", SettingV3Schema);
 
 let v3State = {
     current_number: null,
-    stage: 'countdown' // countdown, passcode, select_player, sync_game
+    stage: 'countdown',
+    jasuke: { current_flag: 1, coordinates: [] }
 };
 
 // --- API ROUTES V3 (BARU) ---
@@ -378,24 +379,44 @@ io.on("connection", (socket) => {
         io.to('cengklik_room').emit('show_the_end');
     });
 
-    socket.on("v3_join", () => {
-    socket.join("v3_room");
+    // ------------------------------------------
+  // SOCKET V3: METAMORPHOSIS (BARU)
+  // ------------------------------------------
+  socket.on("v3_join", () => {
+      socket.join("v3_room");
   });
 
-  // Fendi men-generate angka random
+  // Stage 3: Handshake Sync
   socket.on("v3_generate_number", () => {
-    const num = Math.floor(1000 + Math.random() * 9000); // 4 digit random
-    v3State.current_number = num;
-    io.to("v3_room").emit("v3_receive_number", num);
+      const num = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+      v3State.current_number = num;
+      io.to("v3_room").emit("v3_receive_number", num);
   });
 
-  // Ida memasukkan angka
   socket.on("v3_submit_sync", (inputNum) => {
-    if (parseInt(inputNum) === v3State.current_number) {
-        io.to("v3_room").emit("v3_sync_success");
-    } else {
-        socket.emit("v3_sync_failed");
-    }
+      if (parseInt(inputNum) === v3State.current_number) {
+          io.to("v3_room").emit("v3_sync_success");
+      } else {
+          socket.emit("v3_sync_failed");
+      }
+  });
+
+  // Stage 4: Jasuke Flags
+  socket.on("v3_jasuke_submit", (coords) => {
+      // Simpan koordinat yang dikirim Ida
+      v3State.jasuke.coordinates.push(coords);
+      console.log(`[V3] Bendera ${v3State.jasuke.current_flag} ditancapkan di:`, coords);
+
+      if (v3State.jasuke.current_flag < 3) {
+          v3State.jasuke.current_flag++;
+          io.to("v3_room").emit("v3_jasuke_flag_success", {
+              next_flag: v3State.jasuke.current_flag
+          });
+      } else {
+          // Selesai 3 bendera
+          v3State.jasuke.current_flag = 1; // Reset memory
+          io.to("v3_room").emit("v3_jasuke_all_success");
+      }
   });
 });
 
