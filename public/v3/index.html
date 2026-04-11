@@ -779,7 +779,7 @@ let myColor = null;
         }, 50);
     }
 
-    function stopFinding() { clearInterval(stopwatchInt); socket.emit("v3_tg_finding_done", {player:currentPlayer}); document.getElementById('btn-stop-finding').classList.add('hidden'); document.getElementById('scan-flow').classList.remove('hidden'); }
+    function stopFinding() { clearInterval(findingInterval); socket.emit("v3_tg_finding_done", {player:currentPlayer}); document.getElementById('btn-stop-finding').classList.add('hidden'); document.getElementById('scan-flow').classList.remove('hidden'); }
 
         // SCRIPT LEADERBOARD YANG HILANG DIMASUKKAN KEMBALI
         socket.on("v3_tg_finding_update", (results) => {
@@ -811,7 +811,7 @@ let myColor = null;
             });
         }
 
-        
+
         socket.on("v3_tg_color_chosen", (playerColors) => {
         myColor = playerColors[currentPlayer];
         document.getElementById('tg-color-view').classList.add('hidden');
