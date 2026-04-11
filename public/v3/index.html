@@ -96,10 +96,9 @@
     .btn-suwit { border: 1px solid #444; padding: 20px; border-radius: 12px; transition: all 0.3s; }
     .btn-suwit.selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); transform: scale(1.05); }
     .btn-suwit.locked { opacity: 0.5; pointer-events: none; border-color: #00ff00; }
-    .win-fendi { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
-        .win-ida { background: #eab308; box-shadow: 0 0 8px #eab308; }
+   
         .puzzle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; width: 160px; margin: 0 auto; }
-        .piece { background: #111; border: 1px solid #333; height: 80px; display: flex; items-center; justify-center; font-size: 10px; color: #444; border-radius: 4px; transition: 0.5s; }
+        .piece { background: #111; border: 1px solid #333; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #444; border-radius: 4px; transition: 0.5s; }
         .piece-active { border-color: #3b82f6; color: white; background: rgba(59, 130, 246, 0.2); }
 
     </style>
@@ -262,17 +261,16 @@
             <div id="ida-sync-ui" class="hidden space-y-6">
                 <h3 class="text-purple-400 text-xs tracking-widest uppercase">Handshake Verification</h3>
                 <div class="flex justify-center gap-2">
-                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 1)">
-                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 2)">
-                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 3)">
-                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 0)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 1)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 2)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 3)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 0)">
                 </div>
-                <button onclick="submitSync()" class="w-full bg-purple-800 text-white font-bold py-4 rounded">SYNC</button>
+                <button onclick="submitSyncV3()" class="w-full bg-purple-800 text-white font-bold py-4 rounded uppercase text-xs shadow-lg">Validate Sync</button>
                 <p id="sync-error" class="text-red-500 text-[10px] hidden">MISMATCH DETECTED</p>
             </div>
         </div>
 
-        <!-- STAGE 4: JASUKE (PLANTING FLAGS) -->
        <!-- STAGE 4: JASUKE -->
         <div id="stage-jasuke" class="hidden text-center space-y-6 p-8 border border-yellow-600 bg-yellow-900/10 rounded-xl backdrop-blur-md">
             <div class="flex justify-between items-center pb-4 border-b border-yellow-900/50">
@@ -367,29 +365,41 @@
         </div>
 
         <!-- VIEW 4: FINDING (Stopwatch) -->
-        <div id="tg-finding-view" class="hidden space-y-6 text-center">
-            <h4 class="text-white font-bold text-sm uppercase">Cari Kupu-Kupu Lawan!</h4>
-            <div class="text-5xl font-bold text-blue-400 py-4" id="finding-stopwatch">00:00.00</div>
-            <button onclick="startFinding()" id="btn-start-finding" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg uppercase">Start Finding</button>
-            <button onclick="stopFinding()" id="btn-stop-finding" class="hidden w-full bg-red-600 text-white font-bold py-4 rounded-lg uppercase">Kupu-Kupu Ketemu!</button>
-            
-            <div id="finding-leaderboard" class="space-y-2 mt-4 pt-4 border-t border-purple-900/30">
-                <!-- Hasil adu cepat -->
-            </div>
-             <!-- SCAN AREA (Muncul Setelah Finding) -->
+       <div id="tg-finding-view" class="hidden text-center space-y-4">
+                    <!-- Finding Control -->
+                    <div id="finding-ui" class="space-y-4">
+                        <div class="text-4xl font-bold text-blue-400 mb-2" id="finding-stopwatch">00:00.00</div>
+                        <button onclick="startFinding()" id="btn-start-finding" class="w-full bg-blue-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Start Stopwatch</button>
+                        <button onclick="stopFinding()" id="btn-stop-finding" class="hidden w-full bg-red-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Ketemu!</button>
+                    </div>
+                    
+                    <!-- Leaderboard -->
+                    <div id="finding-leaderboard" class="space-y-1 mt-4 p-3 bg-white/5 rounded border border-gray-800 hidden text-center"></div>
+
+                    <!-- Scan Area (Hidden until Finding done) -->
                     <div id="scan-flow" class="hidden pt-6 border-t border-gray-800 space-y-4">
-                        <p class="text-[9px] text-blue-300 font-bold uppercase" id="scan-status-msg">Scan Kupu-Kupu Pasangan!</p>
+                        <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400" id="scan-status-msg">Menunggu Giliran Scan...</p>
                         <div class="puzzle-grid mb-4">
                             <div id="piece-1" class="piece">1</div><div id="piece-2" class="piece">2</div>
                             <div id="piece-3" class="piece">3</div><div id="piece-4" class="piece">4</div>
                         </div>
-                        <div id="reader" style="width:100%; border-radius:8px; overflow:hidden;"></div>
-                        <button onclick="startScanning()" id="btn-open-camera" class="w-full bg-blue-700 py-3 rounded text-[10px] font-bold uppercase">Buka Kamera</button>
+                        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;" class="border-2 border-gray-800 bg-black"></div>
+                        <button onclick="startScanning()" id="btn-open-camera" class="hidden w-full bg-blue-700 py-3 rounded text-[10px] font-bold uppercase shadow-2xl">Buka Scanner</button>
+                        <p id="scan-error-log" class="text-red-500 text-[8px] font-bold uppercase hidden"></p>
                     </div>
-        </div>
+                </div>
 
     </div>
 </div>
+
+  <!-- STAGE 6: TERANG BULAN -->
+        <div id="stage-terang-bulan" class="hidden space-y-6 w-full max-w-md">
+            <div class="bg-black/90 border border-blue-600 p-6 rounded-2xl shadow-2xl text-center">
+                <h3 class="text-blue-400 font-bold text-xs uppercase tracking-[0.4em] mb-6">Stage 3: Terang Bulan</h3>
+                <p class="text-[9px] text-gray-500 mb-8 uppercase">Radar Aktif: Cari & Ambil bendera Jasuke!</p>
+                <div id="radar-container" class="space-y-3"></div>
+            </div>
+        </div>
 
         <!-- TOMBOL RESET SESSION (Hanya muncul jika sudah lewat stage 0) -->
         <div id="reset-trigger" class="hidden mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
@@ -409,482 +419,260 @@
     </div>
 
     <script>
-        const socket = io();
+            const socket = io();
         let clickCount = 0;
         let currentPlayer = localStorage.getItem('v3_player');
+        let myColor = null;
+        let html5QrCode = null;
+        let stopwatchInt = null;
+        let hidingInt = null;
+        let currentFlag = 1;
         let targetDate = new Date("2026-04-12T09:00:00").getTime();
-        let currentFlag = parseInt(localStorage.getItem('v3_jasuke_flag')) || 1;
-         let mySuwitChoice = null;
-    let suwitLocked = false;
-    let hidingSeconds = 120;
-    let hidingInterval = null;
-    let findingStartTime = 0;
-    let findingInterval = null;
-    let currentPairIdx = 1;
-let html5QrCode = null;
-let myColor = null;
         
-        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke','stage-telur-gulung'];
-        
+        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke', 'stage-telur-gulung', 'stage-terang-bulan'];
+
         window.onload = async () => {
             socket.emit("v3_join");
             await fetchStatus();
-            
-            // Restore Session
-            const savedStage = localStorage.getItem('v3_stage');
-            if (savedStage) {
-                switchStage(savedStage);
-            }
+            const saved = localStorage.getItem('v3_stage');
+            if (saved) switchStage(saved);
+            else switchStage('stage-countdown');
         };
-
-        function moveFocus(input, nextIdx) {
-            if (input.value.length === 1 && nextIdx !== 0) {
-                document.querySelectorAll('.sync-input')[nextIdx].focus();
-            }
-        }
 
         async function fetchStatus() {
             try {
                 const res = await fetch('/api/v3/status');
                 const data = await res.json();
-                if(data.release_time) {
-                    targetDate = new Date(data.release_time).getTime();
-                }
+                if(data.release_time) targetDate = new Date(data.release_time).getTime();
                 startCountdown();
-            } catch(e) {
-                startCountdown(); // Gunakan fallback date
-            }
+            } catch(e) { startCountdown(); }
         }
 
         function startCountdown() {
-            const timerInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const dist = targetDate - now;
-                
+            setInterval(() => {
+                const dist = targetDate - Date.now();
                 if (dist < 0) {
                     document.getElementById('days').innerText = "00";
-                    document.getElementById('hours').innerText = "00";
-                    document.getElementById('minutes').innerText = "00";
-                    document.getElementById('seconds').innerText = "00";
-                    
-                    // Auto-unlock jika waktu habis dan user belum di stage manapun
-                    if (!localStorage.getItem('v3_stage') || localStorage.getItem('v3_stage') === 'stage-countdown') {
-                        switchStage('stage-passcode');
-                    }
-                    clearInterval(timerInterval);
+                    if (!localStorage.getItem('v3_stage') || localStorage.getItem('v3_stage') === 'stage-countdown') switchStage('stage-passcode');
                     return;
                 }
-
-                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((dist % (1000 * 60)) / 1000);
-
-                document.getElementById("days").innerText = String(d).padStart(2, '0');
-                document.getElementById("hours").innerText = String(h).padStart(2, '0');
-                document.getElementById("minutes").innerText = String(m).padStart(2, '0');
-                document.getElementById("seconds").innerText = String(s).padStart(2, '0');
+                document.getElementById('days').innerText = String(Math.floor(dist/86400000)).padStart(2,'0');
+                document.getElementById('hours').innerText = String(Math.floor((dist%86400000)/3600000)).padStart(2,'0');
+                document.getElementById('minutes').innerText = String(Math.floor((dist%3600000)/60000)).padStart(2,'0');
+                document.getElementById('seconds').innerText = String(Math.floor((dist%60000)/1000)).padStart(2,'0');
             }, 1000);
         }
 
-        function handleTimerClick() {
-            clickCount++;
-            if (clickCount >= 3) {
-                switchStage('stage-passcode');
-            }
-        }
+        function handleTimerClick() { if(!window.cc) window.cc=0; if(++window.cc >=3) switchStage('stage-passcode'); }
+        function checkPasscode() { if(document.getElementById('v3-passcode').value === 'nasipecelsambelwelut') switchStage('stage-player'); else { document.getElementById('pass-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('pass-error').classList.add('hidden'), 2000); } }
+        function selectPlayer(p) { currentPlayer = p; localStorage.setItem('v3_player', p); switchStage('stage-sync'); }
 
         function switchStage(id) {
-            stages.forEach(s => {
-                const el = document.getElementById(s);
-                if(el) el.classList.add('hidden');
-            });
-
-            const targetEl = document.getElementById(id);
-            if(targetEl) targetEl.classList.remove('hidden');
-            
+            stages.forEach(s => { const el = document.getElementById(s); if(el) el.classList.add('hidden'); });
+            const target = document.getElementById(id);
+            if(target) target.classList.remove('hidden');
             localStorage.setItem('v3_stage', id);
             
-            // Tampilkan tombol reset jika bukan di stage countdown
-            if(id !== 'stage-countdown') {
-                document.getElementById('reset-trigger').classList.remove('hidden');
-            }
-
-            // UI khusus stage sync
+            if(id === 'stage-jasuke') socket.emit("v3_jasuke_init");
             if(id === 'stage-sync') {
-                if(currentPlayer === 'fendi') {
-                    document.getElementById('fendi-sync-ui').classList.remove('hidden');
-                    document.getElementById('ida-sync-ui').classList.add('hidden');
-                } else {
-                    document.getElementById('ida-sync-ui').classList.remove('hidden');
-                    document.getElementById('fendi-sync-ui').classList.add('hidden');
-                }
+                document.getElementById('fendi-sync-ui').classList.add('hidden');
+                document.getElementById('ida-sync-ui').classList.add('hidden');
+                document.getElementById(currentPlayer === 'fendi' ? 'fendi-sync-ui' : 'ida-sync-ui').classList.remove('hidden');
             }
-
-            if(id === 'stage-jasuke') {
-                socket.emit("v3_jasuke_init"); 
-            }
+            if(id === 'stage-telur-gulung') initBO5();
+            if(id === 'stage-terang-bulan') initRadar();
         }
 
-
-        function checkPasscode() {
-            const input = document.getElementById('v3-passcode').value;
-            // Password: nasipecelsambelwelut
-            if (input === 'nasipecelsambelwelut') {
-                switchStage('stage-player');
-            } else {
-                document.getElementById('pass-error').classList.remove('hidden');
-                setTimeout(() => document.getElementById('pass-error').classList.add('hidden'), 2000);
-            }
-        }
-
-        function selectPlayer(p) {
-            currentPlayer = p;
-            localStorage.setItem('v3_player', p);
-            switchStage('stage-sync');
-        }
-
-        function resetSession() {
-            if(confirm("Hapus semua progress sesi lokal dan kembali ke awal?")) {
-                localStorage.removeItem('v3_stage');
-                localStorage.removeItem('v3_player');
-                window.location.reload();
-            }
-        }
-
-        // ================== SOCKET LOGIC ==================
-        
-        function generateRandom() {
-            socket.emit("v3_generate_number");
-        }
-
-        function submitSync() {
-            const val = Array.from(document.querySelectorAll('.sync-input')).map(i => i.value).join('');
-            socket.emit("v3_submit_sync", val);
-        }
-
-        socket.on("v3_receive_number", (num) => {
-            if(currentPlayer === 'fendi') {
-                document.getElementById('random-number-display').innerText = num;
-            }
-        });
-
-        socket.on("v3_sync_failed", () => {
-            document.getElementById('sync-error').classList.remove('hidden');
-            setTimeout(() => document.getElementById('sync-error').classList.add('hidden'), 3000);
-        });
-
+        // --- HANDSHAKE ---
+        function v3MoveFocus(i, n) { if(i.value.length===1 && n!==0) document.querySelectorAll('.v3-digit')[n].focus(); }
+        function generateRandom() { socket.emit("v3_generate_number"); }
+        function submitSyncV3() { socket.emit("v3_submit_sync", Array.from(document.querySelectorAll('.v3-digit')).map(i=>i.value).join('')); }
+        socket.on("v3_receive_number", (n) => { if(currentPlayer==='fendi') document.getElementById('random-number-display').innerText=n; });
+        socket.on("v3_sync_failed", () => { document.getElementById('sync-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('sync-error').classList.add('hidden'), 2000); });
         socket.on("v3_sync_success", () => switchStage('stage-jasuke'));
-        
 
-        // ================== STAGE 1: JASUKE LOGIC ==================
-      // --- Jasuke Logic ---
-        socket.on("v3_jasuke_data", (data) => {
-            currentFlag = data.flag;
-            localStorage.setItem('v3_jasuke_flag', currentFlag);
+        // --- JASUKE ---
+        socket.on("v3_jasuke_data", (d) => {
+            currentFlag = d.flag;
             updateFlagUI();
-
-            // Reset UI
-            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area', 'jasuke-error'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area', 'jasuke-error'].forEach(i => document.getElementById(i).classList.add('hidden'));
+            const isFendiSender = (d.flag !== 2);
+            if (currentPlayer === 'fendi') { if(isFendiSender) showJ('ingredients', d); else showJ('answer', d); }
+            else { if(!isFendiSender) showJ('ingredients', d); else showJ('answer', d); }
+        });
+        function showJ(t, d) {
             document.getElementById('jasuke-puzzle-area').classList.remove('hidden');
-            
-            // Pola Role: Babak 1 Fendi Sender, Babak 2 Ida Sender, Babak 3 Fendi Sender
-            const isFendiSender = (data.flag !== 2); 
-            
-            if (currentPlayer === 'fendi') {
-                if (isFendiSender) showPuzzle('ingredients', data); else showPuzzle('answer', data);
-            } else {
-                if (!isFendiSender) showPuzzle('ingredients', data); else showPuzzle('answer', data);
-            }
-        });
-
-        function showPuzzle(type, data) {
-            if (type === 'ingredients') {
-                document.getElementById('ingredients-display').classList.remove('hidden');
-                document.getElementById('val-j').innerText = data.j; document.getElementById('val-s').innerText = data.s; document.getElementById('val-k').innerText = data.k;
-            } else {
-                document.getElementById('answer-display').classList.remove('hidden');
-                document.getElementById('jasuke-formula').innerText = data.formula;
-                document.getElementById('jasuke-answer-input').value = '';
-            }
+            if(t==='ingredients') { document.getElementById('ingredients-display').classList.remove('hidden'); document.getElementById('val-j').innerText=d.j; document.getElementById('val-s').innerText=d.s; document.getElementById('val-k').innerText=d.k; }
+            else { document.getElementById('answer-display').classList.remove('hidden'); document.getElementById('jasuke-formula').innerText=d.formula; document.getElementById('jasuke-answer-input').value=''; }
         }
-
-        function submitJasukeAnswer() { 
-            const ans = document.getElementById('jasuke-answer-input').value;
-            if(!ans) return;
-            socket.emit("v3_jasuke_submit_answer", ans); 
-        }
-        
-        socket.on("v3_jasuke_failed", () => {
-            document.getElementById('jasuke-error').classList.remove('hidden');
-            setTimeout(() => document.getElementById('jasuke-error').classList.add('hidden'), 2000);
-        });
-
+        function submitJasukeAnswer() { socket.emit("v3_jasuke_submit_answer", document.getElementById('jasuke-answer-input').value); }
+        socket.on("v3_jasuke_failed", () => { document.getElementById('jasuke-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('jasuke-error').classList.add('hidden'), 2000); });
         socket.on("v3_jasuke_unlocked", () => {
             document.getElementById('jasuke-puzzle-area').classList.add('hidden');
-            if (currentPlayer === 'ida') {
-                // IDA SELALU YANG TANCAP BENDERA
-                document.getElementById('jasuke-action-area').classList.remove('hidden');
-                document.getElementById('btn-plant-flag').classList.remove('hidden');
-                document.getElementById('gps-loading').classList.add('hidden');
-            } else {
-                document.getElementById('waiting-display').classList.remove('hidden');
-                document.getElementById('waiting-subtext').innerText = "Ida sedang menancapkan bendera fisik...";
-            }
+            if(currentPlayer === 'ida') document.getElementById('jasuke-action-area').classList.remove('hidden');
+            else document.getElementById('waiting-display').classList.remove('hidden');
         });
-
         function plantFlag() {
             document.getElementById('btn-plant-flag').classList.add('hidden');
             document.getElementById('gps-loading').classList.remove('hidden');
-            navigator.geolocation.getCurrentPosition((pos) => {
-                socket.emit("v3_jasuke_submit_coords", { lat: pos.coords.latitude, lng: pos.coords.longitude });
-            }, (err) => { 
-                alert("GPS Error! Pastikan izin lokasi aktif."); 
-                document.getElementById('btn-plant-flag').classList.remove('hidden'); 
-                document.getElementById('gps-loading').classList.add('hidden'); 
-            }, { enableHighAccuracy: true });
+            navigator.geolocation.getCurrentPosition(p => {
+                socket.emit("v3_jasuke_submit_coords", {lat: p.coords.latitude, lng: p.coords.longitude});
+            }, () => { alert("GPS Error!"); document.getElementById('btn-plant-flag').classList.remove('hidden'); document.getElementById('gps-loading').classList.add('hidden'); }, {enableHighAccuracy: true});
         }
+        socket.on("v3_jasuke_flag_success", () => socket.emit("v3_jasuke_init"));
+        socket.on("v3_jasuke_all_success", () => switchStage('stage-telur-gulung'));
+        function updateFlagUI() { for(let i=1;i<=3;i++) { const el=document.getElementById(`flag-${i}`); if(el) el.className = 'flag-icon text-xl '+(i < currentFlag ? 'flag-planted' : (i===currentFlag?'flag-active':'')); } }
 
-        socket.on("v3_jasuke_flag_success", (res) => {
-            alert(`Bendera ${currentFlag} Tertancap! Lanjut babak berikutnya.`);
-            currentFlag = res.next_flag;
-            localStorage.setItem('v3_jasuke_flag', currentFlag);
-            socket.emit("v3_jasuke_init"); // Minta data soal baru
+        // --- SUWIT ---
+        function initBO5() { const c = document.getElementById('bo5-container'); c.innerHTML=''; for(let i=0;i<5;i++){ let b=document.createElement('div'); b.className='suwit-box'; b.id=`su-box-${i}`; c.appendChild(b); } }
+        function pickSuwit(c) { 
+            window.myChoice=c; 
+            ['btn-batu','btn-gunting','btn-kertas'].forEach(id => document.getElementById(id).classList.remove('border-purple-500','bg-purple-900/20'));
+            document.getElementById(`btn-${c}`).classList.add('border-purple-500','bg-purple-900/20');
+            document.getElementById('btn-lock-suwit').classList.remove('hidden'); 
+        }
+        function lockSuwit() { socket.emit("v3_suwit_action", {player:currentPlayer, choice:window.myChoice}); document.getElementById('btn-lock-suwit').classList.add('hidden'); }
+        socket.on("v3_suwit_both_locked", () => document.getElementById('btn-reveal-suwit').classList.remove('hidden'));
+        function revealSuwit() { socket.emit("v3_suwit_reveal"); }
+        socket.on("v3_suwit_result", (d) => {
+            document.getElementById('btn-reveal-suwit').classList.add('hidden');
+            const totalRounds = d.score.fendi + d.score.ida;
+            const b = document.getElementById(`su-box-${totalRounds-1}`);
+            if(b) b.classList.add(d.winner==='fendi'?'suwit-win-fendi':'suwit-win-ida');
+            document.getElementById('suwit-result-text').innerText = `${d.choices.fendi} vs ${d.choices.ida} -> ${d.winner.toUpperCase()}!`;
+            
+            setTimeout(() => {
+                if(d.finalWinner) {
+                    document.getElementById('tg-suwit-view').classList.add('hidden');
+                    document.getElementById('tg-color-view').classList.remove('hidden');
+                    if(currentPlayer !== d.finalWinner) { document.getElementById('color-options').classList.add('hidden'); document.getElementById('color-waiting').classList.remove('hidden'); }
+                } else { document.getElementById('suwit-result-text').innerText = ''; }
+            }, 2000);
         });
 
-        socket.on("v3_jasuke_all_success", () => {
-            alert("STAGE JASUKE COMPLETE! Tiga bendera terpasang.");
-            // switchStage('stage-telur-gulung');
+        // --- HIDING & FINDING ---
+        function pickColor(c) { socket.emit("v3_tg_pick_color", c); }
+        socket.on("v3_tg_color_chosen", (pc) => { 
+            myColor = pc[currentPlayer];
+            document.getElementById('tg-color-view').classList.add('hidden'); 
+            document.getElementById('tg-hiding-view').classList.remove('hidden'); 
         });
-
-        function updateFlagUI() {
-            for(let i=1; i<=3; i++) {
-                const el = document.getElementById(`flag-${i}`);
-                el.className = 'flag-icon text-xl ' + (i < currentFlag ? 'flag-planted' : (i === currentFlag ? 'flag-active' : ''));
-            }
-        }
-
-        // Inisialisasi BO5 boxes
-    function initBO5() {
-        const container = document.getElementById('bo5-container');
-        container.innerHTML = '';
-        for(let i=0; i<5; i++) {
-            const box = document.createElement('div');
-            box.className = 'suwit-box';
-            box.id = `suwit-box-${i}`;
-            container.appendChild(box);
-        }
-    }
-
-    function pickSuwit(choice) {
-        if(suwitLocked) return;
-        mySuwitChoice = choice;
-        ['batu', 'gunting', 'kertas'].forEach(c => document.getElementById(`btn-${c}`).className = 'btn-suwit flex flex-col items-center');
-        document.getElementById(`btn-${choice}`).classList.add('selected');
-        document.getElementById('btn-lock-suwit').classList.remove('hidden');
-    }
-
-    function lockSuwit() {
-        suwitLocked = true;
-        document.getElementById('btn-lock-suwit').classList.add('hidden');
-        document.getElementById(`btn-${mySuwitChoice}`).classList.add('locked');
-        socket.emit("v3_suwit_action", { player: currentPlayer, choice: mySuwitChoice });
-    }
-
-    socket.on("v3_suwit_both_locked", () => {
-        document.getElementById('btn-reveal-suwit').classList.remove('hidden');
-        document.getElementById('suwit-instruction').innerText = "Keduanya sudah kunci! Buka hasilnya:";
-    });
-
-    function revealSuwit() {
-        socket.emit("v3_suwit_reveal");
-    }
-
-    socket.on("v3_suwit_result", (data) => {
-        document.getElementById('btn-reveal-suwit').classList.add('hidden');
-        const resText = document.getElementById('suwit-result-text');
-        resText.innerText = `FENDI: ${data.choices.fendi} | IDA: ${data.choices.ida} -> ${data.winner.toUpperCase()} WIN!`;
+        function startHiding() { socket.emit("v3_tg_start_hiding"); }
+        socket.on("v3_tg_hiding_go", () => {
+            document.getElementById('btn-start-hiding').classList.add('hidden');
+            document.getElementById('btn-finish-hiding').classList.remove('hidden');
+            let sec = 120;
+            hidingInt = setInterval(() => {
+                sec--;
+                document.getElementById('hiding-timer').innerText = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+                if(sec<=0) finishHiding();
+            }, 1000);
+        });
+        function finishHiding() { clearInterval(hidingInt); document.getElementById('tg-hiding-view').classList.add('hidden'); document.getElementById('tg-finding-view').classList.remove('hidden'); }
         
-        // Update boxes
-        const totalRounds = data.score.fendi + data.score.ida;
-        const currentBox = document.getElementById(`suwit-box-${totalRounds - 1}`);
-        if(currentBox) currentBox.classList.add(data.winner === 'fendi' ? 'suwit-win-fendi' : 'suwit-win-ida');
-
-        // Reset for next round
-        setTimeout(() => {
-            if (data.finalWinner) {
-                showColorPick(data.finalWinner);
-            } else {
-                suwitLocked = false;
-                mySuwitChoice = null;
-                ['batu', 'gunting', 'kertas'].forEach(c => document.getElementById(`btn-${c}`).className = 'btn-suwit flex flex-col items-center');
-                resText.innerText = "";
-                document.getElementById('suwit-instruction').innerText = "Ronde berikutnya! Pilih:";
-            }
-        }, 2000);
-    });
-
-    function showColorPick(winner) {
-        document.getElementById('tg-suwit-view').classList.add('hidden');
-        document.getElementById('tg-color-view').classList.remove('hidden');
-        if (currentPlayer !== winner) {
-            document.getElementById('color-options').classList.add('hidden');
-            document.getElementById('color-waiting').classList.remove('hidden');
-            document.getElementById('color-waiting').innerText = `Menunggu ${winner} memilih warna...`;
+        function startFinding() {
+            document.getElementById('btn-start-finding').classList.add('hidden');
+            document.getElementById('btn-stop-finding').classList.remove('hidden');
+            let s = Date.now();
+            stopwatchInt = setInterval(() => {
+                let diff = Date.now() - s;
+                document.getElementById('finding-stopwatch').innerText = `${String(Math.floor(diff/60000)).padStart(2,'0')}:${String(Math.floor((diff%60000)/1000)).padStart(2,'0')}.${String(Math.floor((diff%1000)/10)).padStart(2,'0')}`;
+            }, 50);
         }
-    }
+        function stopFinding() { 
+            clearInterval(stopwatchInt); 
+            socket.emit("v3_tg_finding_done", {player:currentPlayer}); 
+            document.getElementById('finding-ui').classList.add('hidden');
+        }
 
-    function pickColor(c) {
-        socket.emit("v3_tg_pick_color", c);
-    }
-
-    socket.on("v3_tg_color_chosen", (color) => {
-        document.getElementById('tg-color-view').classList.add('hidden');
-        document.getElementById('tg-hiding-view').classList.remove('hidden');
-    });
-
-    function startHiding() {
-        socket.emit("v3_tg_start_hiding");
-    }
-
-    socket.on("v3_tg_hiding_go", () => {
-        document.getElementById('btn-start-hiding').classList.add('hidden');
-        document.getElementById('btn-finish-hiding').classList.remove('hidden');
-        hidingInterval = setInterval(() => {
-            hidingSeconds--;
-            let m = Math.floor(hidingSeconds / 60);
-            let s = hidingSeconds % 60;
-            document.getElementById('hiding-timer').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-            if(hidingSeconds <= 0) finishHiding();
-        }, 1000);
-    });
-
-    function finishHiding() {
-        clearInterval(hidingInterval);
-        document.getElementById('tg-hiding-view').classList.add('hidden');
-        document.getElementById('tg-finding-view').classList.remove('hidden');
-    }
-
-    // Stopwatch logic
-    function startFinding() {
-        document.getElementById('btn-start-finding').classList.add('hidden');
-        document.getElementById('btn-stop-finding').classList.remove('hidden');
-        findingStartTime = Date.now();
-        findingInterval = setInterval(() => {
-            let diff = Date.now() - findingStartTime;
-            let m = Math.floor(diff / 60000);
-            let s = Math.floor((diff % 60000) / 1000);
-            let ms = Math.floor((diff % 1000) / 10);
-            document.getElementById('finding-stopwatch').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
-        }, 50);
-    }
-
-    function stopFinding() { clearInterval(findingInterval); socket.emit("v3_tg_finding_done", {player:currentPlayer}); document.getElementById('btn-stop-finding').classList.add('hidden'); document.getElementById('scan-flow').classList.remove('hidden'); }
-
-        // SCRIPT LEADERBOARD YANG HILANG DIMASUKKAN KEMBALI
-        socket.on("v3_tg_finding_update", (results) => {
+        socket.on("v3_tg_finding_update", (d) => {
             const lb = document.getElementById('finding-leaderboard');
-            if(!lb) return;
-            lb.innerHTML = '<p class="text-[8px] text-gray-500 uppercase tracking-widest mt-2 mb-1">Urutan Menemukan:</p>';
-            results.forEach((name, idx) => {
-                lb.innerHTML += `<p class="text-[10px] font-bold text-white">${idx + 1}. ${name.toUpperCase()}</p>`;
-            });
-            if(results.length === 2) {
-                alert(`Selesai! Giliran pertama scan QR adalah: ${results[0].toUpperCase()}`);
-            }
+            lb.classList.remove('hidden');
+            lb.innerHTML = '<p class="text-[8px] text-gray-500 uppercase mb-2">Sequence:</p>';
+            d.results.forEach((n, i) => lb.innerHTML += `<p class="text-[10px] font-bold ${n==='fendi'?'text-blue-400':'text-yellow-400'}">${i+1}. ${n.toUpperCase()}</p>`);
+            document.getElementById('scan-flow').classList.remove('hidden');
+            updateScanTurnUI(d.turn);
         });
 
-    // Panggil initBO5 saat pindah ke stage ini
-    socket.on("v3_jasuke_all_success", () => {
-        switchStage('stage-telur-gulung');
-        initBO5();
-    });
+        function updateScanTurnUI(turn) {
+            const msg = document.getElementById('scan-status-msg');
+            const btn = document.getElementById('btn-open-camera');
+            if(turn === currentPlayer) {
+                msg.innerText = `GILIRANMU! SCAN KUPU-KUPU ${myColor.toUpperCase()}!`;
+                msg.classList.add('text-green-400');
+                btn.classList.remove('hidden');
+            } else {
+                msg.innerText = `MENUNGGU ${turn.toUpperCase()} SCAN...`;
+                msg.classList.remove('text-green-400');
+                btn.classList.add('hidden');
+                if(html5QrCode) { 
+                    html5QrCode.stop().then(() => { html5QrCode = null; }).catch(()=>{}); 
+                }
+            }
+        }
 
-    // --- SCANNING ---
+        // --- SCANNING ---
         function startScanning() {
             document.getElementById('btn-open-camera').classList.add('hidden');
+            document.getElementById('scan-error-log').classList.add('hidden');
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
-                html5QrCode.pause();
-                socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
-                setTimeout(() => html5QrCode.resume(), 2000);
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
+                    socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
+                });
+            }).catch(err => { 
+                alert("Kamera Error!"); 
+                document.getElementById('btn-open-camera').classList.remove('hidden'); 
             });
         }
 
-
-        socket.on("v3_tg_color_chosen", (playerColors) => {
-        myColor = playerColors[currentPlayer];
-        document.getElementById('tg-color-view').classList.add('hidden');
-        document.getElementById('tg-hiding-view').classList.remove('hidden');
+        socket.on("v3_tb_turn_change", (t) => updateScanTurnUI(t));
+        socket.on("v3_tb_scan_error", (m) => { 
+            const el = document.getElementById('scan-error-log');
+            el.innerText = m; el.classList.remove('hidden');
+            document.getElementById('btn-open-camera').classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        });
         
-        // Update instruksi scan nanti agar tahu warnanya apa
-        document.getElementById('scan-status-msg').innerText = `CARI KUPU-KUPU ${myColor.toUpperCase()}!`;
-        document.getElementById('scan-status-msg').style.color = (myColor === 'biru') ? '#3b82f6' : '#eab308';
-    });
+        socket.on("v3_tb_pair_complete", (r) => {
+            const m = document.getElementById('reward-modal');
+            const c = document.getElementById('reward-content');
+            if(r.type === 'question') {
+                document.getElementById('reward-title').innerText = "HUBUNGAN & KOMITMEN";
+                c.innerText = r.content;
+            } else {
+                document.getElementById('reward-title').innerText = "KEPINGAN MEMORI";
+                c.innerText = `Kepingan memori ${r.content.join(' & ')} berhasil disatukan.`;
+                r.content.forEach(n => document.getElementById(`piece-${n}`).classList.add('piece-active'));
+            }
+            m.classList.remove('hidden');
+            if(r.index === 5) {
+                document.querySelector('#reward-modal button').classList.add('hidden');
+                document.getElementById('btn-to-trb').classList.remove('hidden');
+            }
+        });
 
-    socket.on("v3_tb_partial_success", (data) => {
-        // Efek visual jika salah satu sudah scan
-        const statusBiru = data.status.biru;
-        const statusKuning = data.status.kuning;
-
-        // Kita bisa gunakan ID fendi/ida atau buat ID dinamis
-        // Untuk kemudahan, kita tunjukkan saja di status bar atau console vibrate
-        if (data.player === currentPlayer) {
-            navigator.vibrate(200);
-            document.getElementById('scan-status-msg').innerText = "MENUNGGU PASANGANMU...";
-        }
-    });
-
-    // PENTING: Perbaikan di reward kepingan puzzle
-    socket.on("v3_tb_pair_complete", (r) => {
-        if(html5QrCode) html5QrCode.pause();
-        
-        document.getElementById('reward-modal').classList.remove('hidden');
-        const c = document.getElementById('reward-content');
-        
-        if (r.type === 'question') {
-            document.getElementById('reward-title').innerText = "PERTANYAAN HUBUNGAN";
-            c.innerText = r.content;
-        } else {
-            document.getElementById('reward-title').innerText = "KEPINGAN MEMORI";
-            c.innerText = `Kepingan ${r.content.join(' & ')} berhasil disatukan!`;
-            r.content.forEach(num => {
-                document.getElementById(`piece-${num}`).classList.add('piece-active');
-                document.getElementById(`piece-${num}`).innerText = "✓";
-            });
-        }
-
-        if (r.index === 5) {
-            document.querySelector('#reward-modal button').classList.add('hidden');
-            document.getElementById('btn-to-trb').classList.remove('hidden');
-        }
-    });
-
-    function closeReward() {
-        document.getElementById('reward-modal').classList.add('hidden');
-        document.getElementById('scan-status-msg').innerText = `CARI KUPU-KUPU ${myColor.toUpperCase()} BERIKUTNYA!`;
-        if(html5QrCode) html5QrCode.resume();
-        socket.emit("v3_tb_next_pair");
-    }
+        socket.on("v3_tb_status", (d) => { if(d.turn) updateScanTurnUI(d.turn); });
+        function closeReward() { document.getElementById('reward-modal').classList.add('hidden'); socket.emit("v3_tb_next_pair"); }
         function finishTelurGulung() { document.getElementById('reward-modal').classList.add('hidden'); switchStage('stage-terang-bulan'); }
 
-        // --- TERANG BULAN (RADAR) ---
+        // --- RADAR ---
         function initRadar() { socket.emit("v3_trb_init"); }
         socket.on("v3_trb_data", (d) => {
             const cont = document.getElementById('radar-container');
-            cont.innerHTML = '';
             navigator.geolocation.watchPosition(p => {
                 cont.innerHTML = '';
-                d.coords.forEach((coord, i) => {
-                    const dist = calculateDistance(p.coords.latitude, p.coords.longitude, coord.lat, coord.lng);
-                    const div = document.createElement('div');
-                    div.className = "p-4 border border-blue-900 rounded mb-2 flex justify-between items-center";
+                d.coords.forEach((c, i) => {
+                    const dist = calculateDist(p.coords.latitude, p.coords.longitude, c.lat, c.lng);
                     const isCol = d.collected.includes(i);
-                    div.innerHTML = `<div class="text-left"><p class="text-[10px]">BENDERA ${i+1}</p><p class="text-xl font-bold ${isCol?'text-green-500':'text-blue-400'}">${isCol?'✓ COLLECTED':Math.round(dist)+'m'}</p></div>`;
+                    const div = document.createElement('div');
+                    div.className = "p-4 border border-blue-900 rounded bg-blue-900/5 flex justify-between items-center";
+                    div.innerHTML = `<div class="text-left"><p class="text-[8px] text-gray-500 uppercase">Bendera ${i+1}</p><p class="text-lg font-bold ${isCol?'text-green-500':'text-blue-400'}">${isCol?'✓ TERAMBIL':Math.round(dist)+'m'}</p></div>`;
                     if(!isCol && dist < 10) {
                         const btn = document.createElement('button');
                         btn.className = "bg-green-600 px-4 py-2 rounded text-[10px] font-bold";
-                        btn.innerText = "COLLECT";
+                        btn.innerText = "AMBIL";
                         btn.onclick = () => socket.emit("v3_trb_collect", i);
                         div.appendChild(btn);
                     }
@@ -892,12 +680,14 @@ let myColor = null;
                 });
             }, null, {enableHighAccuracy:true});
         });
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; const φ1 = lat1 * Math.PI/180; const φ2 = lat2 * Math.PI/180; const Δφ = (lat2-lat1) * Math.PI/180; const Δλ = (lon2-lon1) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+        function calculateDist(l1, n1, l2, n2) {
+            const R = 6371e3; const f1 = l1 * Math.PI/180; const f2 = l2 * Math.PI/180; const df = (l2-l1) * Math.PI/180; const dn = (n2-n1) * Math.PI/180;
+            const a = Math.sin(df/2) * Math.sin(df/2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dn/2) * Math.sin(dn/2);
             return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
         socket.on("v3_trb_all_finish", () => alert("Semicolon V3 Complete! Metamorphosis Sukses."));
+        function resetSession() { if(confirm("Hapus sesi lokal?")) { localStorage.clear(); window.location.reload(); } }
     
     </script>
 </body>

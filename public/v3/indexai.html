@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Semicolon V3 - Metamorphosis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'JetBrains Mono', monospace; background-color: #050505; color: white; overflow-x: hidden; }
+        @keyframes float { 0%, 100% { transform: translateY(0) rotateZ(var(--rot)); } 50% { transform: translateY(-20px) rotateZ(var(--rot)); } }
+        .butterfly { position: absolute; width: var(--size); height: calc(var(--size) * 1.25); transform-origin: 100% 50%; transform-style: preserve-3d; animation: float 6s ease-in-out infinite; z-index: 0; pointer-events: none; }
+        .wing-left, .wing-right { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform-origin: 100% 50%; filter: drop-shadow(0 0 8px currentColor); }
+        .wing-right { animation: flap-r var(--dur) ease-in-out infinite alternate; }
+        .wing-left { animation: flap-l var(--dur) ease-in-out infinite alternate; }
+        @keyframes flap-l { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(60deg); } }
+        @keyframes flap-r { 0% { transform: rotateY(180deg); } 100% { transform: rotateY(120deg); } }
+        
+        .bf-1 { top: 15%; left: 20%; color: rgba(59, 130, 246, 0.4); --size: 1.5rem; --rot: -15deg; --dur: 0.15s; }
+        .bf-2 { top: 40%; right: 25%; color: rgba(234, 179, 8, 0.4); --size: 2rem; --rot: 15deg; --dur: 0.25s; }
+        .bf-3 { bottom: 25%; left: 25%; color: rgba(59, 130, 246, 0.3); --size: 2.5rem; --rot: -25deg; --dur: 0.3s; }
+        
+        .sync-input { width: 45px; height: 55px; background: black; border: 2px solid #581c87; border-radius: 8px; text-align: center; font-size: 20px; font-weight: bold; color: white; outline: none; transition: border-color 0.3s; }
+        .suwit-box { height: 8px; flex-grow: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 2px; transition: 0.5s; }
+        .suwit-win-fendi { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+        .suwit-win-ida { background: #eab308; box-shadow: 0 0 10px #eab308; }
+        
+        .puzzle-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 180px; margin: 0 auto; }
+        .piece { background: #111; border: 1px solid #333; height: 90px; display: flex; items-center; justify-center; font-size: 10px; color: #444; border-radius: 6px; transition: 0.5s; }
+        .piece-active { border-color: #3b82f6; color: white; background: rgba(59, 130, 246, 0.2); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center relative px-4 py-8 bg-black overflow-hidden">
+
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;"><defs><g id="shape-moth"><path fill="currentColor" d="M2.457,32.759c6.752,15.757,12.862,9.004,19.615,31.513c4.96,16.533,12.703,21.434,25.763,19.562c-8.291,5.666-11.245,14.512-2.29,30.097c10.611,18.467,29.262,32.338,38.587,34.268s19.615-6.431,21.866-18.328c2.251-11.898,3.216-13.185,11.255-50.485V66.202v-8.039c0,0-44.054-38.266-73.637-42.767C14.033,10.894-4.296,17.003,2.457,32.759z"/></g></defs></svg>
+    <div class="butterfly bf-1"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+    <div class="butterfly bf-2"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+    <div class="butterfly bf-3"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+
+    <div id="v3-container" class="z-10 w-full max-w-md">
+        
+        <!-- STAGE 0: COUNTDOWN -->
+        <div id="stage-countdown" class="hidden text-center space-y-6 p-8 rounded-2xl border border-gray-800 bg-[#0a0a0a]/90 backdrop-blur-md">
+            <h1 class="text-xs tracking-[0.4em] text-gray-500 uppercase">> Semicolon_V3</h1>
+            <h2 class="text-2xl font-bold text-white tracking-widest uppercase mt-2">Metamorphosis</h2>
+            <div class="flex space-x-3 justify-center py-4" onclick="handleTimerClick()">
+                <div class="flex flex-col"><div id="days" class="text-4xl font-bold text-blue-400">00</div><span class="text-[10px] text-gray-500 uppercase">Days</span></div>
+                <span class="text-2xl text-gray-800">:</span>
+                <div class="flex flex-col"><div id="hours" class="text-4xl font-bold text-blue-400">00</div><span class="text-[10px] text-gray-500 uppercase">Hrs</span></div>
+                <span class="text-2xl text-gray-800">:</span>
+                <div class="flex flex-col"><div id="minutes" class="text-4xl font-bold text-blue-400">00</div><span class="text-[10px] text-gray-500 uppercase">Min</span></div>
+                <span class="text-2xl text-gray-800">:</span>
+                <div class="flex flex-col"><div id="seconds" class="text-4xl font-bold text-blue-400">00</div><span class="text-[10px] text-gray-500 uppercase">Sec</span></div>
+            </div>
+            <div class="flex gap-3 justify-center mt-4">
+                <a href="/v1" class="px-4 py-2 border border-gray-700 bg-gray-900/40 text-[10px] rounded uppercase hover:bg-gray-800 transition">📖 Archives V1</a>
+                <a href="/v2" class="px-4 py-2 border border-green-800 bg-green-900/20 text-[10px] text-green-500 rounded uppercase hover:bg-green-900/40 transition">🎮 Games V2</a>
+            </div>
+        </div>
+
+        <!-- STAGE 1: PASSCODE -->
+        <div id="stage-passcode" class="hidden text-center space-y-6 p-10 border border-blue-900 bg-blue-950/10 rounded-xl backdrop-blur-md">
+            <h3 class="text-blue-400 font-bold text-xs uppercase tracking-widest">Encryption Key Required</h3>
+            <p class="text-gray-500 text-[10px] italic">"Bungkus Sunscreen"</p>
+            <input type="text" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.2em] text-xl rounded text-white outline-none focus:border-blue-400" placeholder="••••••">
+            <button onclick="checkPasscode()" class="w-full bg-blue-800 font-bold py-4 rounded uppercase text-xs hover:bg-blue-700 transition">Decrypt Protocol</button>
+            <p id="pass-error" class="text-red-500 text-[10px] hidden font-bold">ACCESS DENIED</p>
+        </div>
+
+        <!-- STAGE 2: PLAYER -->
+        <div id="stage-player" class="hidden text-center space-y-8 p-10 border border-gray-800 bg-gray-900/20 rounded-xl backdrop-blur-md">
+            <p class="text-white font-bold uppercase text-[10px] tracking-widest text-gray-500">Identify User Role</p>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="selectPlayer('fendi')" class="p-6 border border-green-800 rounded-lg uppercase text-[10px] font-bold hover:bg-green-900/30 transition">👨‍💻 Fendi</button>
+                <button onclick="selectPlayer('ida')" class="p-6 border border-yellow-800 rounded-lg uppercase text-[10px] font-bold hover:bg-yellow-900/30 transition">👩‍🏫 Ida</button>
+            </div>
+        </div>
+
+        <!-- STAGE 3: SYNC -->
+        <div id="stage-sync" class="hidden text-center space-y-6 p-8 border border-purple-900 bg-purple-950/10 rounded-xl">
+            <div id="fendi-sync-ui" class="hidden space-y-6">
+                <h3 class="text-purple-400 text-xs tracking-widest uppercase font-bold">Handshake Generator</h3>
+                <div id="random-number-display" class="text-6xl font-bold text-white tracking-widest py-4 animate-pulse">----</div>
+                <button onclick="generateRandom()" class="text-[10px] border border-purple-800 px-4 py-2 rounded uppercase text-purple-300">New Key</button>
+            </div>
+            <div id="ida-sync-ui" class="hidden space-y-6">
+                <h3 class="text-purple-400 text-xs tracking-widest uppercase font-bold">Handshake Verification</h3>
+                <div class="flex justify-center gap-2" id="sync-input-container-v3">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 1)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 2)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 3)">
+                    <input type="number" maxlength="1" class="sync-input v3-digit" oninput="v3MoveFocus(this, 0)">
+                </div>
+                <button onclick="submitSyncV3()" class="w-full bg-purple-800 text-white font-bold py-4 rounded uppercase text-xs shadow-lg">Sync Protocol</button>
+                <p id="sync-error" class="text-red-500 text-[10px] hidden">MISMATCH DETECTED</p>
+            </div>
+        </div>
+
+        <!-- STAGE 4: JASUKE -->
+        <div id="stage-jasuke" class="hidden text-center space-y-6 p-8 border border-yellow-600 bg-yellow-900/10 rounded-xl backdrop-blur-md">
+            <div class="flex justify-between items-center pb-4 border-b border-yellow-900/50">
+                <h3 class="text-yellow-500 font-bold text-[10px] uppercase tracking-widest">Stage 1: Jasuke</h3>
+                <div class="flex space-x-2">
+                    <span id="flag-1" class="flag-icon text-xl">🚩</span><span id="flag-2" class="flag-icon text-xl">🚩</span><span id="flag-3" class="flag-icon text-xl">🚩</span>
+                </div>
+            </div>
+            <div id="jasuke-puzzle-area">
+                <div id="ingredients-display" class="hidden grid grid-cols-3 gap-2 py-4">
+                    <div class="p-3 border border-yellow-800 bg-black rounded"><p class="text-[7px] uppercase">Jagung</p><p id="val-j" class="text-xl font-bold">?</p></div>
+                    <div class="p-3 border border-blue-800 bg-black rounded"><p class="text-[7px] uppercase">Susu</p><p id="val-s" class="text-xl font-bold">?</p></div>
+                    <div class="p-3 border border-white/20 bg-black rounded"><p class="text-[7px] uppercase">Keju</p><p id="val-k" class="text-xl font-bold">?</p></div>
+                </div>
+                <div id="answer-display" class="hidden space-y-4 pt-4">
+                    <div class="bg-black/80 p-4 border border-dashed border-yellow-700 rounded-lg"><p id="jasuke-formula" class="text-[9px] font-bold text-white uppercase tracking-widest">KODE RASA = ?</p></div>
+                    <input type="number" id="jasuke-answer-input" class="w-full bg-black border border-yellow-700 p-4 text-center text-3xl rounded text-white outline-none focus:border-yellow-400" placeholder="???">
+                    <button onclick="submitJasukeAnswer()" class="w-full bg-blue-700 font-bold py-3 rounded text-[10px] uppercase">Verify Rasa</button>
+                    <p id="jasuke-error" class="hidden text-red-500 text-[10px] font-bold mt-2">KODE SALAH!</p>
+                </div>
+                <div id="waiting-display" class="hidden py-8"><p class="text-yellow-500 animate-pulse text-xs font-bold tracking-widest uppercase">Menunggu Validasi...</p></div>
+            </div>
+            <div id="jasuke-action-area" class="hidden space-y-6 pt-4 border-t border-yellow-900/50">
+                <button id="btn-plant-flag" onclick="plantFlag()" class="w-full bg-yellow-600 text-black font-bold py-4 rounded uppercase text-[10px]">📍 Tancap Bendera</button>
+                <div id="gps-loading" class="hidden py-4 text-yellow-500 animate-pulse text-[8px] font-bold uppercase">Mencari Koordinat...</div>
+            </div>
+        </div>
+
+        <!-- STAGE 5: TELUR GULUNG -->
+        <div id="stage-telur-gulung" class="hidden space-y-6 w-full max-w-md">
+            <div class="flex gap-2 w-full px-2" id="bo5-container"></div>
+            <div class="bg-[#0a0a0a]/90 backdrop-blur-md border border-purple-900/50 p-6 rounded-2xl shadow-2xl">
+                <h3 class="text-purple-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-4">Stage 2: Telur Gulung</h3>
+                
+                <div id="tg-suwit-view" class="space-y-6">
+                    <p class="text-[8px] text-gray-500 text-center uppercase tracking-widest">Batu Gunting Kertas BO5</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="pickSuwit('batu')" id="btn-batu" class="p-4 border border-gray-800 rounded bg-black flex flex-col items-center hover:border-purple-500 transition">✊<span class="text-[7px] mt-2">BATU</span></button>
+                        <button onclick="pickSuwit('gunting')" id="btn-gunting" class="p-4 border border-gray-800 rounded bg-black flex flex-col items-center hover:border-purple-500 transition">✌️<span class="text-[7px] mt-2">GUNTING</span></button>
+                        <button onclick="pickSuwit('kertas')" id="btn-kertas" class="p-4 border border-gray-800 rounded bg-black flex flex-col items-center hover:border-purple-500 transition">✋<span class="text-[7px] mt-2">KERTAS</span></button>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="lockSuwit()" id="btn-lock-suwit" class="hidden w-full bg-white text-black font-bold py-2 rounded text-[10px] uppercase">Kunci Pilihan</button>
+                        <button onclick="revealSuwit()" id="btn-reveal-suwit" class="hidden w-full bg-purple-600 text-white font-bold py-2 rounded text-[10px] uppercase animate-pulse">Lihat Hasil</button>
+                    </div>
+                    <div id="suwit-result-text" class="text-center text-[8px] text-purple-400 font-bold h-4 uppercase"></div>
+                </div>
+
+                <div id="tg-color-view" class="hidden space-y-6 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-widest">Pemenang pilih warna kupu-kupu:</p>
+                    <div id="color-options" class="grid grid-cols-2 gap-4">
+                        <button onclick="pickColor('biru')" class="p-4 border border-blue-600 rounded bg-blue-900/10 text-blue-400 text-[10px] font-bold">🦋 BIRU</button>
+                        <button onclick="pickColor('kuning')" class="p-4 border border-yellow-600 rounded bg-yellow-900/10 text-yellow-400 text-[10px] font-bold">🦋 KUNING</button>
+                    </div>
+                    <p id="color-waiting" class="hidden py-4 text-[9px] text-gray-500 animate-pulse italic uppercase tracking-tighter">Menunggu lawan memilih warna...</p>
+                </div>
+
+                <div id="tg-hiding-view" class="hidden text-center space-y-6">
+                    <div class="text-5xl font-bold py-2 text-white" id="hiding-timer">02:00</div>
+                    <p class="text-[9px] text-gray-500 uppercase italic">Sembunyikan kupu-kupu sekarang!</p>
+                    <button onclick="startHiding()" id="btn-start-hiding" class="w-full bg-purple-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Mulai Timer</button>
+                    <button onclick="finishHiding()" id="btn-finish-hiding" class="hidden w-full bg-green-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Selesai Menaruh</button>
+                </div>
+
+                <div id="tg-finding-view" class="hidden text-center space-y-4">
+                    <div id="finding-ui" class="space-y-4">
+                        <div class="text-4xl font-bold text-blue-400 mb-2" id="finding-stopwatch">00:00.00</div>
+                        <button onclick="startFinding()" id="btn-start-finding" class="w-full bg-blue-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Start Stopwatch</button>
+                        <button onclick="stopFinding()" id="btn-stop-finding" class="hidden w-full bg-red-600 py-3 rounded text-[10px] font-bold uppercase shadow-lg">Ketemu!</button>
+                    </div>
+                    
+                    <div id="finding-leaderboard" class="space-y-1 mt-4 p-3 bg-white/5 rounded border border-gray-800 hidden text-center"></div>
+
+                    <div id="scan-flow" class="hidden pt-6 border-t border-gray-800 space-y-4">
+                        <p class="text-[9px] font-bold uppercase tracking-widest text-gray-400" id="scan-status-msg">Menunggu Giliran Scan...</p>
+                        <div class="puzzle-grid mb-4">
+                            <div id="piece-1" class="piece">1</div><div id="piece-2" class="piece">2</div>
+                            <div id="piece-3" class="piece">3</div><div id="piece-4" class="piece">4</div>
+                        </div>
+                        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;" class="border-2 border-gray-800 bg-black"></div>
+                        <button onclick="startScanning()" id="btn-open-camera" class="hidden w-full bg-blue-700 py-3 rounded text-[10px] font-bold uppercase shadow-2xl">Buka Scanner</button>
+                        <p id="scan-error-log" class="text-red-500 text-[8px] font-bold uppercase hidden mt-2"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAGE 6: TERANG BULAN -->
+        <div id="stage-terang-bulan" class="hidden space-y-6 w-full max-w-md">
+            <div class="bg-black/90 border border-blue-600 p-6 rounded-2xl shadow-2xl text-center">
+                <h3 class="text-blue-400 font-bold text-xs uppercase tracking-[0.4em] mb-6">Stage 3: Terang Bulan</h3>
+                <p class="text-[9px] text-gray-500 mb-8 uppercase tracking-widest italic">Radar Aktif: Cari & Ambil bendera Jasuke!</p>
+                <div id="radar-container" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- REWARD MODAL -->
+        <div id="reward-modal" class="fixed inset-0 z-[100] bg-black/95 hidden flex flex-col items-center justify-center p-8 text-center backdrop-blur-md">
+            <h4 id="reward-title" class="text-blue-400 font-bold uppercase text-xs mb-4 tracking-[0.3em]">Memori Ditemukan</h4>
+            <div id="reward-content" class="text-white text-sm italic mb-10 leading-relaxed font-light"></div>
+            <button onclick="closeReward()" class="px-10 py-3 bg-white text-black font-bold rounded-full text-[10px] uppercase hover:scale-105 transition">Lanjutkan Misi</button>
+            <button onclick="finishTelurGulung()" id="btn-to-trb" class="hidden px-10 py-3 bg-blue-600 text-white font-bold rounded-full text-[10px] uppercase animate-pulse">Buka Terang Bulan</button>
+        </div>
+
+        <button onclick="resetSession()" class="mt-12 text-[8px] text-gray-800 block w-full uppercase tracking-widest opacity-20 hover:opacity-100 transition">[ RESET_LOCAL_SESSION ]</button>
+    </div>
+
+    <script>
+        const socket = io();
+        let clickCount = 0;
+        let currentPlayer = localStorage.getItem('v3_player');
+        let myColor = null;
+        let html5QrCode = null;
+        let stopwatchInt = null;
+        let hidingInt = null;
+        let currentFlag = 1;
+        let targetDate = new Date("2026-04-12T09:00:00").getTime();
+        
+        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke', 'stage-telur-gulung', 'stage-terang-bulan'];
+
+        window.onload = async () => {
+            socket.emit("v3_join");
+            await fetchStatus();
+            const saved = localStorage.getItem('v3_stage');
+            if (saved) switchStage(saved);
+            else switchStage('stage-countdown');
+        };
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/v3/status');
+                const data = await res.json();
+                if(data.release_time) targetDate = new Date(data.release_time).getTime();
+                startCountdown();
+            } catch(e) { startCountdown(); }
+        }
+
+        function startCountdown() {
+            setInterval(() => {
+                const dist = targetDate - Date.now();
+                if (dist < 0) {
+                    document.getElementById('days').innerText = "00";
+                    if (!localStorage.getItem('v3_stage') || localStorage.getItem('v3_stage') === 'stage-countdown') switchStage('stage-passcode');
+                    return;
+                }
+                document.getElementById('days').innerText = String(Math.floor(dist/86400000)).padStart(2,'0');
+                document.getElementById('hours').innerText = String(Math.floor((dist%86400000)/3600000)).padStart(2,'0');
+                document.getElementById('minutes').innerText = String(Math.floor((dist%3600000)/60000)).padStart(2,'0');
+                document.getElementById('seconds').innerText = String(Math.floor((dist%60000)/1000)).padStart(2,'0');
+            }, 1000);
+        }
+
+        function handleTimerClick() { if(!window.cc) window.cc=0; if(++window.cc >=3) switchStage('stage-passcode'); }
+        function checkPasscode() { if(document.getElementById('v3-passcode').value === 'nasipecelsambelwelut') switchStage('stage-player'); else { document.getElementById('pass-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('pass-error').classList.add('hidden'), 2000); } }
+        function selectPlayer(p) { currentPlayer = p; localStorage.setItem('v3_player', p); switchStage('stage-sync'); }
+
+        function switchStage(id) {
+            stages.forEach(s => { const el = document.getElementById(s); if(el) el.classList.add('hidden'); });
+            const target = document.getElementById(id);
+            if(target) target.classList.remove('hidden');
+            localStorage.setItem('v3_stage', id);
+            
+            if(id === 'stage-jasuke') socket.emit("v3_jasuke_init");
+            if(id === 'stage-sync') {
+                document.getElementById('fendi-sync-ui').classList.add('hidden');
+                document.getElementById('ida-sync-ui').classList.add('hidden');
+                document.getElementById(currentPlayer === 'fendi' ? 'fendi-sync-ui' : 'ida-sync-ui').classList.remove('hidden');
+            }
+            if(id === 'stage-telur-gulung') initBO5();
+            if(id === 'stage-terang-bulan') initRadar();
+        }
+
+        // --- HANDSHAKE ---
+        function v3MoveFocus(i, n) { if(i.value.length===1 && n!==0) document.querySelectorAll('.v3-digit')[n].focus(); }
+        function generateRandom() { socket.emit("v3_generate_number"); }
+        function submitSyncV3() { socket.emit("v3_submit_sync", Array.from(document.querySelectorAll('.v3-digit')).map(i=>i.value).join('')); }
+        socket.on("v3_receive_number", (n) => { if(currentPlayer==='fendi') document.getElementById('random-number-display').innerText=n; });
+        socket.on("v3_sync_failed", () => { document.getElementById('sync-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('sync-error').classList.add('hidden'), 2000); });
+        socket.on("v3_sync_success", () => switchStage('stage-jasuke'));
+
+        // --- JASUKE ---
+        socket.on("v3_jasuke_data", (d) => {
+            currentFlag = d.flag;
+            updateFlagUI();
+            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area', 'jasuke-error'].forEach(i => document.getElementById(i).classList.add('hidden'));
+            const isFendiSender = (d.flag !== 2);
+            if (currentPlayer === 'fendi') { if(isFendiSender) showJ('ingredients', d); else showJ('answer', d); }
+            else { if(!isFendiSender) showJ('ingredients', d); else showJ('answer', d); }
+        });
+        function showJ(t, d) {
+            document.getElementById('jasuke-puzzle-area').classList.remove('hidden');
+            if(t==='ingredients') { document.getElementById('ingredients-display').classList.remove('hidden'); document.getElementById('val-j').innerText=d.j; document.getElementById('val-s').innerText=d.s; document.getElementById('val-k').innerText=d.k; }
+            else { document.getElementById('answer-display').classList.remove('hidden'); document.getElementById('jasuke-formula').innerText=d.formula; document.getElementById('jasuke-answer-input').value=''; }
+        }
+        function submitJasukeAnswer() { socket.emit("v3_jasuke_submit_answer", document.getElementById('jasuke-answer-input').value); }
+        socket.on("v3_jasuke_failed", () => { document.getElementById('jasuke-error').classList.remove('hidden'); setTimeout(()=>document.getElementById('jasuke-error').classList.add('hidden'), 2000); });
+        socket.on("v3_jasuke_unlocked", () => {
+            document.getElementById('jasuke-puzzle-area').classList.add('hidden');
+            if(currentPlayer === 'ida') document.getElementById('jasuke-action-area').classList.remove('hidden');
+            else document.getElementById('waiting-display').classList.remove('hidden');
+        });
+        function plantFlag() {
+            document.getElementById('btn-plant-flag').classList.add('hidden');
+            document.getElementById('gps-loading').classList.remove('hidden');
+            navigator.geolocation.getCurrentPosition(p => {
+                socket.emit("v3_jasuke_submit_coords", {lat: p.coords.latitude, lng: p.coords.longitude});
+            }, () => { alert("GPS Error!"); document.getElementById('btn-plant-flag').classList.remove('hidden'); document.getElementById('gps-loading').classList.add('hidden'); }, {enableHighAccuracy: true});
+        }
+        socket.on("v3_jasuke_flag_success", () => socket.emit("v3_jasuke_init"));
+        socket.on("v3_jasuke_all_success", () => switchStage('stage-telur-gulung'));
+        function updateFlagUI() { for(let i=1;i<=3;i++) { const el=document.getElementById(`flag-${i}`); if(el) el.className = 'flag-icon text-xl '+(i < currentFlag ? 'flag-planted' : (i===currentFlag?'flag-active':'')); } }
+
+        // --- SUWIT ---
+        function initBO5() { const c = document.getElementById('bo5-container'); c.innerHTML=''; for(let i=0;i<5;i++){ let b=document.createElement('div'); b.className='suwit-box'; b.id=`su-box-${i}`; c.appendChild(b); } }
+        function pickSuwit(c) { 
+            window.myChoice=c; 
+            ['btn-batu','btn-gunting','btn-kertas'].forEach(id => document.getElementById(id).classList.remove('border-purple-500','bg-purple-900/20'));
+            document.getElementById(`btn-${c}`).classList.add('border-purple-500','bg-purple-900/20');
+            document.getElementById('btn-lock-suwit').classList.remove('hidden'); 
+        }
+        function lockSuwit() { socket.emit("v3_suwit_action", {player:currentPlayer, choice:window.myChoice}); document.getElementById('btn-lock-suwit').classList.add('hidden'); }
+        socket.on("v3_suwit_both_locked", () => document.getElementById('btn-reveal-suwit').classList.remove('hidden'));
+        function revealSuwit() { socket.emit("v3_suwit_reveal"); }
+        socket.on("v3_suwit_result", (d) => {
+            document.getElementById('btn-reveal-suwit').classList.add('hidden');
+            const totalRounds = d.score.fendi + d.score.ida;
+            const b = document.getElementById(`su-box-${totalRounds-1}`);
+            if(b) b.classList.add(d.winner==='fendi'?'suwit-win-fendi':'suwit-win-ida');
+            document.getElementById('suwit-result-text').innerText = `${d.choices.fendi} vs ${d.choices.ida} -> ${d.winner.toUpperCase()}!`;
+            
+            setTimeout(() => {
+                if(d.finalWinner) {
+                    document.getElementById('tg-suwit-view').classList.add('hidden');
+                    document.getElementById('tg-color-view').classList.remove('hidden');
+                    if(currentPlayer !== d.finalWinner) { document.getElementById('color-options').classList.add('hidden'); document.getElementById('color-waiting').classList.remove('hidden'); }
+                } else { document.getElementById('suwit-result-text').innerText = ''; }
+            }, 2000);
+        });
+
+        // --- HIDING & FINDING ---
+        function pickColor(c) { socket.emit("v3_tg_pick_color", c); }
+        socket.on("v3_tg_color_chosen", (pc) => { 
+            myColor = pc[currentPlayer];
+            document.getElementById('tg-color-view').classList.add('hidden'); 
+            document.getElementById('tg-hiding-view').classList.remove('hidden'); 
+        });
+        function startHiding() { socket.emit("v3_tg_start_hiding"); }
+        socket.on("v3_tg_hiding_go", () => {
+            document.getElementById('btn-start-hiding').classList.add('hidden');
+            document.getElementById('btn-finish-hiding').classList.remove('hidden');
+            let sec = 120;
+            hidingInt = setInterval(() => {
+                sec--;
+                document.getElementById('hiding-timer').innerText = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+                if(sec<=0) finishHiding();
+            }, 1000);
+        });
+        function finishHiding() { clearInterval(hidingInt); document.getElementById('tg-hiding-view').classList.add('hidden'); document.getElementById('tg-finding-view').classList.remove('hidden'); }
+        
+        function startFinding() {
+            document.getElementById('btn-start-finding').classList.add('hidden');
+            document.getElementById('btn-stop-finding').classList.remove('hidden');
+            let s = Date.now();
+            stopwatchInt = setInterval(() => {
+                let diff = Date.now() - s;
+                document.getElementById('finding-stopwatch').innerText = `${String(Math.floor(diff/60000)).padStart(2,'0')}:${String(Math.floor((diff%60000)/1000)).padStart(2,'0')}.${String(Math.floor((diff%1000)/10)).padStart(2,'0')}`;
+            }, 50);
+        }
+        function stopFinding() { 
+            clearInterval(stopwatchInt); 
+            socket.emit("v3_tg_finding_done", {player:currentPlayer}); 
+            document.getElementById('finding-ui').classList.add('hidden');
+        }
+
+        socket.on("v3_tg_finding_update", (d) => {
+            const lb = document.getElementById('finding-leaderboard');
+            lb.classList.remove('hidden');
+            lb.innerHTML = '<p class="text-[8px] text-gray-500 uppercase mb-2">Sequence:</p>';
+            d.results.forEach((n, i) => lb.innerHTML += `<p class="text-[10px] font-bold ${n==='fendi'?'text-blue-400':'text-yellow-400'}">${i+1}. ${n.toUpperCase()}</p>`);
+            document.getElementById('scan-flow').classList.remove('hidden');
+            updateScanTurnUI(d.turn);
+        });
+
+        function updateScanTurnUI(turn) {
+            const msg = document.getElementById('scan-status-msg');
+            const btn = document.getElementById('btn-open-camera');
+            if(turn === currentPlayer) {
+                msg.innerText = `GILIRANMU! SCAN KUPU-KUPU ${myColor.toUpperCase()}!`;
+                msg.classList.add('text-green-400');
+                btn.classList.remove('hidden');
+            } else {
+                msg.innerText = `MENUNGGU ${turn.toUpperCase()} SCAN...`;
+                msg.classList.remove('text-green-400');
+                btn.classList.add('hidden');
+                if(html5QrCode) { 
+                    html5QrCode.stop().then(() => { html5QrCode = null; }).catch(()=>{}); 
+                }
+            }
+        }
+
+        // --- SCANNING ---
+        function startScanning() {
+            document.getElementById('btn-open-camera').classList.add('hidden');
+            document.getElementById('scan-error-log').classList.add('hidden');
+            html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
+                html5QrCode.stop().then(() => {
+                    html5QrCode = null;
+                    socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
+                });
+            }).catch(err => { 
+                alert("Kamera Error!"); 
+                document.getElementById('btn-open-camera').classList.remove('hidden'); 
+            });
+        }
+
+        socket.on("v3_tb_turn_change", (t) => updateScanTurnUI(t));
+        socket.on("v3_tb_scan_error", (m) => { 
+            const el = document.getElementById('scan-error-log');
+            el.innerText = m; el.classList.remove('hidden');
+            document.getElementById('btn-open-camera').classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        });
+        
+        socket.on("v3_tb_pair_complete", (r) => {
+            const m = document.getElementById('reward-modal');
+            const c = document.getElementById('reward-content');
+            if(r.type === 'question') {
+                document.getElementById('reward-title').innerText = "HUBUNGAN & KOMITMEN";
+                c.innerText = r.content;
+            } else {
+                document.getElementById('reward-title').innerText = "KEPINGAN MEMORI";
+                c.innerText = `Kepingan memori ${r.content.join(' & ')} berhasil disatukan.`;
+                r.content.forEach(n => document.getElementById(`piece-${n}`).classList.add('piece-active'));
+            }
+            m.classList.remove('hidden');
+            if(r.index === 5) {
+                document.querySelector('#reward-modal button').classList.add('hidden');
+                document.getElementById('btn-to-trb').classList.remove('hidden');
+            }
+        });
+
+        socket.on("v3_tb_status", (d) => { if(d.turn) updateScanTurnUI(d.turn); });
+        function closeReward() { document.getElementById('reward-modal').classList.add('hidden'); socket.emit("v3_tb_next_pair"); }
+        function finishTelurGulung() { document.getElementById('reward-modal').classList.add('hidden'); switchStage('stage-terang-bulan'); }
+
+        // --- RADAR ---
+        function initRadar() { socket.emit("v3_trb_init"); }
+        socket.on("v3_trb_data", (d) => {
+            const cont = document.getElementById('radar-container');
+            navigator.geolocation.watchPosition(p => {
+                cont.innerHTML = '';
+                d.coords.forEach((c, i) => {
+                    const dist = calculateDist(p.coords.latitude, p.coords.longitude, c.lat, c.lng);
+                    const isCol = d.collected.includes(i);
+                    const div = document.createElement('div');
+                    div.className = "p-4 border border-blue-900 rounded bg-blue-900/5 flex justify-between items-center";
+                    div.innerHTML = `<div class="text-left"><p class="text-[8px] text-gray-500 uppercase">Bendera ${i+1}</p><p class="text-lg font-bold ${isCol?'text-green-500':'text-blue-400'}">${isCol?'✓ TERAMBIL':Math.round(dist)+'m'}</p></div>`;
+                    if(!isCol && dist < 10) {
+                        const btn = document.createElement('button');
+                        btn.className = "bg-green-600 px-4 py-2 rounded text-[10px] font-bold";
+                        btn.innerText = "AMBIL";
+                        btn.onclick = () => socket.emit("v3_trb_collect", i);
+                        div.appendChild(btn);
+                    }
+                    cont.appendChild(div);
+                });
+            }, null, {enableHighAccuracy:true});
+        });
+
+        function calculateDist(l1, n1, l2, n2) {
+            const R = 6371e3; const f1 = l1 * Math.PI/180; const f2 = l2 * Math.PI/180; const df = (l2-l1) * Math.PI/180; const dn = (n2-n1) * Math.PI/180;
+            const a = Math.sin(df/2) * Math.sin(df/2) + Math.cos(f1) * Math.cos(f2) * Math.sin(dn/2) * Math.sin(dn/2);
+            return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        socket.on("v3_trb_all_finish", () => alert("Semicolon V3 Complete! Metamorphosis Sukses."));
+        function resetSession() { if(confirm("Hapus sesi lokal?")) { localStorage.clear(); window.location.reload(); } }
+    </script>
+</body>
+</html>
