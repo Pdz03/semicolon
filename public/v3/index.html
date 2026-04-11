@@ -209,7 +209,7 @@
         <div id="stage-passcode" class="hidden fade-in text-center space-y-6 p-10 border border-blue-900 bg-blue-950/10 rounded-xl backdrop-blur-md">
             <h3 class="text-blue-400 font-bold tracking-widest text-sm uppercase">Encryption Key Required</h3>
             <p class="text-gray-500 text-[10px]">HINT: Bungkus sunscreen</p>
-            <input type="text" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.8em] text-xl rounded focus:outline-none focus:border-blue-400 text-white" placeholder="••••••">
+            <input type="text" id="v3-passcode" class="w-full bg-black border border-blue-700 p-4 text-center tracking-[0.2em] text-xl rounded focus:outline-none focus:border-blue-400 text-white" placeholder="••••••">
             <button onclick="checkPasscode()" class="w-full bg-blue-800 hover:bg-blue-700 text-white font-bold py-4 rounded transition shadow-[0_0_15px_rgba(30,58,138,0.5)]">DECRYPT PROTOCOL</button>
             <p id="pass-error" class="text-red-500 text-[10px] hidden mt-2">INVALID ACCESS KEY</p>
         </div>
@@ -468,10 +468,7 @@
             setTimeout(() => document.getElementById('sync-error').classList.add('hidden'), 3000);
         });
 
-        socket.on("v3_sync_success", () => {
-            alert("HANDSHAKE SUCCESS! Menuju Misi Utama...");
-            // Lanjut ke Stage 1 Quest nanti di sini
-        });
+        socket.on("v3_sync_success", () => switchStage('stage-jasuke'));
 
         // ================== STAGE 1: JASUKE LOGIC ==================
         function plantFlag() {
