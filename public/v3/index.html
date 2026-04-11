@@ -612,17 +612,29 @@
         }
 
         // --- SCANNING ---
-        function startScanning() {
+       function startScanning() {
+            // Sembunyikan elemen agar fokus ke scanner
+            document.getElementById('finding-leaderboard').classList.add('hidden');
+            document.getElementById('scan-status-msg').classList.add('hidden');
+            document.querySelector('.puzzle-grid').classList.add('hidden');
             document.getElementById('btn-open-camera').classList.add('hidden');
             document.getElementById('scan-error-log').classList.add('hidden');
+
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
                 html5QrCode.stop().then(() => {
                     html5QrCode = null;
+                    // Munculkan kembali UI scan setelah berhasil baca
+                    document.getElementById('scan-status-msg').classList.remove('hidden');
+                    document.querySelector('.puzzle-grid').classList.remove('hidden');
                     socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
                 });
             }).catch(err => { 
                 alert("Kamera Error!"); 
+                // Kembalikan UI jika gagal buka kamera
+                document.getElementById('finding-leaderboard').classList.remove('hidden');
+                document.getElementById('scan-status-msg').classList.remove('hidden');
+                document.querySelector('.puzzle-grid').classList.remove('hidden');
                 document.getElementById('btn-open-camera').classList.remove('hidden'); 
             });
         }
@@ -634,8 +646,25 @@
             document.getElementById('btn-open-camera').classList.remove('hidden');
             setTimeout(() => el.classList.add('hidden'), 3000);
         });
+
+        socket.on("v3_tb_partial_success", (data) => {
+    if (data.player === currentPlayer) {
+        // Jika saya yang scan duluan
+        document.getElementById('scan-status-msg').innerText = "MENUNGGU PASANGANMU MENCARI PASANGANNYA...";
+        document.getElementById('btn-open-camera').classList.add('hidden');
+    } else {
+        // Jika pasangan saya sudah scan duluan
+        navigator.vibrate([100, 50, 100]);
+        document.getElementById('scan-status-msg').innerText = `PASANGANMU SUDAH SCAN! SEKARANG CARI KUPU-KUPU ${myColor.toUpperCase()} PASANGANNYA!`;
+        document.getElementById('btn-open-camera').classList.remove('hidden');
+    }
+});
         
         socket.on("v3_tb_pair_complete", (r) => {
+                if(html5QrCode) {
+        html5QrCode.stop().then(() => { html5QrCode = null; });
+    }
+    
             const m = document.getElementById('reward-modal');
             const c = document.getElementById('reward-content');
             if(r.type === 'question') {

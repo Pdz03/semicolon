@@ -140,21 +140,31 @@ let v3State = {
         winner_bo5: null,
         player_colors: { fendi: null, ida: null }, // fendi: 'biru', ida: 'kuning'
         finding_results: [],
-        current_turn: null, // Giliran scan
-        current_pair_index: 1,
-        scanned_status: { biru: false, kuning: false }
+        current_step: 1,           // Progres reward (1 sampai 5)
+        active_pair_index: null,   // Indeks di physicalPairs yang sedang dikerjakan
+        solved_physical_indices: [], // Indeks physicalPairs yang sudah selesai
+        scanned_colors: { biru: false, kuning: false },
+        current_turn: null
     },
     terang_bulan: { collected_flags: [] }
 };
 
-const pairingMap = {
-    1: { biru: "628ab0b59b05dd46", kuning: "5721916a61b93811", type: "question", content: "Apa impresi pertamamu pas pertama kali kita sepedaan ke Colomadu?" },
-    2: { biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7", type: "puzzle", content: [1, 2] },
-    3: { biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec", type: "question", content: "Dari semua momen LDR, hal kecil apa yang paling bikin kamu ngerasa disayang?" },
-    4: { biru: "0365bbcce40aa2f9", kuning: "a5f8fe43bc6a4161", type: "puzzle", content: [3, 4] },
-    5: { biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591", type: "question", content: "Apa satu janji kecil yang pengen kita jaga bareng setelah PPG ini?" }
-};
+const physicalPairs = [
+    { biru: "628ab0b59b05dd46", kuning: "5721916a61b93811" },
+    { biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7" },
+    { biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec" },
+    { biru: "0365bbcce40aa2f9", kuning: "a5f8fe43bc6a4161" },
+    { biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591" }
+];
 
+// --- URUTAN REWARD (Tetap urut 1-5) ---
+const rewardSequence = {
+    1: { type: "question", content: "Apa impresi pertamamu pas pertama kali kita sepedaan ke Colomadu?" },
+    2: { type: "puzzle", content: [1, 2] },
+    3: { type: "question", content: "Dari semua momen LDR, hal kecil apa yang paling bikin kamu ngerasa disayang?" },
+    4: { type: "puzzle", content: [3, 4] },
+    5: { type: "question", content: "Apa satu janji kecil yang pengen kita jaga bareng-bareng setelah PPG ini?" }
+};
 
 // --- API ROUTES V3 (BARU) ---
 // Ambil Status Waktu V3
@@ -499,38 +509,70 @@ io.on("connection", (socket) => {
 
     // Scan Logic
     socket.on("v3_tb_scan_qr", (data) => {
-        if (data.player !== v3State.telur_gulung.current_turn) return socket.emit("v3_tb_scan_error", "Bukan giliranmu!");
+    const { player, qr_code } = data;
+    if (player !== v3State.telur_gulung.current_turn) return socket.emit("v3_tb_scan_error", "Bukan giliranmu!");
 
-        const playerColor = v3State.telur_gulung.player_colors[data.player];
-        const pair = pairingMap[v3State.telur_gulung.current_pair_index];
-        const expected = pair[playerColor];
-
-        if (data.qr_code === expected) {
-            v3State.telur_gulung.scanned_status[playerColor] = true;
-            io.to("v3_room").emit("v3_tb_partial_success", { player: data.player, status: v3State.telur_gulung.scanned_status });
-
-            if (v3State.telur_gulung.scanned_status.biru && v3State.telur_gulung.scanned_status.kuning) {
-                io.to("v3_room").emit("v3_tb_pair_complete", { 
-                    index: v3State.telur_gulung.current_pair_index, 
-                    type: pair.type, 
-                    content: pair.content 
-                });
-            } else {
-                const otherPlayer = (data.player === 'fendi') ? 'ida' : 'fendi';
-                v3State.telur_gulung.current_turn = otherPlayer;
-                io.to("v3_room").emit("v3_tb_turn_change", v3State.telur_gulung.current_turn);
-            }
-        } else {
-            socket.emit("v3_tb_scan_error", `Kode Salah! Cari Kupu-kupu ${playerColor.toUpperCase()}.`);
+    const playerColor = v3State.telur_gulung.player_colors[player];
+    
+    // FASE A: Belum ada kode pertama yang di-scan di babak ini
+    if (v3State.telur_gulung.active_pair_index === null) {
+        // Cari kode ini ada di physicalPairs ke berapa?
+        const foundIdx = physicalPairs.findIndex(p => p[playerColor] === qr_code);
+        
+        if (foundIdx === -1) return socket.emit("v3_tb_scan_error", "Kupu-kupu tidak dikenali!");
+        if (v3State.telur_gulung.solved_physical_indices.includes(foundIdx)) {
+            return socket.emit("v3_tb_scan_error", "Kupu-kupu ini sudah pernah digunakan!");
         }
-    });
 
-    socket.on("v3_tb_next_pair", () => {
-        v3State.telur_gulung.current_pair_index++;
-        v3State.telur_gulung.scanned_status = { biru: false, kuning: false };
-        v3State.telur_gulung.current_turn = v3State.telur_gulung.finding_results[0];
-        io.to("v3_room").emit("v3_tb_status", { idx: v3State.telur_gulung.current_pair_index, turn: v3State.telur_gulung.current_turn });
+        // Kunci pasangan fisik ini untuk dikerjakan
+        v3State.telur_gulung.active_pair_index = foundIdx;
+        v3State.telur_gulung.scanned_colors[playerColor] = true;
+        
+        // Pindah giliran ke pasangan
+        const otherPlayer = (player === 'fendi') ? 'ida' : 'fendi';
+        v3State.telur_gulung.current_turn = otherPlayer;
+
+        io.to("v3_room").emit("v3_tb_partial_success", {
+            player,
+            color: playerColor,
+            next_player: otherPlayer,
+            status: v3State.telur_gulung.scanned_status
+        });
+    } 
+    // FASE B: Mencari pasangan dari kode pertama
+    else {
+        const currentPair = physicalPairs[v3State.telur_gulung.active_pair_index];
+        const expectedCode = currentPair[playerColor];
+
+        if (qr_code === expectedCode) {
+            v3State.telur_gulung.scanned_colors[playerColor] = true;
+            v3State.telur_gulung.solved_physical_indices.push(v3State.telur_gulung.active_pair_index);
+            
+            // Ambil reward berdasarkan urutan progres (bukan urutan fisik)
+            const reward = rewardSequence[v3State.telur_gulung.current_step];
+
+            io.to("v3_room").emit("v3_tb_pair_complete", {
+                index: v3State.telur_gulung.current_step,
+                type: reward.type,
+                content: reward.content
+            });
+        } else {
+            socket.emit("v3_tb_scan_error", `Salah! Pasangannya bukan yang itu. Cari warna ${playerColor.toUpperCase()}.`);
+        }
+    }
+});
+
+socket.on("v3_tb_next_pair", () => {
+    v3State.telur_gulung.current_step++;
+    v3State.telur_gulung.active_pair_index = null; // Reset pasangan fisik untuk babak reward selanjutnya
+    v3State.telur_gulung.scanned_colors = { biru: false, kuning: false };
+    // Giliran balik ke orang pertama (pemenang finding)
+    v3State.telur_gulung.current_turn = v3State.telur_gulung.finding_results[0];
+    io.to("v3_room").emit("v3_tb_status", { 
+        step: v3State.telur_gulung.current_step, 
+        turn: v3State.telur_gulung.current_turn 
     });
+});
 
     // Radar
     socket.on("v3_trb_init", () => {
