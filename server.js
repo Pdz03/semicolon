@@ -463,8 +463,8 @@ io.on("connection", (socket) => {
         } else socket.emit("v3_jasuke_failed");
     });
 
-    socket.on("v3_jasuke_submit_coords", (coords) => {
-        v3State.jasuke.coordinates.push(coords);
+    socket.on("v3_jasuke_submit_coords", async (coords) => {
+        await V3Progress.findOneAndUpdate({ session_id: "current_v3" }, { $push: { coordinates: coords } }, { upsert: true });
         if (v3State.jasuke.current_flag < 3) {
             v3State.jasuke.current_flag++;
             io.to("v3_room").emit("v3_jasuke_flag_success", { next_flag: v3State.jasuke.current_flag });

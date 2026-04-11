@@ -428,6 +428,9 @@
         let hidingInt = null;
         let currentFlag = 1;
         let targetDate = new Date("2026-04-12T09:00:00").getTime();
+
+        // Pengaman untuk menghindari proses scan berlapis
+        let isProcessingScan = false;
         
         const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke', 'stage-telur-gulung', 'stage-terang-bulan'];
 
@@ -602,6 +605,7 @@
         function updateScanTurnUI(turn) {
             const msg = document.getElementById('scan-status-msg');
             const btn = document.getElementById('btn-open-camera');
+            const reader = document.getElementById('reader');
             if(turn === currentPlayer) {
                 msg.innerText = `GILIRANMU! SCAN KUPU-KUPU ${myColor.toUpperCase()}!`;
                 msg.classList.add('text-green-400');
@@ -610,6 +614,7 @@
                 msg.innerText = `MENUNGGU ${turn.toUpperCase()} SCAN...`;
                 msg.classList.remove('text-green-400');
                 btn.classList.add('hidden');
+                reader.classList.add('hidden');
                 if(html5QrCode) { 
                     html5QrCode.stop().then(() => { html5QrCode = null; }).catch(()=>{}); 
                 }
@@ -618,6 +623,7 @@
 
         // --- SCANNING ---
        function startScanning() {
+        if(isProcessingScan) return; // Cegah scan berlapis
             // Sembunyikan elemen agar fokus ke scanner
             document.getElementById('finding-leaderboard').classList.add('hidden');
             document.getElementById('scan-status-msg').classList.add('hidden');
@@ -625,10 +631,27 @@
             document.getElementById('btn-open-camera').classList.add('hidden');
             document.getElementById('scan-error-log').classList.add('hidden');
 
+             const reader = document.getElementById('reader');
+            reader.classList.remove('hidden'); // Tampilkan kotak video
+
+            if(html5QrCode) { html5QrCode.stop().catch(()=>{}); }
+
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
                 // Gunakan .pause() agar aman sebelum emit
-                html5QrCode.pause(); 
+                  if (isProcessingScan) return;
+                isProcessingScan = true;
+
+                // 1. Segera sembunyikan kotak video agar tulisan "Paused" tidak terlihat pengguna
+                reader.classList.add('hidden');
+
+                document.getElementById('scan-status-msg').classList.remove('hidden');
+            document.querySelector('.puzzle-grid').classList.remove('hidden');
+            document.getElementById('scan-status-msg').innerText = "MEMPROSES KODE...";
+
+                html5QrCode.stop().then(() => { html5QrCode = null; }).catch(()=>{});
+
+                // html5QrCode.pause(); 
                 socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
             }).catch(err => { 
                 alert("Kamera Error!"); 
@@ -642,6 +665,7 @@
 
         socket.on("v3_tb_turn_change", (t) => updateScanTurnUI(t));
         socket.on("v3_tb_scan_error", (m) => { 
+            isProcessingScan = false;
             const el = document.getElementById('scan-error-log');
             el.innerText = m; el.classList.remove('hidden');
             document.getElementById('btn-open-camera').classList.remove('hidden');
@@ -649,9 +673,10 @@
         });
 
         socket.on("v3_tb_partial_success", (data) => {
-             if(html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
-             document.getElementById('scan-status-msg').classList.remove('hidden');
+            isProcessingScan = false;
+                            document.getElementById('scan-status-msg').classList.remove('hidden');
             document.querySelector('.puzzle-grid').classList.remove('hidden');
+             
 
     if (data.player === currentPlayer) {
         // Jika saya yang scan duluan
@@ -666,10 +691,11 @@
 });
         
         socket.on("v3_tb_pair_complete", (r) => {
-                if(html5QrCode) {
-        html5QrCode.stop().then(() => { html5QrCode = null; });
-    }
-    
+            isProcessingScan = false;
+
+                  document.getElementById('scan-status-msg').classList.remove('hidden');
+            document.querySelector('.puzzle-grid').classList.remove('hidden');
+
             const m = document.getElementById('reward-modal');
             const c = document.getElementById('reward-content');
             if(r.type === 'question') {
