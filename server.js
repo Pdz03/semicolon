@@ -406,47 +406,43 @@ io.on("connection", (socket) => {
   });
 
  // TAHAP V3: JASUKE (SOAL & BENDERA)
-  socket.on("v3_jasuke_init", () => {
-    const flag = v3State.jasuke.current_flag;
-    const j = Math.floor(Math.random() * 20) + 10;
-    const s = Math.floor(Math.random() * 15) + 5;
-    const k = Math.floor(Math.random() * 10) + 2;
-    
-    let ans, formula;
-    if (flag === 1) { ans = (j + s) - k; formula = "KODE RASA = (J + S) - K"; }
-    else if (flag === 2) { ans = (j + k) - s; formula = "KODE RASA = (J + K) - S"; }
-    else { ans = (j + s + k); formula = "KODE RASA = J + S + K"; }
+  // Jasuke Soal & Bendera
+    socket.on("v3_jasuke_init", () => {
+        const flag = v3State.jasuke.current_flag;
+        const j = Math.floor(Math.random() * 20) + 10;
+        const s = Math.floor(Math.random() * 15) + 5;
+        const k = Math.floor(Math.random() * 10) + 2;
+        
+        let ans, formula;
+        if (flag === 1) { ans = (j + s) - k; formula = "KODE RASA = (J + S) - K"; }
+        else if (flag === 2) { ans = (j + k) - s; formula = "KODE RASA = (J + K) - S"; }
+        else { ans = (j + s + k); formula = "KODE RASA = J + S + K"; }
 
-    v3State.jasuke.data = { j, s, k, ans, formula, flag };
-    v3State.jasuke.is_solved = false; // Reset status solved untuk bendera baru
-    io.to("v3_room").emit("v3_jasuke_data", v3State.jasuke.data);
-  });
+        v3State.jasuke.data = { j, s, k, ans, formula, flag };
+        v3State.jasuke.is_solved = false;
+        io.to("v3_room").emit("v3_jasuke_data", v3State.jasuke.data);
+    });
 
-  // Validasi Jawaban Soal
-  socket.on("v3_jasuke_submit_answer", (ans) => {
-    if (parseInt(ans) === v3State.jasuke.data.ans) {
-        v3State.jasuke.is_solved = true;
-        io.to("v3_room").emit("v3_jasuke_unlocked"); // Beritahu HP Ida untuk munculkan tombol Tancap Bendera
-    } else {
-        socket.emit("v3_jasuke_failed");
-    }
-  });
+    socket.on("v3_jasuke_submit_answer", (ans) => {
+        if (parseInt(ans) === v3State.jasuke.data.ans) {
+            v3State.jasuke.is_solved = true;
+            io.to("v3_room").emit("v3_jasuke_unlocked");
+        } else {
+            socket.emit("v3_jasuke_failed");
+        }
+    });
 
-  // Simpan Koordinat Bendera (Hanya setelah soal solved)
-  socket.on("v3_jasuke_submit_coords", (coords) => {
-      if (!v3State.jasuke.is_solved) return; // Keamanan agar tidak bypass GPS tanpa jawab
-
-      v3State.jasuke.coordinates.push(coords);
-      console.log(`🚩 Bendera ${v3State.jasuke.current_flag} ditanam:`, coords);
-
-      if (v3State.jasuke.current_flag < 3) {
-          v3State.jasuke.current_flag++;
-          io.to("v3_room").emit("v3_jasuke_flag_success", { next_flag: v3State.jasuke.current_flag });
-      } else {
-          v3State.jasuke.current_flag = 1;
-          io.to("v3_room").emit("v3_jasuke_all_success");
-      }
-  });
+    socket.on("v3_jasuke_submit_coords", (coords) => {
+        if (!v3State.jasuke.is_solved) return;
+        v3State.jasuke.coordinates.push(coords);
+        if (v3State.jasuke.current_flag < 3) {
+            v3State.jasuke.current_flag++;
+            io.to("v3_room").emit("v3_jasuke_flag_success", { next_flag: v3State.jasuke.current_flag });
+        } else {
+            v3State.jasuke.current_flag = 1;
+            io.to("v3_room").emit("v3_jasuke_all_success");
+        }
+    });
 });
 
 // Redirect root to /v3

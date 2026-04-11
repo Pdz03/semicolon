@@ -233,30 +233,30 @@
         </div>
 
         <!-- STAGE 3: SYNC GAME -->
-        <div id="stage-sync" class="hidden fade-in text-center space-y-6 p-8 border border-purple-900 bg-purple-950/10 rounded-xl">
+        <div id="stage-sync" class="hidden text-center space-y-6 p-8 border border-purple-900 bg-purple-950/10 rounded-xl">
             <div id="fendi-sync-ui" class="hidden space-y-6">
                 <h3 class="text-purple-400 text-xs tracking-widest uppercase">Handshake Generator</h3>
-                <p class="text-[10px] text-gray-500">Beritahukan angka ini kepada Ida:</p>
                 <div id="random-number-display" class="text-6xl font-bold text-white tracking-widest py-4">----</div>
-                <button onclick="generateRandom()" class="text-[10px] border border-purple-800 px-4 py-2 text-purple-300 rounded hover:bg-purple-900/30">GENERATE NEW KEY</button>
+                <button onclick="generateRandom()" class="text-[10px] border border-purple-800 px-4 py-2 rounded">NEW KEY</button>
             </div>
-
             <div id="ida-sync-ui" class="hidden space-y-6">
                 <h3 class="text-purple-400 text-xs tracking-widest uppercase">Handshake Verification</h3>
-                <p class="text-[10px] text-gray-500">Masukkan angka yang muncul di HP Fendi:</p>
-                <input type="number" id="ida-input-num" class="w-full bg-black border border-purple-700 p-4 text-center tracking-[0.5em] text-2xl rounded text-white" placeholder="0000">
-                <button onclick="submitSync()" class="w-full bg-purple-800 text-white font-bold py-4 rounded shadow-lg">SYNC PERMISSION</button>
-                <p id="sync-error" class="text-red-500 text-[10px] hidden mt-2">NUMERIC MISMATCH DETECTED</p>
+                <div class="flex justify-center gap-2">
+                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 1)">
+                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 2)">
+                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 3)">
+                    <input type="number" maxlength="1" class="sync-input" oninput="moveFocus(this, 0)">
+                </div>
+                <button onclick="submitSync()" class="w-full bg-purple-800 text-white font-bold py-4 rounded">SYNC</button>
+                <p id="sync-error" class="text-red-500 text-[10px] hidden">MISMATCH DETECTED</p>
             </div>
         </div>
 
         <!-- STAGE 4: JASUKE (PLANTING FLAGS) -->
-        <div id="stage-jasuke" class="hidden fade-in text-center space-y-6 p-8 border border-yellow-600 bg-yellow-900/10 rounded-xl backdrop-blur-md">
+       <!-- STAGE 4: JASUKE -->
+        <div id="stage-jasuke" class="hidden text-center space-y-6 p-8 border border-yellow-600 bg-yellow-900/10 rounded-xl backdrop-blur-md">
             <div class="flex justify-between items-center pb-4 border-b border-yellow-900/50">
-                <div class="text-left">
-                    <h3 class="text-yellow-500 font-bold tracking-widest text-xs uppercase">Stage 1: JASUKE</h3>
-                    <p id="jasuke-subtitle" class="text-[9px] text-gray-500 uppercase">Handshake Protocol</p>
-                </div>
+                <h3 class="text-yellow-500 font-bold text-xs uppercase">Stage 1: JASUKE</h3>
                 <div class="flex space-x-2">
                     <span id="flag-1" class="flag-icon text-xl">🚩</span>
                     <span id="flag-2" class="flag-icon text-xl">🚩</span>
@@ -264,46 +264,26 @@
                 </div>
             </div>
 
-            <div id="jasuke-puzzle-area" class="space-y-6 pt-4">
-                <div id="ingredients-display" class="hidden grid grid-cols-3 gap-2">
-                    <div class="p-3 border border-yellow-800 bg-black rounded">
-                        <p class="text-[8px] text-yellow-600 uppercase">Jagung</p>
-                        <p id="val-j" class="text-xl font-bold text-white">?</p>
-                    </div>
-                    <div class="p-3 border border-blue-800 bg-black rounded">
-                        <p class="text-[8px] text-blue-600 uppercase">Susu</p>
-                        <p id="val-s" class="text-xl font-bold text-white">?</p>
-                    </div>
-                    <div class="p-3 border border-white/20 bg-black rounded">
-                        <p class="text-[8px] text-gray-400 uppercase">Keju</p>
-                        <p id="val-k" class="text-xl font-bold text-white">?</p>
-                    </div>
-                    <p class="col-span-3 text-[10px] text-gray-500 mt-2">Diktekan angka di atas ke pasanganmu!</p>
+            <div id="jasuke-puzzle-area">
+                <div id="ingredients-display" class="hidden grid grid-cols-3 gap-2 py-4">
+                    <div class="p-3 border border-yellow-800 bg-black rounded"><p class="text-[8px]">Jagung</p><p id="val-j" class="text-xl font-bold">?</p></div>
+                    <div class="p-3 border border-blue-800 bg-black rounded"><p class="text-[8px]">Susu</p><p id="val-s" class="text-xl font-bold">?</p></div>
+                    <div class="p-3 border border-white/20 bg-black rounded"><p class="text-[8px]">Keju</p><p id="val-k" class="text-xl font-bold">?</p></div>
                 </div>
 
-                <div id="answer-display" class="hidden space-y-4">
-                    <div class="bg-black/80 p-4 border border-dashed border-yellow-700 rounded-lg">
-                        <p id="jasuke-formula" class="text-xs font-bold text-white tracking-[0.2em]">KODE RASA = ?</p>
-                    </div>
+                <div id="answer-display" class="hidden space-y-4 pt-4">
+                    <div class="bg-black/80 p-4 border border-dashed border-yellow-700 rounded-lg"><p id="jasuke-formula" class="text-xs font-bold text-white">KODE RASA = ?</p></div>
                     <input type="number" id="jasuke-answer-input" class="w-full bg-black border border-yellow-700 p-4 text-center text-3xl rounded text-white" placeholder="???">
-                    <button onclick="submitJasukeAnswer()" class="w-full bg-blue-700 text-white font-bold py-3 rounded text-xs uppercase tracking-widest">Verify Flavor</button>
-                    <p id="jasuke-error" class="text-red-500 text-[10px] hidden">RASA TIDAK PAS!</p>
+                    <button onclick="submitJasukeAnswer()" class="w-full bg-blue-700 font-bold py-3 rounded text-xs">VERIFY</button>
+                    <p id="jasuke-error" class="text-red-500 text-[10px] hidden font-bold mt-2">KODE SALAH!</p>
                 </div>
 
-                <div id="waiting-display" class="hidden py-8">
-                    <p class="text-yellow-500 animate-pulse text-sm font-bold tracking-widest">MENUNGGU PROSES VALIDASI...</p>
-                </div>
+                <div id="waiting-display" class="hidden py-8"><p class="text-yellow-500 animate-pulse text-sm font-bold">MENUNGGU VALIDASI...</p></div>
             </div>
 
             <div id="jasuke-action-area" class="hidden space-y-6 pt-4 border-t border-yellow-900/50">
-                <p class="text-[10px] text-green-400 font-bold uppercase tracking-widest">✓ RASA TERVALIDASI!</p>
-                <div class="bg-black/80 p-4 border border-green-700 rounded-lg">
-                    <p class="text-xs text-white">Sekarang, tancapkan bendera fisik ke tanah dan simpan koordinatnya.</p>
-                </div>
-                <button id="btn-plant-flag" onclick="plantFlag()" class="w-full bg-yellow-600 text-black font-bold py-4 rounded uppercase text-xs flex justify-center items-center gap-2">
-                    📍 TANCAP BENDERA
-                </button>
-                <div id="gps-loading" class="hidden py-4 text-yellow-500 text-xs animate-pulse font-bold uppercase tracking-widest">MENGUNCI SATELIT GPS...</div>
+                <button id="btn-plant-flag" onclick="plantFlag()" class="w-full bg-yellow-600 text-black font-bold py-4 rounded text-xs">📍 TANCAP BENDERA</button>
+                <div id="gps-loading" class="hidden py-4 text-yellow-500 animate-pulse text-xs font-bold uppercase">MENGUNCI GPS...</div>
             </div>
         </div>
 
@@ -335,6 +315,12 @@
                 switchStage(savedStage);
             }
         };
+
+        function moveFocus(input, nextIdx) {
+            if (input.value.length === 1 && nextIdx !== 0) {
+                document.querySelectorAll('.sync-input')[nextIdx].focus();
+            }
+        }
 
         async function fetchStatus() {
             try {
@@ -419,12 +405,6 @@
             }
         }
 
-        function updateFlagUI() {
-            for(let i=1; i<=3; i++) {
-                const el = document.getElementById(`flag-${i}`);
-                el.className = 'flag-icon text-xl ' + (i < currentFlag ? 'flag-planted' : (i === currentFlag ? 'flag-active' : ''));
-            }
-        }
 
         function checkPasscode() {
             const input = document.getElementById('v3-passcode').value;
@@ -458,7 +438,7 @@
         }
 
         function submitSync() {
-            const val = document.getElementById('ida-input-num').value;
+            const val = Array.from(document.querySelectorAll('.sync-input')).map(i => i.value).join('');
             socket.emit("v3_submit_sync", val);
         }
 
@@ -477,38 +457,25 @@
         
 
         // ================== STAGE 1: JASUKE LOGIC ==================
-        socket.on("v3_jasuke_data", (data) => {
+       socket.on("v3_jasuke_data", (data) => {
             currentFlag = data.flag;
+            localStorage.setItem('v3_jasuke_flag', currentFlag);
             updateFlagUI();
+            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('jasuke-puzzle-area').classList.remove('hidden');
             
-            // Sembunyikan semua UI dulu
-            document.getElementById('ingredients-display').classList.add('hidden');
-            document.getElementById('answer-display').classList.add('hidden');
-            document.getElementById('waiting-display').classList.add('hidden');
-            document.getElementById('jasuke-action-area').classList.add('hidden');
-
-            // Logika Gantian Role Berdasarkan Bendera
-            if (data.flag === 1) {
-                // Bendera 1: Fendi Sender, Ida Answer
-                if (currentPlayer === 'fendi') showPuzzleUI('ingredients', data);
-                else showPuzzleUI('answer', data);
-            } else if (data.flag === 2) {
-                // Bendera 2: Ida Sender, Fendi Answer
-                if (currentPlayer === 'ida') showPuzzleUI('ingredients', data);
-                else showPuzzleUI('answer', data);
+            const isFendiSender = (data.flag === 1 || data.flag === 3); // Ganti pola role di sini jika mau
+            if (currentPlayer === 'fendi') {
+                if (isFendiSender) showPuzzle('ingredients', data); else showPuzzle('answer', data);
             } else {
-                // Bendera 3: Berdua (Ida tetap Answer untuk kemudahan flow)
-                if (currentPlayer === 'fendi') showPuzzleUI('ingredients', data);
-                else showPuzzleUI('answer', data);
+                if (!isFendiSender) showPuzzle('ingredients', data); else showPuzzle('answer', data);
             }
         });
 
-        function showPuzzleUI(type, data) {
+        function showPuzzle(type, data) {
             if (type === 'ingredients') {
                 document.getElementById('ingredients-display').classList.remove('hidden');
-                document.getElementById('val-j').innerText = data.j;
-                document.getElementById('val-s').innerText = data.s;
-                document.getElementById('val-k').innerText = data.k;
+                document.getElementById('val-j').innerText = data.j; document.getElementById('val-s').innerText = data.s; document.getElementById('val-k').innerText = data.k;
             } else {
                 document.getElementById('answer-display').classList.remove('hidden');
                 document.getElementById('jasuke-formula').innerText = data.formula;
@@ -516,46 +483,44 @@
             }
         }
 
-        function submitJasukeAnswer() {
-            const ans = document.getElementById('jasuke-answer-input').value;
-            socket.emit("v3_jasuke_submit_answer", ans);
-        }
+        function submitJasukeAnswer() { socket.emit("v3_jasuke_submit_answer", document.getElementById('jasuke-answer-input').value); }
+        
+        socket.on("v3_jasuke_failed", () => {
+            document.getElementById('jasuke-error').classList.remove('hidden');
+            setTimeout(() => document.getElementById('jasuke-error').classList.add('hidden'), 2000);
+        });
 
-        // Terpanggil jika jawaban benar
         socket.on("v3_jasuke_unlocked", () => {
             document.getElementById('jasuke-puzzle-area').classList.add('hidden');
-            // Hanya HP Ida yang memproses GPS (Sesuai request Mas Fendi)
-            if (currentPlayer === 'ida') {
-                document.getElementById('jasuke-action-area').classList.remove('hidden');
-            } else {
+            if (currentPlayer === 'ida') document.getElementById('jasuke-action-area').classList.remove('hidden');
+            else {
                 document.getElementById('waiting-display').classList.remove('hidden');
-                document.getElementById('waiting-display').innerHTML = `<p class="text-green-500 animate-pulse font-bold">SOAL SELESAI!<br><span class="text-xs text-gray-500">Menunggu Ida menancapkan bendera...</span></p>`;
+                document.getElementById('waiting-display').innerHTML = `<p class="text-green-500 font-bold">SOAL B${currentFlag} SELESAI!<br><span class="text-xs text-gray-500 italic">Menunggu Ida menanam bendera...</span></p>`;
             }
         });
 
         function plantFlag() {
             document.getElementById('btn-plant-flag').classList.add('hidden');
             document.getElementById('gps-loading').classList.remove('hidden');
-            
             navigator.geolocation.getCurrentPosition((pos) => {
                 socket.emit("v3_jasuke_submit_coords", { lat: pos.coords.latitude, lng: pos.coords.longitude });
-            }, () => {
-                alert("GPS Error. Cek Izin Lokasi!");
-                document.getElementById('btn-plant-flag').classList.remove('hidden');
-                document.getElementById('gps-loading').classList.add('hidden');
-            }, { enableHighAccuracy: true });
+            }, () => { alert("GPS Error!"); document.getElementById('btn-plant-flag').classList.remove('hidden'); document.getElementById('gps-loading').classList.add('hidden'); }, { enableHighAccuracy: true });
         }
 
         socket.on("v3_jasuke_flag_success", (res) => {
-            alert(`Bendera ${currentFlag} Berhasil Ditanam! Lanjut bendera berikutnya.`);
             currentFlag = res.next_flag;
+            localStorage.setItem('v3_jasuke_flag', currentFlag);
             socket.emit("v3_jasuke_init");
         });
 
-        socket.on("v3_jasuke_all_success", () => {
-            alert("STAGE JASUKE LENGKAP! 3 Bendera telah tertancap sempurna.");
-            // switchStage('stage-telur-gulung');
-        });
+        socket.on("v3_jasuke_all_success", () => alert("STAGE JASUKE COMPLETE!"));
+
+        function updateFlagUI() {
+            for(let i=1; i<=3; i++) {
+                const el = document.getElementById(`flag-${i}`);
+                el.className = 'flag-icon text-xl ' + (i < currentFlag ? 'flag-planted' : (i === currentFlag ? 'flag-active' : ''));
+            }
+        }
 
     </script>
 </body>
