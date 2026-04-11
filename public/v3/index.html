@@ -463,14 +463,19 @@
         
 
         // ================== STAGE 1: JASUKE LOGIC ==================
-       socket.on("v3_jasuke_data", (data) => {
+      // --- Jasuke Logic ---
+        socket.on("v3_jasuke_data", (data) => {
             currentFlag = data.flag;
             localStorage.setItem('v3_jasuke_flag', currentFlag);
             updateFlagUI();
-            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area'].forEach(id => document.getElementById(id).classList.add('hidden'));
+
+            // Reset UI
+            ['ingredients-display', 'answer-display', 'waiting-display', 'jasuke-action-area', 'jasuke-error'].forEach(id => document.getElementById(id).classList.add('hidden'));
             document.getElementById('jasuke-puzzle-area').classList.remove('hidden');
             
-            const isFendiSender = (data.flag === 1 || data.flag === 3); // Ganti pola role di sini jika mau
+            // Pola Role: Babak 1 Fendi Sender, Babak 2 Ida Sender, Babak 3 Fendi Sender
+            const isFendiSender = (data.flag !== 2); 
+            
             if (currentPlayer === 'fendi') {
                 if (isFendiSender) showPuzzle('ingredients', data); else showPuzzle('answer', data);
             } else {
@@ -489,7 +494,11 @@
             }
         }
 
-        function submitJasukeAnswer() { socket.emit("v3_jasuke_submit_answer", document.getElementById('jasuke-answer-input').value); }
+        function submitJasukeAnswer() { 
+            const ans = document.getElementById('jasuke-answer-input').value;
+            if(!ans) return;
+            socket.emit("v3_jasuke_submit_answer", ans); 
+        }
         
         socket.on("v3_jasuke_failed", () => {
             document.getElementById('jasuke-error').classList.remove('hidden');
@@ -498,10 +507,14 @@
 
         socket.on("v3_jasuke_unlocked", () => {
             document.getElementById('jasuke-puzzle-area').classList.add('hidden');
-            if (currentPlayer === 'ida') document.getElementById('jasuke-action-area').classList.remove('hidden');
-            else {
+            if (currentPlayer === 'ida') {
+                // IDA SELALU YANG TANCAP BENDERA
+                document.getElementById('jasuke-action-area').classList.remove('hidden');
+                document.getElementById('btn-plant-flag').classList.remove('hidden');
+                document.getElementById('gps-loading').classList.add('hidden');
+            } else {
                 document.getElementById('waiting-display').classList.remove('hidden');
-                document.getElementById('waiting-display').innerHTML = `<p class="text-green-500 font-bold">SOAL B${currentFlag} SELESAI!<br><span class="text-xs text-gray-500 italic">Menunggu Ida menanam bendera...</span></p>`;
+                document.getElementById('waiting-subtext').innerText = "Ida sedang menancapkan bendera fisik...";
             }
         });
 
@@ -510,16 +523,24 @@
             document.getElementById('gps-loading').classList.remove('hidden');
             navigator.geolocation.getCurrentPosition((pos) => {
                 socket.emit("v3_jasuke_submit_coords", { lat: pos.coords.latitude, lng: pos.coords.longitude });
-            }, () => { alert("GPS Error!"); document.getElementById('btn-plant-flag').classList.remove('hidden'); document.getElementById('gps-loading').classList.add('hidden'); }, { enableHighAccuracy: true });
+            }, (err) => { 
+                alert("GPS Error! Pastikan izin lokasi aktif."); 
+                document.getElementById('btn-plant-flag').classList.remove('hidden'); 
+                document.getElementById('gps-loading').classList.add('hidden'); 
+            }, { enableHighAccuracy: true });
         }
 
         socket.on("v3_jasuke_flag_success", (res) => {
+            alert(`Bendera ${currentFlag} Tertancap! Lanjut babak berikutnya.`);
             currentFlag = res.next_flag;
             localStorage.setItem('v3_jasuke_flag', currentFlag);
-            socket.emit("v3_jasuke_init");
+            socket.emit("v3_jasuke_init"); // Minta data soal baru
         });
 
-        socket.on("v3_jasuke_all_success", () => alert("STAGE JASUKE COMPLETE!"));
+        socket.on("v3_jasuke_all_success", () => {
+            alert("STAGE JASUKE COMPLETE! Tiga bendera terpasang.");
+            // switchStage('stage-telur-gulung');
+        });
 
         function updateFlagUI() {
             for(let i=1; i<=3; i++) {
