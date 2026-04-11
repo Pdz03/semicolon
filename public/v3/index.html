@@ -409,11 +409,20 @@
         </div>
 
         <!-- REWARD MODAL -->
-        <div id="reward-modal" class="fixed inset-0 z-[100] bg-black hidden flex flex-col items-center justify-center p-8 text-center">
-            <h4 id="reward-title" class="text-blue-400 font-bold uppercase text-xs mb-4">Progress Memori</h4>
-            <div id="reward-content" class="text-white text-sm italic mb-8"></div>
-            <button onclick="closeReward()" class="px-8 py-3 bg-white text-black font-bold rounded-full text-[10px] uppercase">Lanjut</button>
-            <button onclick="finishTelurGulung()" id="btn-to-trb" class="hidden px-8 py-3 bg-blue-600 text-white font-bold rounded-full text-[10px] uppercase">Buka Terang Bulan</button>
+        <div id="reward-modal" class="fixed inset-0 z-[100] bg-black/95 hidden flex flex-col items-center justify-center p-8 text-center backdrop-blur-md">
+            <h4 id="reward-title" class="text-blue-400 font-bold uppercase text-xs mb-4 tracking-[0.3em]">Memori Ditemukan</h4>
+            
+            <div id="reward-photo-container" class="hidden mb-6 mt-4">
+                <div class="p-3 bg-white rounded shadow-[0_0_30px_rgba(59,130,246,0.6)] transform rotate-[-3deg] hover:rotate-0 transition duration-500 ease-in-out">
+                    <img src="/reward.jpg" alt="Semicolon" class="w-56 h-auto border border-gray-200">
+                    <p class="text-black text-[11px] font-bold mt-4 uppercase tracking-[0.2em]">Semicolon ;</p>
+                </div>
+            </div>
+
+            <div id="reward-content" class="text-white text-sm italic mb-10 leading-relaxed font-light"></div>
+            
+            <button id="btn-continue-mission" onclick="closeReward()" class="px-10 py-3 bg-white text-black font-bold rounded-full text-[10px] uppercase hover:scale-105 transition">Lanjutkan Misi</button>
+            <button id="btn-finish-all" onclick="finishMetamorphosis()" class="hidden px-10 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-full text-[10px] uppercase animate-pulse shadow-[0_0_20px_rgba(59,130,246,0.5)]">Selesaikan Metamorfosis</button>
         </div>
 
     </div>
@@ -706,16 +715,32 @@
                 c.innerText = `Kepingan memori ${r.content.join(' & ')} berhasil disatukan.`;
                 r.content.forEach(n => document.getElementById(`piece-${n}`).classList.add('piece-active'));
             }
-            m.classList.remove('hidden');
+            // JIKA FINAL REWARD (INDEX === 5)
             if(r.index === 5) {
-                document.querySelector('#reward-modal button').classList.add('hidden');
-                document.getElementById('btn-to-trb').classList.remove('hidden');
+                document.getElementById('reward-title').innerText = "METAMORPHOSIS COMPLETE";
+                document.getElementById('reward-photo-container').classList.remove('hidden');
+                document.getElementById('btn-continue-mission').classList.add('hidden');
+                document.getElementById('btn-finish-all').classList.remove('hidden');
+                c.innerText = ""; // Kosongkan teks agar fokus ke foto
             }
+
+            m.classList.remove('hidden');
         });
 
         socket.on("v3_tb_status", (d) => { if(d.turn) updateScanTurnUI(d.turn); });
-        function closeReward() { document.getElementById('reward-modal').classList.add('hidden'); socket.emit("v3_tb_next_pair"); }
-        function finishTelurGulung() { document.getElementById('reward-modal').classList.add('hidden'); switchStage('stage-terang-bulan'); }
+        function closeReward() { 
+            document.getElementById('reward-modal').classList.add('hidden'); 
+            document.getElementById('finding-leaderboard').classList.remove('hidden');
+            document.getElementById('scan-status-msg').classList.remove('hidden');
+            document.getElementById('puzzle-visual-container').classList.remove('hidden');
+            globalTargetColor = null; 
+            socket.emit("v3_tb_next_pair"); 
+        }
+
+        function finishMetamorphosis() { 
+            alert("Metamorfosis telah sempurna! Terima kasih telah berjuang dan mencari bersama."); 
+            // Opsional: window.location.href = '/kalibrasi';
+        }
 
         // --- RADAR ---
         function initRadar() { socket.emit("v3_trb_init"); }
