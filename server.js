@@ -152,11 +152,11 @@ let v3State = {
 };
 
 const pairingMap = {
-    1: { fendi: "V3B1", ida: "V3Y1", type: "question", content: "Apa impresi pertamamu pas pertama kali kita sepedaan ke Colomadu?" },
-    2: { fendi: "V3B2", ida: "V3Y2", type: "puzzle", content: [1, 2] },
-    3: { fendi: "V3B3", ida: "V3Y3", type: "question", content: "Dari semua momen LDR, hal kecil apa yang paling bikin kamu ngerasa disayang?" },
-    4: { fendi: "V3B4", ida: "V3Y4", type: "puzzle", content: [3, 4] },
-    5: { fendi: "V3B5", ida: "V3Y5", type: "question", content: "Apa satu janji kecil yang pengen kita jaga barely-bareng setelah PPG ini selesai?" }
+    1: { biru: "628ab0b59b05dd46", kuning: "5721916a61b93811", type: "question", content: "Apa impresi pertamamu pas pertama kali kita sepedaan ke Colomadu?" },
+    2: { biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7", type: "puzzle", content: [1, 2] },
+    3: { biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec", type: "question", content: "Dari semua momen LDR, hal kecil apa yang paling bikin kamu ngerasa disayang?" },
+    4: { biru: "0365bbcce40aa2f9", kuning: "a5f8fe43bc6a4161", type: "puzzle", content: [3, 4] },
+    5: { biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591", type: "question", content: "Apa satu janji kecil yang pengen kita jaga bareng setelah PPG ini?" }
 };
 
 

@@ -422,6 +422,7 @@
     let findingInterval = null;
     let currentPairIdx = 1;
 let html5QrCode = null;
+let myColor = null;
         
         const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke','stage-telur-gulung'];
         
@@ -809,14 +810,62 @@ let html5QrCode = null;
                 setTimeout(() => html5QrCode.resume(), 2000);
             });
         }
-        socket.on("v3_tb_pair_complete", (r) => {
-            document.getElementById('reward-modal').classList.remove('hidden');
-            const c = document.getElementById('reward-content');
-            if(r.type==='question') c.innerText = r.content;
-            else { c.innerText = "Puzzle kepingan " + r.content.join(' & ') + " terbuka!"; r.content.forEach(n => document.getElementById(`piece-${n}`).classList.add('piece-active')); }
-            if(r.index === 5) { document.querySelector('#reward-modal button').classList.add('hidden'); document.getElementById('btn-to-trb').classList.remove('hidden'); }
-        });
-        function closeReward() { document.getElementById('reward-modal').classList.add('hidden'); socket.emit("v3_tb_next_pair"); }
+
+        
+        socket.on("v3_tg_color_chosen", (playerColors) => {
+        myColor = playerColors[currentPlayer];
+        document.getElementById('tg-color-view').classList.add('hidden');
+        document.getElementById('tg-hiding-view').classList.remove('hidden');
+        
+        // Update instruksi scan nanti agar tahu warnanya apa
+        document.getElementById('scan-status-msg').innerText = `CARI KUPU-KUPU ${myColor.toUpperCase()}!`;
+        document.getElementById('scan-status-msg').style.color = (myColor === 'biru') ? '#3b82f6' : '#eab308';
+    });
+
+    socket.on("v3_tb_partial_success", (data) => {
+        // Efek visual jika salah satu sudah scan
+        const statusBiru = data.status.biru;
+        const statusKuning = data.status.kuning;
+
+        // Kita bisa gunakan ID fendi/ida atau buat ID dinamis
+        // Untuk kemudahan, kita tunjukkan saja di status bar atau console vibrate
+        if (data.player === currentPlayer) {
+            navigator.vibrate(200);
+            document.getElementById('scan-status-msg').innerText = "MENUNGGU PASANGANMU...";
+        }
+    });
+
+    // PENTING: Perbaikan di reward kepingan puzzle
+    socket.on("v3_tb_pair_complete", (r) => {
+        if(html5QrCode) html5QrCode.pause();
+        
+        document.getElementById('reward-modal').classList.remove('hidden');
+        const c = document.getElementById('reward-content');
+        
+        if (r.type === 'question') {
+            document.getElementById('reward-title').innerText = "PERTANYAAN HUBUNGAN";
+            c.innerText = r.content;
+        } else {
+            document.getElementById('reward-title').innerText = "KEPINGAN MEMORI";
+            c.innerText = `Kepingan ${r.content.join(' & ')} berhasil disatukan!`;
+            r.content.forEach(num => {
+                document.getElementById(`piece-${num}`).classList.add('piece-active');
+                document.getElementById(`piece-${num}`).innerText = "✓";
+            });
+        }
+
+        if (r.index === 5) {
+            document.querySelector('#reward-modal button').classList.add('hidden');
+            document.getElementById('btn-to-trb').classList.remove('hidden');
+        }
+    });
+
+    function closeReward() {
+        document.getElementById('reward-modal').classList.add('hidden');
+        document.getElementById('scan-status-msg').innerText = `CARI KUPU-KUPU ${myColor.toUpperCase()} BERIKUTNYA!`;
+        if(html5QrCode) html5QrCode.resume();
+        socket.emit("v3_tb_next_pair");
+    }
         function finishTelurGulung() { document.getElementById('reward-modal').classList.add('hidden'); switchStage('stage-terang-bulan'); }
 
         // --- TERANG BULAN (RADAR) ---
