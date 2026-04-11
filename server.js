@@ -527,55 +527,55 @@ io.on("connection", (socket) => {
 
     // --- SCAN QR DYNAMIC PAIRING (LOGIKA WARNA TARGET) ---
     socket.on("v3_tb_scan_qr", async (data) => {
-        const progress = await V3Progress.findOne({ session_id: "current_v3" });
-        if (!progress) return;
-        
-        // Warna PEMAIN (Misal Fendi = Biru)
-        const myColor = progress.player_colors[data.player];
-        // Warna TARGET (Berarti Fendi mencari Kuning)
-        const targetColor = (myColor === 'biru') ? 'kuning' : 'biru';
-
         if (data.player !== v3State.telur_gulung.current_turn) return socket.emit("v3_tb_scan_error", "Bukan giliranmu!");
 
-        // FASE 1: Orang pertama (pemenang finding) scan bebas
+        let progress = await V3Progress.findOne({ session_id: "current_v3" });
+        const solvedDB = progress ? progress.solved_physical_indices : v3State.telur_gulung.solved_physical_indices;
+
+        // FASE 1: Bebas Scan Warna Apapun
         if (v3State.telur_gulung.active_pair_index === null) {
-            // Karena ini orang pertama, dia scan Kupu-kupu TARGET nya
-            const foundIdx = physicalPairs.findIndex(p => p[targetColor] === data.qr_code);
+            let scannedColor = null;
+            let foundIdx = physicalPairs.findIndex(p => p.biru === data.qr_code);
             
-            if (foundIdx === -1) return socket.emit("v3_tb_scan_error", "Kupu-kupu tidak dikenali!");
-            if (progress.solved_physical_indices.includes(foundIdx)) return socket.emit("v3_tb_scan_error", "Sudah pernah digunakan!");
+            if (foundIdx !== -1) { scannedColor = 'biru'; }
+            else {
+                foundIdx = physicalPairs.findIndex(p => p.kuning === data.qr_code);
+                if (foundIdx !== -1) scannedColor = 'kuning';
+            }
+
+            if (foundIdx === -1) return socket.emit("v3_tb_scan_error", "Kupu-kupu tidak dikenali/salah cetak!");
+            if (solvedDB.includes(foundIdx)) return socket.emit("v3_tb_scan_error", "Sudah pernah digunakan!");
 
             v3State.telur_gulung.active_pair_index = foundIdx;
-            v3State.telur_gulung.scanned_colors[targetColor] = true;
+            v3State.telur_gulung.scanned_colors[scannedColor] = true;
             
             const otherPlayer = (data.player === 'fendi') ? 'ida' : 'fendi';
             v3State.telur_gulung.current_turn = otherPlayer;
-            io.to("v3_room").emit("v3_tb_partial_success", { player: data.player });
+            
+            // Beri tahu UI warna apa yang barusan di-scan
+            io.to("v3_room").emit("v3_tb_partial_success", { player: data.player, scanned_color: scannedColor });
         } 
-        // FASE 2: Pasangan melengkapi scan
+        // FASE 2: Pasangan melengkapi dengan warna sebaliknya
         else {
             const currentPair = physicalPairs[v3State.telur_gulung.active_pair_index];
-            // Pasangan harus scan TARGET nya juga (kebalikan dari orang pertama)
-            if (data.qr_code === currentPair[targetColor]) {
-                v3State.telur_gulung.scanned_colors[targetColor] = true;
-                
-                // Update DB Progres Reward
+            const missingColor = v3State.telur_gulung.scanned_colors.biru ? 'kuning' : 'biru';
+
+            if (data.qr_code === currentPair[missingColor]) {
+                v3State.telur_gulung.scanned_colors[missingColor] = true;
+                v3State.telur_gulung.solved_physical_indices.push(v3State.telur_gulung.active_pair_index);
+
                 const updated = await V3Progress.findOneAndUpdate(
                     { session_id: "current_v3" },
                     { $push: { solved_physical_indices: v3State.telur_gulung.active_pair_index }, $inc: { current_reward_step: 1 } },
-                    { new: true }
+                    { new: true, upsert: true }
                 );
 
                 const rewardIdx = updated.current_reward_step - 1;
                 const reward = rewardSequence[rewardIdx];
 
-                io.to("v3_room").emit("v3_tb_pair_complete", {
-                    index: rewardIdx,
-                    type: reward.type,
-                    content: reward.content
-                });
+                io.to("v3_room").emit("v3_tb_pair_complete", { index: rewardIdx, type: reward.type, content: reward.content });
             } else {
-                socket.emit("v3_tb_scan_error", `Salah! Cari pasangan ${targetColor.toUpperCase()} nya.`);
+                socket.emit("v3_tb_scan_error", `Salah pasangannya! Cari kupu-kupu warna ${missingColor.toUpperCase()}.`);
             }
         }
     });

@@ -400,18 +400,19 @@
 
         // --- SCANNING ---
         function startScanning() {
+            document.getElementById('finding-leaderboard').classList.add('hidden');
+            document.getElementById('scan-status-msg').classList.add('hidden');
+            document.getElementById('puzzle-visual-container').classList.add('hidden');
             document.getElementById('btn-open-camera').classList.add('hidden');
-            document.getElementById('scan-error-log').classList.add('hidden');
             html5QrCode = new Html5Qrcode("reader");
             html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (txt) => {
                 html5QrCode.stop().then(() => {
                     html5QrCode = null;
+                    document.getElementById('scan-status-msg').classList.remove('hidden');
+                    document.getElementById('puzzle-visual-container').classList.remove('hidden');
                     socket.emit("v3_tb_scan_qr", { player: currentPlayer, qr_code: txt });
                 });
-            }).catch(err => { 
-                alert("Kamera Error!"); 
-                document.getElementById('btn-open-camera').classList.remove('hidden'); 
-            });
+            }).catch(err => { alert("Kamera Error!"); document.getElementById('btn-open-camera').classList.remove('hidden'); });
         }
 
         socket.on("v3_tb_turn_change", (t) => updateScanTurnUI(t));
