@@ -131,6 +131,15 @@ const SettingV3Schema = new mongoose.Schema({
 });
 const SettingV3 = mongoose.model("SettingV3", SettingV3Schema);
 
+const V3ProgressSchema = new mongoose.Schema({
+    session_id: { type: String, default: "current_v3" },
+    coordinates: [{ lat: Number, lng: Number }],
+    current_step: { type: Number, default: 1 },
+    solved_physical_indices: [Number],
+    player_colors: { fendi: String, ida: String }
+});
+const V3Progress = mongoose.model("V3Progress", V3ProgressSchema);
+
 let v3State = {
     current_number: null,
     jasuke: { current_flag: 1, is_solved: false, data: {}, coordinates: [] },
@@ -413,6 +422,15 @@ io.on("connection", (socket) => {
   // ------------------------------------------
  socket.on("v3_join", () => socket.join("v3_room"));
 
+     socket.on("v3_reset_all_data", async () => {
+        await V3Progress.deleteMany({ session_id: "current_v3" });
+        // Reset in-memory state
+        v3State.jasuke = { current_flag: 1, is_solved: false, data: {}, coordinates: [] };
+        v3State.telur_gulung = { suwit_score: { fendi: 0, ida: 0 }, suwit_choices: { fendi: null, ida: null }, winner_bo5: null, player_colors: { fendi: null, ida: null }, finding_results: [], current_step: 1, active_pair_index: null, solved_physical_indices: [], scanned_colors: { biru: false, kuning: false }, current_turn: null };
+        v3State.terang_bulan = { collected_flags: [] };
+        io.to("v3_room").emit("v3_force_reload");
+    });
+
     // Handshake
     socket.on("v3_generate_number", () => {
         v3State.current_number = Math.floor(1000 + Math.random() * 9000);
@@ -507,77 +525,77 @@ io.on("connection", (socket) => {
         });
     });
 
-    // Scan Logic
-    socket.on("v3_tb_scan_qr", (data) => {
-    const { player, qr_code } = data;
-    if (player !== v3State.telur_gulung.current_turn) return socket.emit("v3_tb_scan_error", "Bukan giliranmu!");
-
-    const playerColor = v3State.telur_gulung.player_colors[player];
-    
-    // FASE A: Belum ada kode pertama yang di-scan di babak ini
-    if (v3State.telur_gulung.active_pair_index === null) {
-        // Cari kode ini ada di physicalPairs ke berapa?
-        const foundIdx = physicalPairs.findIndex(p => p[playerColor] === qr_code);
+    // --- SCAN QR DYNAMIC PAIRING (LOGIKA WARNA TARGET) ---
+    socket.on("v3_tb_scan_qr", async (data) => {
+        const progress = await V3Progress.findOne({ session_id: "current_v3" });
+        if (!progress) return;
         
-        if (foundIdx === -1) return socket.emit("v3_tb_scan_error", "Kupu-kupu tidak dikenali!");
-        if (v3State.telur_gulung.solved_physical_indices.includes(foundIdx)) {
-            return socket.emit("v3_tb_scan_error", "Kupu-kupu ini sudah pernah digunakan!");
-        }
+        // Warna PEMAIN (Misal Fendi = Biru)
+        const myColor = progress.player_colors[data.player];
+        // Warna TARGET (Berarti Fendi mencari Kuning)
+        const targetColor = (myColor === 'biru') ? 'kuning' : 'biru';
 
-        // Kunci pasangan fisik ini untuk dikerjakan
-        v3State.telur_gulung.active_pair_index = foundIdx;
-        v3State.telur_gulung.scanned_colors[playerColor] = true;
-        
-        // Pindah giliran ke pasangan
-        const otherPlayer = (player === 'fendi') ? 'ida' : 'fendi';
-        v3State.telur_gulung.current_turn = otherPlayer;
+        if (data.player !== v3State.telur_gulung.current_turn) return socket.emit("v3_tb_scan_error", "Bukan giliranmu!");
 
-        io.to("v3_room").emit("v3_tb_partial_success", {
-            player,
-            color: playerColor,
-            next_player: otherPlayer,
-            status: v3State.telur_gulung.scanned_status
-        });
-    } 
-    // FASE B: Mencari pasangan dari kode pertama
-    else {
-        const currentPair = physicalPairs[v3State.telur_gulung.active_pair_index];
-        const expectedCode = currentPair[playerColor];
-
-        if (qr_code === expectedCode) {
-            v3State.telur_gulung.scanned_colors[playerColor] = true;
-            v3State.telur_gulung.solved_physical_indices.push(v3State.telur_gulung.active_pair_index);
+        // FASE 1: Orang pertama (pemenang finding) scan bebas
+        if (v3State.telur_gulung.active_pair_index === null) {
+            // Karena ini orang pertama, dia scan Kupu-kupu TARGET nya
+            const foundIdx = physicalPairs.findIndex(p => p[targetColor] === data.qr_code);
             
-            // Ambil reward berdasarkan urutan progres (bukan urutan fisik)
-            const reward = rewardSequence[v3State.telur_gulung.current_step];
+            if (foundIdx === -1) return socket.emit("v3_tb_scan_error", "Kupu-kupu tidak dikenali!");
+            if (progress.solved_physical_indices.includes(foundIdx)) return socket.emit("v3_tb_scan_error", "Sudah pernah digunakan!");
 
-            io.to("v3_room").emit("v3_tb_pair_complete", {
-                index: v3State.telur_gulung.current_step,
-                type: reward.type,
-                content: reward.content
-            });
-        } else {
-            socket.emit("v3_tb_scan_error", `Salah! Pasangannya bukan yang itu. Cari warna ${playerColor.toUpperCase()}.`);
+            v3State.telur_gulung.active_pair_index = foundIdx;
+            v3State.telur_gulung.scanned_colors[targetColor] = true;
+            
+            const otherPlayer = (data.player === 'fendi') ? 'ida' : 'fendi';
+            v3State.telur_gulung.current_turn = otherPlayer;
+            io.to("v3_room").emit("v3_tb_partial_success", { player: data.player });
+        } 
+        // FASE 2: Pasangan melengkapi scan
+        else {
+            const currentPair = physicalPairs[v3State.telur_gulung.active_pair_index];
+            // Pasangan harus scan TARGET nya juga (kebalikan dari orang pertama)
+            if (data.qr_code === currentPair[targetColor]) {
+                v3State.telur_gulung.scanned_colors[targetColor] = true;
+                
+                // Update DB Progres Reward
+                const updated = await V3Progress.findOneAndUpdate(
+                    { session_id: "current_v3" },
+                    { $push: { solved_physical_indices: v3State.telur_gulung.active_pair_index }, $inc: { current_reward_step: 1 } },
+                    { new: true }
+                );
+
+                const rewardIdx = updated.current_reward_step - 1;
+                const reward = rewardSequence[rewardIdx];
+
+                io.to("v3_room").emit("v3_tb_pair_complete", {
+                    index: rewardIdx,
+                    type: reward.type,
+                    content: reward.content
+                });
+            } else {
+                socket.emit("v3_tb_scan_error", `Salah! Cari pasangan ${targetColor.toUpperCase()} nya.`);
+            }
         }
-    }
-});
-
-socket.on("v3_tb_next_pair", () => {
-    v3State.telur_gulung.current_step++;
-    v3State.telur_gulung.active_pair_index = null; // Reset pasangan fisik untuk babak reward selanjutnya
-    v3State.telur_gulung.scanned_colors = { biru: false, kuning: false };
-    // Giliran balik ke orang pertama (pemenang finding)
-    v3State.telur_gulung.current_turn = v3State.telur_gulung.finding_results[0];
-    io.to("v3_room").emit("v3_tb_status", { 
-        step: v3State.telur_gulung.current_step, 
-        turn: v3State.telur_gulung.current_turn 
     });
-});
 
-    // Radar
-    socket.on("v3_trb_init", () => {
-        io.to("v3_room").emit("v3_trb_data", { coords: v3State.jasuke.coordinates, collected: v3State.terang_bulan.collected_flags });
+    socket.on("v3_tb_next_pair", () => {
+        v3State.telur_gulung.active_pair_index = null;
+        v3State.telur_gulung.scanned_colors = { biru: false, kuning: false };
+        v3State.telur_gulung.current_turn = v3State.telur_gulung.finding_results[0];
+        io.to("v3_room").emit("v3_tb_status", { turn: v3State.telur_gulung.current_turn });
     });
+
+    // RADAR TERANG BULAN
+    socket.on("v3_trb_init", async () => {
+        const progress = await V3Progress.findOne({ session_id: "current_v3" });
+        io.to("v3_room").emit("v3_trb_data", { 
+            coords: progress ? progress.coordinates : [], 
+            collected: v3State.terang_bulan.collected_flags 
+        });
+    });
+
     socket.on("v3_trb_collect", (idx) => {
         if(!v3State.terang_bulan.collected_flags.includes(idx)) v3State.terang_bulan.collected_flags.push(idx);
         io.to("v3_room").emit("v3_trb_collected", v3State.terang_bulan.collected_flags);

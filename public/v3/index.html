@@ -402,7 +402,7 @@
         </div>
 
         <!-- TOMBOL RESET SESSION (Hanya muncul jika sudah lewat stage 0) -->
-        <div id="reset-trigger" class="hidden mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
+        <div id="reset-trigger" class="mt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
             <button onclick="resetSession()" class="text-[9px] text-gray-500 hover:text-red-400 border-b border-gray-800 pb-1 uppercase tracking-widest">
                 [ RESET_LOCAL_SESSION ]
             </button>
@@ -716,7 +716,16 @@
             return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
         socket.on("v3_trb_all_finish", () => alert("Semicolon V3 Complete! Metamorphosis Sukses."));
-        function resetSession() { if(confirm("Hapus sesi lokal?")) { localStorage.clear(); window.location.reload(); } }
+         socket.on("v3_force_reload", () => {
+            localStorage.clear();
+            window.location.reload();
+        });
+
+        function resetAll() {
+            if(confirm("⚠ PERINGATAN: Ini akan menghapus SEMUA koordinat di Database dan progres game. Yakin?")) {
+                socket.emit("v3_reset_all_data");
+            }
+        }
     
     </script>
 </body>
