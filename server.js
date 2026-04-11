@@ -135,11 +135,20 @@ let v3State = {
     current_number: null,
     jasuke: { 
         current_flag: 1, 
-        is_solved: false, // Menandai apakah soal bendera ini sudah dijawab benar
+        is_solved: false, 
         data: {}, 
         coordinates: [] 
+    },
+    telur_gulung: {
+        suwit_score: { fendi: 0, ida: 0 },
+        suwit_choices: { fendi: null, ida: null },
+        winner_bo5: null,
+        selected_color: null, // 'biru' atau 'kuning'
+        hiding_timer_started: false,
+        finding_results: [] // Menyimpan siapa yang paling cepat menemukan
     }
 };
+
 
 // --- API ROUTES V3 (BARU) ---
 // Ambil Status Waktu V3
@@ -443,6 +452,71 @@ io.on("connection", (socket) => {
             io.to("v3_room").emit("v3_jasuke_all_success");
         }
     });
+
+    // --- STAGE: TELUR GULUNG (SUWIT & HIDE) ---
+  
+  // Lock pilihan suwit
+  socket.on("v3_suwit_lock", (choice) => {
+      const player = socket.handshake.query.player || (socket.id === v3State.fendi_sid ? 'fendi' : 'ida'); 
+      // Note: Sebaiknya kirim player name dari frontend saat emit
+  });
+
+  // Karena kita ingin lebih eksplisit, kita buat begini:
+  socket.on("v3_suwit_action", (data) => {
+      v3State.telur_gulung.suwit_choices[data.player] = data.choice;
+      
+      // Jika keduanya sudah kunci
+      if (v3State.telur_gulung.suwit_choices.fendi && v3State.telur_gulung.suwit_choices.ida) {
+          io.to("v3_room").emit("v3_suwit_both_locked");
+      }
+  });
+
+  socket.on("v3_suwit_reveal", () => {
+      const { fendi, ida } = v3State.telur_gulung.suwit_choices;
+      let roundWinner = null;
+
+      if (fendi === ida) roundWinner = 'draw';
+      else if (
+          (fendi === 'batu' && ida === 'gunting') ||
+          (fendi === 'gunting' && ida === 'kertas') ||
+          (fendi === 'kertas' && ida === 'batu')
+      ) {
+          roundWinner = 'fendi';
+          v3State.telur_gulung.suwit_score.fendi++;
+      } else {
+          roundWinner = 'ida';
+          v3State.telur_gulung.suwit_score.ida++;
+      }
+
+      // Cek BO5 (Menang 3x)
+      if (v3State.telur_gulung.suwit_score.fendi === 3) v3State.telur_gulung.winner_bo5 = 'fendi';
+      if (v3State.telur_gulung.suwit_score.ida === 3) v3State.telur_gulung.winner_bo5 = 'ida';
+
+      io.to("v3_room").emit("v3_suwit_result", {
+          choices: v3State.telur_gulung.suwit_choices,
+          winner: roundWinner,
+          score: v3State.telur_gulung.suwit_score,
+          finalWinner: v3State.telur_gulung.winner_bo5
+      });
+
+      // Reset choices untuk round berikutnya
+      v3State.telur_gulung.suwit_choices = { fendi: null, ida: null };
+  });
+
+  socket.on("v3_tg_pick_color", (color) => {
+      v3State.telur_gulung.selected_color = color;
+      io.to("v3_room").emit("v3_tg_color_chosen", color);
+  });
+
+  socket.on("v3_tg_start_hiding", () => {
+      v3State.telur_gulung.hiding_timer_started = true;
+      io.to("v3_room").emit("v3_tg_hiding_go");
+  });
+
+  socket.on("v3_tg_finding_done", (data) => {
+      v3State.telur_gulung.finding_results.push(data.player);
+      io.to("v3_room").emit("v3_tg_finding_update", v3State.telur_gulung.finding_results);
+  });
 });
 
 // Redirect root to /v3

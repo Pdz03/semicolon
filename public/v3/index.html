@@ -88,6 +88,13 @@
         .flag-planted { filter: grayscale(0) opacity(1) drop-shadow(0 0 8px #eab308); }
         .sync-input { width: 50px; height: 60px; background: black; border: 2px solid #581c87; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; color: white; outline: none; transition: border-color 0.3s; }
         .sync-input:focus { border-color: #a855f7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.4); }
+
+        .suwit-box { height: 10px; flex-grow: 1; background: #1a1a1a; border: 1px solid #333; transition: all 0.5s; }
+    .suwit-win-fendi { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+    .suwit-win-ida { background: #eab308; box-shadow: 0 0 10px #eab308; }
+    .btn-suwit { border: 1px solid #444; padding: 20px; border-radius: 12px; transition: all 0.3s; }
+    .btn-suwit.selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); transform: scale(1.05); }
+    .btn-suwit.locked { opacity: 0.5; pointer-events: none; border-color: #00ff00; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center relative px-4">
@@ -300,6 +307,78 @@
             </button>
         </div>
 
+        <!-- STAGE 5: TELUR GULUNG -->
+<div id="stage-telur-gulung" class="hidden fade-in space-y-6 w-full max-w-md">
+    
+    <!-- Bagian Atas: 5 Kotak BO5 -->
+    <div class="flex gap-2 w-full px-4" id="bo5-container">
+        <!-- Kotak akan diisi via JS -->
+    </div>
+
+    <div class="bg-[#0a0a0a]/80 backdrop-blur-md border border-purple-900/50 p-6 rounded-2xl shadow-xl">
+        <h3 class="text-purple-500 font-bold text-xs uppercase tracking-widest mb-4">Stage 2: Telur Gulung</h3>
+        
+        <!-- VIEW 1: SUWIT -->
+        <div id="tg-suwit-view" class="space-y-6">
+            <p id="suwit-instruction" class="text-gray-400 text-[10px] text-center uppercase tracking-tighter">Pilih senjatamu!</p>
+            
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="pickSuwit('batu')" id="btn-batu" class="btn-suwit flex flex-col items-center">
+                    <span class="text-3xl mb-2">✊</span><span class="text-[8px] uppercase">Batu</span>
+                </button>
+                <button onclick="pickSuwit('gunting')" id="btn-gunting" class="btn-suwit flex flex-col items-center">
+                    <span class="text-3xl mb-2">✌️</span><span class="text-[8px] uppercase">Gunting</span>
+                </button>
+                <button onclick="pickSuwit('kertas')" id="btn-kertas" class="btn-suwit flex flex-col items-center">
+                    <span class="text-3xl mb-2">✋</span><span class="text-[8px] uppercase">Kertas</span>
+                </button>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="lockSuwit()" id="btn-lock-suwit" class="hidden w-full bg-white text-black font-bold py-3 rounded-lg text-xs uppercase">Lock Choice</button>
+                <button onclick="revealSuwit()" id="btn-reveal-suwit" class="hidden w-full bg-purple-600 text-white font-bold py-3 rounded-lg text-xs uppercase animate-pulse">Lihat Hasil</button>
+            </div>
+            
+            <div id="suwit-result-text" class="text-center text-[10px] text-purple-400 font-bold min-h-[1.5rem]"></div>
+        </div>
+
+        <!-- VIEW 2: COLOR PICK (Hanya untuk pemenang BO5) -->
+        <div id="tg-color-view" class="hidden space-y-6 text-center">
+            <h4 class="text-white font-bold text-sm uppercase">BO5 WINNER!</h4>
+            <p id="color-msg" class="text-xs text-gray-400">Pilih warna kupu-kupu yang akan kamu sembunyikan:</p>
+            <div id="color-options" class="grid grid-cols-2 gap-4 pt-4">
+                <button onclick="pickColor('biru')" class="p-6 border-2 border-blue-600 rounded-xl bg-blue-900/20 text-blue-400 font-bold">🦋 BIRU</button>
+                <button onclick="pickColor('kuning')" class="p-6 border-2 border-yellow-600 rounded-xl bg-yellow-900/20 text-yellow-400 font-bold">🦋 KUNING</button>
+            </div>
+            <div id="color-waiting" class="hidden py-8 text-xs text-gray-500 animate-pulse">Menunggu pemenang memilih warna...</div>
+        </div>
+
+        <!-- VIEW 3: HIDING (Timer 2 Menit) -->
+        <div id="tg-hiding-view" class="hidden space-y-6 text-center">
+            <h4 class="text-white font-bold text-sm uppercase">Sembunyikan Kupu-Kupu</h4>
+            <div class="text-5xl font-bold text-white py-4" id="hiding-timer">02:00</div>
+            <div class="bg-purple-900/10 border border-purple-800 p-4 rounded-lg">
+                <p class="text-[10px] text-gray-400 leading-relaxed uppercase">Kalian punya 2 menit untuk menaruh kupu-kupu fisik di lokasi yang berbeda sisi.</p>
+            </div>
+            <button onclick="startHiding()" id="btn-start-hiding" class="w-full bg-purple-600 text-white font-bold py-4 rounded-lg uppercase">Mulai Timer</button>
+            <button onclick="finishHiding()" id="btn-finish-hiding" class="hidden w-full bg-green-600 text-white font-bold py-4 rounded-lg uppercase">Selesai Menaruh</button>
+        </div>
+
+        <!-- VIEW 4: FINDING (Stopwatch) -->
+        <div id="tg-finding-view" class="hidden space-y-6 text-center">
+            <h4 class="text-white font-bold text-sm uppercase">Cari Kupu-Kupu Lawan!</h4>
+            <div class="text-5xl font-bold text-blue-400 py-4" id="finding-stopwatch">00:00.00</div>
+            <button onclick="startFinding()" id="btn-start-finding" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg uppercase">Start Finding</button>
+            <button onclick="stopFinding()" id="btn-stop-finding" class="hidden w-full bg-red-600 text-white font-bold py-4 rounded-lg uppercase">Kupu-Kupu Ketemu!</button>
+            
+            <div id="finding-leaderboard" class="space-y-2 mt-4 pt-4 border-t border-purple-900/30">
+                <!-- Hasil adu cepat -->
+            </div>
+        </div>
+
+    </div>
+</div>
+
     </div>
 
     <script>
@@ -308,8 +387,15 @@
         let currentPlayer = localStorage.getItem('v3_player');
         let targetDate = new Date("2026-04-12T09:00:00").getTime();
         let currentFlag = parseInt(localStorage.getItem('v3_jasuke_flag')) || 1;
+         let mySuwitChoice = null;
+    let suwitLocked = false;
+    let hidingSeconds = 120;
+    let hidingInterval = null;
+    let findingStartTime = 0;
+    let findingInterval = null;
+
         
-        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke'];
+        const stages = ['stage-countdown', 'stage-passcode', 'stage-player', 'stage-sync', 'stage-jasuke','stage-telur-gulung'];
         
         window.onload = async () => {
             socket.emit("v3_join");
@@ -549,6 +635,145 @@
             }
         }
 
+        // Inisialisasi BO5 boxes
+    function initBO5() {
+        const container = document.getElementById('bo5-container');
+        container.innerHTML = '';
+        for(let i=0; i<5; i++) {
+            const box = document.createElement('div');
+            box.className = 'suwit-box';
+            box.id = `suwit-box-${i}`;
+            container.appendChild(box);
+        }
+    }
+
+    function pickSuwit(choice) {
+        if(suwitLocked) return;
+        mySuwitChoice = choice;
+        ['batu', 'gunting', 'kertas'].forEach(c => document.getElementById(`btn-${c}`).className = 'btn-suwit flex flex-col items-center');
+        document.getElementById(`btn-${choice}`).classList.add('selected');
+        document.getElementById('btn-lock-suwit').classList.remove('hidden');
+    }
+
+    function lockSuwit() {
+        suwitLocked = true;
+        document.getElementById('btn-lock-suwit').classList.add('hidden');
+        document.getElementById(`btn-${mySuwitChoice}`).classList.add('locked');
+        socket.emit("v3_suwit_action", { player: currentPlayer, choice: mySuwitChoice });
+    }
+
+    socket.on("v3_suwit_both_locked", () => {
+        document.getElementById('btn-reveal-suwit').classList.remove('hidden');
+        document.getElementById('suwit-instruction').innerText = "Keduanya sudah kunci! Buka hasilnya:";
+    });
+
+    function revealSuwit() {
+        socket.emit("v3_suwit_reveal");
+    }
+
+    socket.on("v3_suwit_result", (data) => {
+        document.getElementById('btn-reveal-suwit').classList.add('hidden');
+        const resText = document.getElementById('suwit-result-text');
+        resText.innerText = `FENDI: ${data.choices.fendi} | IDA: ${data.choices.ida} -> ${data.winner.toUpperCase()} WIN!`;
+        
+        // Update boxes
+        const totalRounds = data.score.fendi + data.score.ida;
+        const currentBox = document.getElementById(`suwit-box-${totalRounds - 1}`);
+        if(currentBox) currentBox.classList.add(data.winner === 'fendi' ? 'suwit-win-fendi' : 'suwit-win-ida');
+
+        // Reset for next round
+        setTimeout(() => {
+            if (data.finalWinner) {
+                showColorPick(data.finalWinner);
+            } else {
+                suwitLocked = false;
+                mySuwitChoice = null;
+                ['batu', 'gunting', 'kertas'].forEach(c => document.getElementById(`btn-${c}`).className = 'btn-suwit flex flex-col items-center');
+                resText.innerText = "";
+                document.getElementById('suwit-instruction').innerText = "Ronde berikutnya! Pilih:";
+            }
+        }, 2000);
+    });
+
+    function showColorPick(winner) {
+        document.getElementById('tg-suwit-view').classList.add('hidden');
+        document.getElementById('tg-color-view').classList.remove('hidden');
+        if (currentPlayer !== winner) {
+            document.getElementById('color-options').classList.add('hidden');
+            document.getElementById('color-waiting').classList.remove('hidden');
+            document.getElementById('color-waiting').innerText = `Menunggu ${winner} memilih warna...`;
+        }
+    }
+
+    function pickColor(c) {
+        socket.emit("v3_tg_pick_color", c);
+    }
+
+    socket.on("v3_tg_color_chosen", (color) => {
+        document.getElementById('tg-color-view').classList.add('hidden');
+        document.getElementById('tg-hiding-view').classList.remove('hidden');
+    });
+
+    function startHiding() {
+        socket.emit("v3_tg_start_hiding");
+    }
+
+    socket.on("v3_tg_hiding_go", () => {
+        document.getElementById('btn-start-hiding').classList.add('hidden');
+        document.getElementById('btn-finish-hiding').classList.remove('hidden');
+        hidingInterval = setInterval(() => {
+            hidingSeconds--;
+            let m = Math.floor(hidingSeconds / 60);
+            let s = hidingSeconds % 60;
+            document.getElementById('hiding-timer').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            if(hidingSeconds <= 0) finishHiding();
+        }, 1000);
+    });
+
+    function finishHiding() {
+        clearInterval(hidingInterval);
+        document.getElementById('tg-hiding-view').classList.add('hidden');
+        document.getElementById('tg-finding-view').classList.remove('hidden');
+    }
+
+    // Stopwatch logic
+    function startFinding() {
+        document.getElementById('btn-start-finding').classList.add('hidden');
+        document.getElementById('btn-stop-finding').classList.remove('hidden');
+        findingStartTime = Date.now();
+        findingInterval = setInterval(() => {
+            let diff = Date.now() - findingStartTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            let ms = Math.floor((diff % 1000) / 10);
+            document.getElementById('finding-stopwatch').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`;
+        }, 50);
+    }
+
+    function stopFinding() {
+        clearInterval(findingInterval);
+        socket.emit("v3_tg_finding_done", { player: currentPlayer });
+    }
+
+    socket.on("v3_tg_finding_update", (results) => {
+        const lb = document.getElementById('finding-leaderboard');
+        lb.innerHTML = '<p class="text-[10px] text-gray-500 uppercase">Urutan Menemukan:</p>';
+        results.forEach((name, idx) => {
+            lb.innerHTML += `<p class="text-sm font-bold text-white">${idx + 1}. ${name.toUpperCase()}</p>`;
+        });
+        
+        if(results.length === 2) {
+            alert(`Selesai! Giliran pertama scan QR adalah: ${results[0].toUpperCase()}`);
+            // Lanjut ke stage Terang Bulan nanti
+        }
+    });
+
+    // Panggil initBO5 saat pindah ke stage ini
+    socket.on("v3_jasuke_all_success", () => {
+        switchStage('stage-telur-gulung');
+        initBO5();
+    });
+    
     </script>
 </body>
 </html>
