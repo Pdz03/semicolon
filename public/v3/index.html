@@ -727,12 +727,15 @@
             m.classList.remove('hidden');
         });
 
-        socket.on("v3_tb_status", (d) => { if(d.turn) updateScanTurnUI(d.turn); });
+        socket.on("v3_tb_status", (d) => { if(d.turn) 
+
+console.log(d);
+updateScanTurnUI(d.turn); });
         function closeReward() { 
             document.getElementById('reward-modal').classList.add('hidden'); 
             document.getElementById('finding-leaderboard').classList.remove('hidden');
             document.getElementById('scan-status-msg').classList.remove('hidden');
-            document.getElementById('puzzle-visual-container').classList.remove('hidden');
+            document.getElementById('puzzle-grid').classList.remove('hidden');
             globalTargetColor = null; 
             socket.emit("v3_tb_next_pair"); 
         }
