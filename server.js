@@ -140,6 +140,22 @@ const V3ProgressSchema = new mongoose.Schema({
 });
 const V3Progress = mongoose.model("V3Progress", V3ProgressSchema);
 
+const SettingV31Schema = new mongoose.Schema({
+    key: String,
+    release_time: Date
+});
+const SettingV31 = mongoose.model("SettingV31", SettingV31Schema);
+
+const V31ProgressSchema = new mongoose.Schema({
+    session_id: { type: String, default: "current_v31" },
+    coordinates: [{ lat: Number, lng: Number, label: String, code: String }],
+    solved_pairs: [Number],
+    assigned_codes: [String],
+    last_sync_number: Number,
+    final_map_seen: { type: Boolean, default: false }
+});
+const V31Progress = mongoose.model("V31Progress", V31ProgressSchema);
+
 let v3State = {
     current_number: null,
     jasuke: { current_flag: 1, is_solved: false, data: {}, coordinates: [] },
@@ -158,13 +174,92 @@ let v3State = {
     terang_bulan: { collected_flags: [] }
 };
 
-const physicalPairs = [
-    { biru: "628ab0b59b05dd46", kuning: "5721916a61b93811" },
-    { biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7" },
-    { biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec" },
-    { biru: "0365bbcce40aa2f9", kuning: "a5f8fe43bc6a4161" },
-    { biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591" }
+const v31QuestionBank = [
+    "Kalau ada masa sibuk yang bikin salah satu terasa sendirian, bentuk perhatian apa yang paling ingin kamu terima?",
+    "Dalam masa menuju pernikahan, hal apa yang paling perlu kita jaga: komunikasi, kejujuran, atau cara meredakan ego? Kenapa?",
+    "Kalau nanti kita sedang capek dan mudah tersulut, kode kecil apa yang bisa jadi tanda untuk berhenti menyerang dan mulai merangkul?",
+    "Apa ketakutan paling nyata tentang masa depan hubungan ini, dan bagaimana caranya kita hadapi sebagai satu tim?"
 ];
+
+const v31RewardSteps = {
+    1: { type: "question", content: v31QuestionBank[0] },
+    2: { type: "puzzle", content: [1, 2] },
+    3: { type: "question", content: v31QuestionBank[2] },
+    4: { type: "puzzle", content: [3, 4] },
+    5: { type: "question", content: v31QuestionBank[4] }
+};
+
+// const v31PhysicalPairs = [
+//     { label: "A", biru: "628ab0b59b05dd46", kuning: "V31-KUNING-A" },
+//     { label: "B", biru: "3da9778e20bea48a", kuning: "V31-KUNING-B" },
+//     { label: "C", biru: "V31-BIRU-C", kuning: "V31-KUNING-C" },
+//     { label: "D", biru: "V31-BIRU-D", kuning: "V31-KUNING-D" },
+//     { label: "E", biru: "V31-BIRU-E", kuning: "V31-KUNING-E" }
+// ];
+
+const V31physicalPairs = [
+    { label: "A", biru: "628ab0b59b05dd46", kuning: "5721916a61b93811" },
+    { label: "B", biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7" },
+    { label: "C", biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec" },
+    { label: "D", biru: "0365bbcce40aa2f9", kuning: "a5f8fe43bc6a4161" },
+    { label: "E", biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591" }
+];
+
+const v31FlagCodes = ["depalandua", "duaempattiga", "duabelasempat"];
+
+function buildV31JasukeQuestion(flag) {
+    const j = Math.floor(Math.random() * 8) + 3;
+    const s = Math.floor(Math.random() * 6) + 2;
+    const k = Math.floor(Math.random() * 5) + 2;
+    const templates = [
+        { formula: `2J + S - K`, ans: (2 * j) + s - k },
+        { formula: `J + 3S - K`, ans: j + (3 * s) - k },
+        { formula: `2J + 2S + K`, ans: (2 * j) + (2 * s) + k },
+        { formula: `4S + K - J`, ans: (4 * s) + k - j },
+        { formula: `3K + J + S`, ans: (3 * k) + j + s }
+    ];
+    const chosen = templates[(flag - 1) % templates.length];
+    return { flag, j, s, k, ...chosen };
+}
+
+function getFreshV31State() {
+    return {
+        current_number: null,
+        stage: "sync",
+        intro_ready: { ida: false, fendi: false },
+        jasuke: {
+            current_flag: 1,
+            active_question: null,
+            current_turn: "ida",
+            coords_saved: 0,
+            intro_ready: { ida: false, fendi: false }
+        },
+        telur_gulung: {
+            intro_ready: { ida: false, fendi: false },
+            suwit_score: { ida: 0, fendi: 0 },
+            suwit_choices: { ida: null, fendi: null },
+            final_winner: null,
+            player_colors: { ida: null, fendi: null },
+            hiding_started: false,
+            hide_deadline: null,
+            finding_started: { ida: null, fendi: null },
+            finding_finished: [],
+            first_finder: null,
+            current_turn: null,
+            active_pair_index: null,
+            first_scan: null,
+            solved_pairs: []
+        },
+        terang_bulan: {
+            intro_ready: { ida: false, fendi: false },
+            unlocked_flags: []
+        }
+    };
+}
+
+let v31State = getFreshV31State();
+
+
 
 // --- URUTAN REWARD (Tetap urut 1-5) ---
 const rewardSequence = {
@@ -205,6 +300,17 @@ app.post('/api/v3/admin/update-time', async (req, res) => {
     );
 
     res.json({ success: true, message: "Waktu V3 berhasil diupdate!" });
+});
+
+app.get('/api/v3.1/status', async (req, res) => {
+    let config = await SettingV31.findOne({ key: 'config_v31' });
+    if (!config) {
+        config = await SettingV31.create({
+            key: 'config_v31',
+            release_time: new Date("2026-04-25T09:00:00+07:00")
+        });
+    }
+    res.json(config);
 });
 
 let gameState = {
@@ -616,11 +722,297 @@ io.on("connection", (socket) => {
         io.to("v3_room").emit("v3_trb_collected", v3State.terang_bulan.collected_flags);
         if(v3State.terang_bulan.collected_flags.length === 3) io.to("v3_room").emit("v3_trb_all_finish");
     });
+
+    // ------------------------------------------
+    // SOCKET V3.1
+    // ------------------------------------------
+    socket.on("v31_join", async () => {
+        socket.join("v31_room");
+        const progress = await V31Progress.findOne({ session_id: "current_v31" });
+        if (progress?.coordinates?.length) {
+            v31State.jasuke.coords_saved = progress.coordinates.length;
+        }
+        if (progress?.solved_pairs?.length) {
+            v31State.telur_gulung.solved_pairs = progress.solved_pairs;
+        }
+        socket.emit("v31_state_sync", {
+            stage: v31State.stage,
+            jasuke: {
+                current_flag: v31State.jasuke.current_flag,
+                coords_saved: v31State.jasuke.coords_saved
+            },
+            telur_gulung: {
+                score: v31State.telur_gulung.suwit_score,
+                final_winner: v31State.telur_gulung.final_winner,
+                player_colors: v31State.telur_gulung.player_colors,
+                solved_pairs: v31State.telur_gulung.solved_pairs,
+                current_turn: v31State.telur_gulung.current_turn,
+                first_finder: v31State.telur_gulung.first_finder
+            }
+        });
+    });
+
+    socket.on("v31_reset", async () => {
+        await V31Progress.deleteMany({ session_id: "current_v31" });
+        v31State = getFreshV31State();
+        io.to("v31_room").emit("v31_force_reload");
+    });
+
+    socket.on("v31_generate_number", async () => {
+        v31State.current_number = Math.floor(1000 + Math.random() * 9000);
+        await V31Progress.findOneAndUpdate(
+            { session_id: "current_v31" },
+            { $set: { last_sync_number: v31State.current_number } },
+            { upsert: true }
+        );
+        io.to("v31_room").emit("v31_number_generated", v31State.current_number);
+    });
+
+    socket.on("v31_submit_sync", (number) => {
+        if (parseInt(number) === v31State.current_number) {
+            v31State.stage = "jasuke_intro";
+            io.to("v31_room").emit("v31_sync_success");
+        } else {
+            socket.emit("v31_sync_failed");
+        }
+    });
+
+    socket.on("v31_intro_ready", ({ stage, player }) => {
+        if (!player) return;
+        if (stage === "jasuke") {
+            v31State.jasuke.intro_ready[player] = true;
+            if (v31State.jasuke.intro_ready.ida || v31State.jasuke.intro_ready.fendi) {
+                v31State.stage = "jasuke_live";
+                v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+                io.to("v31_room").emit("v31_stage_live", {
+                    stage: "jasuke",
+                    current_turn: v31State.jasuke.current_turn,
+                    question: v31State.jasuke.active_question,
+                    coords_saved: v31State.jasuke.coords_saved
+                });
+            }
+        }
+        if (stage === "telur-gulung") {
+            v31State.telur_gulung.intro_ready[player] = true;
+            if (v31State.telur_gulung.intro_ready.ida || v31State.telur_gulung.intro_ready.fendi) {
+                v31State.stage = "telur_gulung_live";
+                io.to("v31_room").emit("v31_stage_live", {
+                    stage: "telur-gulung",
+                    telur_gulung: {
+                        score: v31State.telur_gulung.suwit_score,
+                        final_winner: v31State.telur_gulung.final_winner
+                    }
+                });
+            }
+        }
+        if (stage === "terang-bulan") {
+            v31State.terang_bulan.intro_ready[player] = true;
+            if (v31State.terang_bulan.intro_ready.ida || v31State.terang_bulan.intro_ready.fendi) {
+                v31State.stage = "terang_bulan_live";
+                io.to("v31_room").emit("v31_stage_live", { stage: "terang-bulan" });
+            }
+        }
+    });
+
+    socket.on("v31_jasuke_submit", (payload) => {
+        if (!v31State.jasuke.active_question) return;
+        if (payload?.player !== v31State.jasuke.current_turn) {
+            return socket.emit("v31_jasuke_error", "Belum giliranmu.");
+        }
+        if (parseInt(payload.answer) !== v31State.jasuke.active_question.ans) {
+            return socket.emit("v31_jasuke_error", "Jawaban belum tepat.");
+        }
+        const nextTurn = payload.player === "ida" ? "fendi" : "ida";
+        io.to("v31_room").emit("v31_jasuke_answered", {
+            by: payload.player,
+            next_turn: nextTurn
+        });
+        if (payload.player === "fendi") {
+            io.to("v31_room").emit("v31_jasuke_need_coordinates", {
+                flag: v31State.jasuke.current_flag,
+                saved: v31State.jasuke.coords_saved
+            });
+        } else {
+            v31State.jasuke.current_turn = nextTurn;
+            v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+            io.to("v31_room").emit("v31_jasuke_next_question", {
+                current_turn: v31State.jasuke.current_turn,
+                question: v31State.jasuke.active_question,
+                coords_saved: v31State.jasuke.coords_saved
+            });
+        }
+    });
+
+    socket.on("v31_save_coordinates", async ({ lat, lng }) => {
+        if (typeof lat !== "number" || typeof lng !== "number") {
+            return socket.emit("v31_jasuke_error", "Koordinat tidak valid.");
+        }
+        const index = v31State.jasuke.coords_saved;
+        const code = v31FlagCodes[index];
+        const label = `Bendera ${index + 1}`;
+        const updated = await V31Progress.findOneAndUpdate(
+            { session_id: "current_v31" },
+            { $push: { coordinates: { lat, lng, label, code } } },
+            { new: true, upsert: true }
+        );
+        v31State.jasuke.coords_saved = updated.coordinates.length;
+        if (v31State.jasuke.coords_saved >= 3) {
+            v31State.stage = "telur_gulung_intro";
+            io.to("v31_room").emit("v31_jasuke_complete");
+            return;
+        }
+        v31State.jasuke.current_flag += 1;
+        v31State.jasuke.current_turn = "ida";
+        v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+        io.to("v31_room").emit("v31_jasuke_next_question", {
+            current_turn: v31State.jasuke.current_turn,
+            question: v31State.jasuke.active_question,
+            coords_saved: v31State.jasuke.coords_saved
+        });
+    });
+
+    socket.on("v31_suwit_choice", ({ player, choice }) => {
+        if (!player || !choice) return;
+        v31State.telur_gulung.suwit_choices[player] = choice;
+        io.to("v31_room").emit("v31_suwit_waiting", { choices: v31State.telur_gulung.suwit_choices });
+        if (v31State.telur_gulung.suwit_choices.ida && v31State.telur_gulung.suwit_choices.fendi) {
+            const ida = v31State.telur_gulung.suwit_choices.ida;
+            const fendi = v31State.telur_gulung.suwit_choices.fendi;
+            let winner = "draw";
+            if (ida !== fendi) {
+                const idaWin = (ida === "batu" && fendi === "gunting") || (ida === "gunting" && fendi === "kertas") || (ida === "kertas" && fendi === "batu");
+                winner = idaWin ? "ida" : "fendi";
+                v31State.telur_gulung.suwit_score[winner] += 1;
+            }
+            if (v31State.telur_gulung.suwit_score.ida >= 3) v31State.telur_gulung.final_winner = "ida";
+            if (v31State.telur_gulung.suwit_score.fendi >= 3) v31State.telur_gulung.final_winner = "fendi";
+            io.to("v31_room").emit("v31_suwit_result", {
+                ida,
+                fendi,
+                winner,
+                score: v31State.telur_gulung.suwit_score,
+                final_winner: v31State.telur_gulung.final_winner
+            });
+            v31State.telur_gulung.suwit_choices = { ida: null, fendi: null };
+        }
+    });
+
+    socket.on("v31_pick_color", ({ player, color }) => {
+        if (player !== v31State.telur_gulung.final_winner) {
+            return socket.emit("v31_telur_gulung_error", "Yang memilih warna hanya pemenang BO5.");
+        }
+        const other = player === "ida" ? "fendi" : "ida";
+        v31State.telur_gulung.player_colors[player] = color;
+        v31State.telur_gulung.player_colors[other] = color === "biru" ? "kuning" : "biru";
+        io.to("v31_room").emit("v31_colors_assigned", v31State.telur_gulung.player_colors);
+    });
+
+    socket.on("v31_start_hiding", () => {
+        v31State.telur_gulung.hiding_started = true;
+        v31State.telur_gulung.hide_deadline = Date.now() + (90 * 1000);
+        io.to("v31_room").emit("v31_hiding_started", { deadline: v31State.telur_gulung.hide_deadline });
+    });
+
+    socket.on("v31_finish_finding", ({ player, elapsedMs }) => {
+        if (!player || v31State.telur_gulung.finding_finished.find((item) => item.player === player)) return;
+        v31State.telur_gulung.finding_finished.push({ player, elapsedMs });
+        v31State.telur_gulung.finding_finished.sort((a, b) => a.elapsedMs - b.elapsedMs);
+        if (!v31State.telur_gulung.first_finder) {
+            v31State.telur_gulung.first_finder = player;
+            v31State.telur_gulung.current_turn = player;
+        }
+        io.to("v31_room").emit("v31_finding_update", {
+            results: v31State.telur_gulung.finding_finished,
+            current_turn: v31State.telur_gulung.current_turn
+        });
+    });
+
+    socket.on("v31_scan_qr", async ({ player, qr_code }) => {
+        if (player !== v31State.telur_gulung.current_turn) {
+            return socket.emit("v31_telur_gulung_error", "Bukan giliranmu untuk scan.");
+        }
+        const progress = await V31Progress.findOne({ session_id: "current_v31" });
+        const solvedPairs = progress?.solved_pairs || [];
+        if (v31State.telur_gulung.active_pair_index === null) {
+            let pairIndex = v31PhysicalPairs.findIndex((pair) => pair.biru === qr_code || pair.kuning === qr_code);
+            if (pairIndex === -1) return socket.emit("v31_telur_gulung_error", "QR code tidak dikenali.");
+            if (solvedPairs.includes(pairIndex)) return socket.emit("v31_telur_gulung_error", "Pasangan kode ini sudah selesai.");
+            const firstColor = v31PhysicalPairs[pairIndex].biru === qr_code ? "biru" : "kuning";
+            v31State.telur_gulung.active_pair_index = pairIndex;
+            v31State.telur_gulung.first_scan = { player, color: firstColor };
+            v31State.telur_gulung.current_turn = player === "ida" ? "fendi" : "ida";
+            io.to("v31_room").emit("v31_pair_started", {
+                scanned_by: player,
+                label: v31PhysicalPairs[pairIndex].label,
+                first_color: firstColor,
+                next_color: firstColor === "biru" ? "kuning" : "biru",
+                current_turn: v31State.telur_gulung.current_turn
+            });
+            return;
+        }
+        const pair = v31PhysicalPairs[v31State.telur_gulung.active_pair_index];
+        const requiredColor = v31State.telur_gulung.first_scan.color === "biru" ? "kuning" : "biru";
+        if (pair[requiredColor] !== qr_code) {
+            return socket.emit("v31_telur_gulung_error", `Pasangan belum cocok. Cari ${requiredColor.toUpperCase()} ${pair.label}.`);
+        }
+        const updated = await V31Progress.findOneAndUpdate(
+            { session_id: "current_v31" },
+            { $addToSet: { solved_pairs: v31State.telur_gulung.active_pair_index } },
+            { new: true, upsert: true }
+        );
+        v31State.telur_gulung.solved_pairs = updated.solved_pairs;
+        const rewardIndex = updated.solved_pairs.length;
+        const reward = v31RewardSteps[rewardIndex];
+        io.to("v31_room").emit("v31_pair_completed", {
+            reward_index: rewardIndex,
+            pair_label: pair.label,
+            reward
+        });
+        if (rewardIndex >= 5) {
+            v31State.stage = "terang_bulan_intro";
+        }
+    });
+
+    socket.on("v31_next_pair", () => {
+        v31State.telur_gulung.active_pair_index = null;
+        v31State.telur_gulung.first_scan = null;
+        v31State.telur_gulung.current_turn = v31State.telur_gulung.first_finder;
+        io.to("v31_room").emit("v31_pair_reset", {
+            current_turn: v31State.telur_gulung.current_turn,
+            solved_pairs: v31State.telur_gulung.solved_pairs
+        });
+    });
+
+    socket.on("v31_terang_bulan_init", async () => {
+        const progress = await V31Progress.findOne({ session_id: "current_v31" });
+        socket.emit("v31_terang_bulan_data", {
+            coordinates: progress?.coordinates || [],
+            unlocked_flags: v31State.terang_bulan.unlocked_flags
+        });
+    });
+
+    socket.on("v31_submit_flag_code", async ({ index, code }) => {
+        const progress = await V31Progress.findOne({ session_id: "current_v31" });
+        const target = progress?.coordinates?.[index];
+        if (!target) return socket.emit("v31_terang_bulan_error", "Bendera belum tersedia.");
+        if ((code || "").trim().toUpperCase() !== target.code.toUpperCase()) {
+            return socket.emit("v31_terang_bulan_error", `Kode untuk ${target.label} belum cocok.`);
+        }
+        if (!v31State.terang_bulan.unlocked_flags.includes(index)) {
+            v31State.terang_bulan.unlocked_flags.push(index);
+        }
+        io.to("v31_room").emit("v31_flag_unlocked", { unlocked_flags: v31State.terang_bulan.unlocked_flags });
+        if (v31State.terang_bulan.unlocked_flags.length >= 3) {
+            io.to("v31_room").emit("v31_endgame_ready", {
+                target: { lat: 34.781223, lng: 127.5562001 }
+            });
+        }
+    });
 });
 
 // Redirect root to /v3
 app.get("/", (req, res) => {
-  res.redirect("/v3");
+  res.redirect("/v3.1");
 });
 
 // Fix asset paths for v1 (supporting relative paths like images/ and music/)
