@@ -209,7 +209,7 @@ const v31PhysicalPairs = [
     { label: "E", biru: "61ff890dc644acd7", kuning: "2cbd4a7f98afc591" }
 ];
 
-const v31FlagCodes = ["depalandua", "duaempattiga", "duabelasempat"];
+const v31FlagCodes = ["delapandua", "duaempattiga", "duabelasempat"];
 
 function buildV31JasukeQuestion(flag) {
     const j = Math.floor(Math.random() * 8) + 3;
