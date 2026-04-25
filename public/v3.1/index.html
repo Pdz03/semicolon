@@ -465,6 +465,47 @@
             localStorage.setItem("v31_stage", id);
         }
 
+        function syncTelurPanels(phase, state = {}) {
+            const suwit = document.getElementById("suwit-panel");
+            const color = document.getElementById("color-panel");
+            const hiding = document.getElementById("hiding-panel");
+            const finding = document.getElementById("finding-panel");
+            const scan = document.getElementById("scan-panel");
+            [suwit, color, hiding, finding, scan].forEach((el) => el.classList.add("hidden-stage"));
+
+            if (phase === "suit") {
+                if (state.final_winner) {
+                    color.classList.remove("hidden-stage");
+                    document.getElementById("color-status").innerText = currentPlayer === state.final_winner
+                        ? "Kamu menang BO5. Pilih kupu-kupu yang akan kamu pegang."
+                        : `Menunggu ${state.final_winner.toUpperCase()} memilih kupu-kupu.`;
+                } else {
+                    suwit.classList.remove("hidden-stage");
+                }
+                return;
+            }
+
+            if (phase === "finding") {
+                if (!state.player_colors?.[currentPlayer]) {
+                    color.classList.remove("hidden-stage");
+                    return;
+                }
+                myColor = state.player_colors[currentPlayer];
+                if (state.hide_deadline && state.hide_deadline > Date.now()) {
+                    hiding.classList.remove("hidden-stage");
+                    return;
+                }
+                finding.classList.remove("hidden-stage");
+                scan.classList.remove("hidden-stage");
+                return;
+            }
+
+            if (phase === "completed") {
+                finding.classList.remove("hidden-stage");
+                scan.classList.remove("hidden-stage");
+            }
+        }
+
         function updatePlayerBadge() {
             document.getElementById("player-badge").innerText = currentPlayer ? `Role: ${currentPlayer.toUpperCase()}` : "Belum pilih role";
         }
@@ -694,6 +735,7 @@
             if (payload.stage === "telur-gulung") {
                 showStage("stage-telur-gulung-live");
                 renderBO5(payload.telur_gulung.score);
+                syncTelurPanels(payload.telur_gulung.phase || "suit", payload.telur_gulung);
             }
             if (payload.stage === "terang-bulan") {
                 showStage("stage-terang-bulan-live");
@@ -705,6 +747,32 @@
             pairCount = (data.telur_gulung.solved_pairs || []).length;
             document.getElementById("pair-count").innerText = pairCount;
             renderBO5(data.telur_gulung.score || { ida: 0, fendi: 0 });
+            if (data.stage === "jasuke_intro") showStage("stage-jasuke-intro");
+            if (data.stage === "jasuke_live") {
+                showStage("stage-jasuke-live");
+                if (data.jasuke.active_question) populateJasuke({ ...data.jasuke.active_question, current_turn: data.jasuke.current_turn });
+                document.getElementById("coords-count").innerText = data.jasuke.coords_saved || 0;
+            }
+            if (data.stage === "telur_gulung_intro") showStage("stage-telur-gulung-intro");
+            if (data.stage === "telur_gulung_live") {
+                showStage("stage-telur-gulung-live");
+                syncTelurPanels(data.telur_gulung.phase || "suit", data.telur_gulung);
+                if (data.telur_gulung.finding_finished?.length) {
+                    document.getElementById("finding-results").innerHTML = data.telur_gulung.finding_finished.map((item, index) => `<p>${index + 1}. ${item.player.toUpperCase()} - ${(item.elapsedMs / 1000).toFixed(2)} detik</p>`).join("");
+                }
+                if (data.telur_gulung.current_turn) {
+                    document.getElementById("scan-status").innerText = data.telur_gulung.current_turn === currentPlayer
+                        ? "Session dipulihkan. Kamu bisa lanjut scan dari sini."
+                        : `Session dipulihkan. Menunggu ${data.telur_gulung.current_turn.toUpperCase()} lanjut scan.`;
+                    document.getElementById("open-scanner").classList.toggle("hidden-stage", data.telur_gulung.current_turn !== currentPlayer);
+                }
+            }
+            if (data.stage === "terang_bulan_intro") showStage("stage-terang-bulan-intro");
+            if (data.stage === "terang_bulan_live") {
+                showStage("stage-terang-bulan-live");
+                socket.emit("v31_terang_bulan_init");
+            }
+            if (data.stage === "end") showStage("stage-end");
         });
 
         socket.on("v31_jasuke_error", (message) => {

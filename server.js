@@ -152,7 +152,10 @@ const V31ProgressSchema = new mongoose.Schema({
     solved_pairs: [Number],
     assigned_codes: [String],
     last_sync_number: Number,
-    final_map_seen: { type: Boolean, default: false }
+    final_map_seen: { type: Boolean, default: false },
+    session_stage: { type: String, default: "sync" },
+    telur_gulung_phase: { type: String, default: "suit" },
+    session_snapshot: { type: mongoose.Schema.Types.Mixed, default: {} }
 });
 const V31Progress = mongoose.model("V31Progress", V31ProgressSchema);
 
@@ -178,7 +181,8 @@ const v31QuestionBank = [
     "Kalau ada masa sibuk yang bikin salah satu terasa sendirian, bentuk perhatian apa yang paling ingin kamu terima?",
     "Dalam masa menuju pernikahan, hal apa yang paling perlu kita jaga: komunikasi, kejujuran, atau cara meredakan ego? Kenapa?",
     "Kalau nanti kita sedang capek dan mudah tersulut, kode kecil apa yang bisa jadi tanda untuk berhenti menyerang dan mulai merangkul?",
-    "Apa ketakutan paling nyata tentang masa depan hubungan ini, dan bagaimana caranya kita hadapi sebagai satu tim?"
+    "Apa ketakutan paling nyata tentang masa depan hubungan ini, dan bagaimana caranya kita hadapi sebagai satu tim?",
+    "Kalau suatu saat rasa cemburu datang dari situasi yang tidak nyaman, kalimat dan sikap seperti apa yang paling membuatmu merasa dipilih dan ditenangkan?"
 ];
 
 const v31RewardSteps = {
@@ -197,7 +201,7 @@ const v31RewardSteps = {
 //     { label: "E", biru: "V31-BIRU-E", kuning: "V31-KUNING-E" }
 // ];
 
-const V31physicalPairs = [
+const v31PhysicalPairs = [
     { label: "A", biru: "628ab0b59b05dd46", kuning: "5721916a61b93811" },
     { label: "B", biru: "3da9778e20bea48a", kuning: "359f4922cb28e0c7" },
     { label: "C", biru: "0816e0edb64188e9", kuning: "ce5c0b55ed766dec" },
@@ -236,6 +240,7 @@ function getFreshV31State() {
         },
         telur_gulung: {
             intro_ready: { ida: false, fendi: false },
+            phase: "suit",
             suwit_score: { ida: 0, fendi: 0 },
             suwit_choices: { ida: null, fendi: null },
             final_winner: null,
@@ -258,6 +263,46 @@ function getFreshV31State() {
 }
 
 let v31State = getFreshV31State();
+
+async function persistV31Session(extra = {}) {
+    await V31Progress.findOneAndUpdate(
+        { session_id: "current_v31" },
+        {
+            $set: {
+                session_stage: v31State.stage,
+                telur_gulung_phase: v31State.telur_gulung.phase,
+                session_snapshot: {
+                    stage: v31State.stage,
+                    jasuke: {
+                        current_flag: v31State.jasuke.current_flag,
+                        current_turn: v31State.jasuke.current_turn,
+                        coords_saved: v31State.jasuke.coords_saved,
+                        active_question: v31State.jasuke.active_question
+                    },
+                    telur_gulung: {
+                        phase: v31State.telur_gulung.phase,
+                        suwit_score: v31State.telur_gulung.suwit_score,
+                        suwit_choices: v31State.telur_gulung.suwit_choices,
+                        final_winner: v31State.telur_gulung.final_winner,
+                        player_colors: v31State.telur_gulung.player_colors,
+                        hide_deadline: v31State.telur_gulung.hide_deadline,
+                        finding_finished: v31State.telur_gulung.finding_finished,
+                        first_finder: v31State.telur_gulung.first_finder,
+                        current_turn: v31State.telur_gulung.current_turn,
+                        active_pair_index: v31State.telur_gulung.active_pair_index,
+                        first_scan: v31State.telur_gulung.first_scan,
+                        solved_pairs: v31State.telur_gulung.solved_pairs
+                    },
+                    terang_bulan: {
+                        unlocked_flags: v31State.terang_bulan.unlocked_flags
+                    },
+                    ...extra
+                }
+            }
+        },
+        { upsert: true }
+    );
+}
 
 
 
@@ -729,6 +774,14 @@ io.on("connection", (socket) => {
     socket.on("v31_join", async () => {
         socket.join("v31_room");
         const progress = await V31Progress.findOne({ session_id: "current_v31" });
+        if (progress?.session_snapshot?.stage) {
+            v31State.stage = progress.session_snapshot.stage;
+            if (progress.session_snapshot.jasuke) Object.assign(v31State.jasuke, progress.session_snapshot.jasuke);
+            if (progress.session_snapshot.telur_gulung) Object.assign(v31State.telur_gulung, progress.session_snapshot.telur_gulung);
+            if (progress.session_snapshot.terang_bulan?.unlocked_flags) {
+                v31State.terang_bulan.unlocked_flags = progress.session_snapshot.terang_bulan.unlocked_flags;
+            }
+        }
         if (progress?.coordinates?.length) {
             v31State.jasuke.coords_saved = progress.coordinates.length;
         }
@@ -739,15 +792,26 @@ io.on("connection", (socket) => {
             stage: v31State.stage,
             jasuke: {
                 current_flag: v31State.jasuke.current_flag,
-                coords_saved: v31State.jasuke.coords_saved
+                coords_saved: v31State.jasuke.coords_saved,
+                current_turn: v31State.jasuke.current_turn,
+                active_question: v31State.jasuke.active_question
             },
             telur_gulung: {
+                phase: v31State.telur_gulung.phase,
                 score: v31State.telur_gulung.suwit_score,
+                choices: v31State.telur_gulung.suwit_choices,
                 final_winner: v31State.telur_gulung.final_winner,
                 player_colors: v31State.telur_gulung.player_colors,
                 solved_pairs: v31State.telur_gulung.solved_pairs,
                 current_turn: v31State.telur_gulung.current_turn,
-                first_finder: v31State.telur_gulung.first_finder
+                first_finder: v31State.telur_gulung.first_finder,
+                hide_deadline: v31State.telur_gulung.hide_deadline,
+                finding_finished: v31State.telur_gulung.finding_finished,
+                active_pair_index: v31State.telur_gulung.active_pair_index,
+                first_scan: v31State.telur_gulung.first_scan
+            },
+            terang_bulan: {
+                unlocked_flags: v31State.terang_bulan.unlocked_flags
             }
         });
     });
@@ -771,6 +835,7 @@ io.on("connection", (socket) => {
     socket.on("v31_submit_sync", (number) => {
         if (parseInt(number) === v31State.current_number) {
             v31State.stage = "jasuke_intro";
+            persistV31Session();
             io.to("v31_room").emit("v31_sync_success");
         } else {
             socket.emit("v31_sync_failed");
@@ -784,6 +849,7 @@ io.on("connection", (socket) => {
             if (v31State.jasuke.intro_ready.ida || v31State.jasuke.intro_ready.fendi) {
                 v31State.stage = "jasuke_live";
                 v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+                persistV31Session();
                 io.to("v31_room").emit("v31_stage_live", {
                     stage: "jasuke",
                     current_turn: v31State.jasuke.current_turn,
@@ -796,9 +862,12 @@ io.on("connection", (socket) => {
             v31State.telur_gulung.intro_ready[player] = true;
             if (v31State.telur_gulung.intro_ready.ida || v31State.telur_gulung.intro_ready.fendi) {
                 v31State.stage = "telur_gulung_live";
+                v31State.telur_gulung.phase = "suit";
+                persistV31Session();
                 io.to("v31_room").emit("v31_stage_live", {
                     stage: "telur-gulung",
                     telur_gulung: {
+                        phase: v31State.telur_gulung.phase,
                         score: v31State.telur_gulung.suwit_score,
                         final_winner: v31State.telur_gulung.final_winner
                     }
@@ -809,6 +878,7 @@ io.on("connection", (socket) => {
             v31State.terang_bulan.intro_ready[player] = true;
             if (v31State.terang_bulan.intro_ready.ida || v31State.terang_bulan.intro_ready.fendi) {
                 v31State.stage = "terang_bulan_live";
+                persistV31Session();
                 io.to("v31_room").emit("v31_stage_live", { stage: "terang-bulan" });
             }
         }
@@ -828,6 +898,7 @@ io.on("connection", (socket) => {
             next_turn: nextTurn
         });
         if (payload.player === "fendi") {
+            persistV31Session();
             io.to("v31_room").emit("v31_jasuke_need_coordinates", {
                 flag: v31State.jasuke.current_flag,
                 saved: v31State.jasuke.coords_saved
@@ -835,6 +906,7 @@ io.on("connection", (socket) => {
         } else {
             v31State.jasuke.current_turn = nextTurn;
             v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+            persistV31Session();
             io.to("v31_room").emit("v31_jasuke_next_question", {
                 current_turn: v31State.jasuke.current_turn,
                 question: v31State.jasuke.active_question,
@@ -858,12 +930,14 @@ io.on("connection", (socket) => {
         v31State.jasuke.coords_saved = updated.coordinates.length;
         if (v31State.jasuke.coords_saved >= 3) {
             v31State.stage = "telur_gulung_intro";
+            persistV31Session();
             io.to("v31_room").emit("v31_jasuke_complete");
             return;
         }
         v31State.jasuke.current_flag += 1;
         v31State.jasuke.current_turn = "ida";
         v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
+        persistV31Session();
         io.to("v31_room").emit("v31_jasuke_next_question", {
             current_turn: v31State.jasuke.current_turn,
             question: v31State.jasuke.active_question,
@@ -873,7 +947,9 @@ io.on("connection", (socket) => {
 
     socket.on("v31_suwit_choice", ({ player, choice }) => {
         if (!player || !choice) return;
+        v31State.telur_gulung.phase = "suit";
         v31State.telur_gulung.suwit_choices[player] = choice;
+        persistV31Session();
         io.to("v31_room").emit("v31_suwit_waiting", { choices: v31State.telur_gulung.suwit_choices });
         if (v31State.telur_gulung.suwit_choices.ida && v31State.telur_gulung.suwit_choices.fendi) {
             const ida = v31State.telur_gulung.suwit_choices.ida;
@@ -886,6 +962,7 @@ io.on("connection", (socket) => {
             }
             if (v31State.telur_gulung.suwit_score.ida >= 3) v31State.telur_gulung.final_winner = "ida";
             if (v31State.telur_gulung.suwit_score.fendi >= 3) v31State.telur_gulung.final_winner = "fendi";
+            persistV31Session();
             io.to("v31_room").emit("v31_suwit_result", {
                 ida,
                 fendi,
@@ -904,23 +981,28 @@ io.on("connection", (socket) => {
         const other = player === "ida" ? "fendi" : "ida";
         v31State.telur_gulung.player_colors[player] = color;
         v31State.telur_gulung.player_colors[other] = color === "biru" ? "kuning" : "biru";
+        persistV31Session();
         io.to("v31_room").emit("v31_colors_assigned", v31State.telur_gulung.player_colors);
     });
 
     socket.on("v31_start_hiding", () => {
         v31State.telur_gulung.hiding_started = true;
         v31State.telur_gulung.hide_deadline = Date.now() + (90 * 1000);
+        v31State.telur_gulung.phase = "finding";
+        persistV31Session();
         io.to("v31_room").emit("v31_hiding_started", { deadline: v31State.telur_gulung.hide_deadline });
     });
 
     socket.on("v31_finish_finding", ({ player, elapsedMs }) => {
         if (!player || v31State.telur_gulung.finding_finished.find((item) => item.player === player)) return;
+        v31State.telur_gulung.phase = "finding";
         v31State.telur_gulung.finding_finished.push({ player, elapsedMs });
         v31State.telur_gulung.finding_finished.sort((a, b) => a.elapsedMs - b.elapsedMs);
         if (!v31State.telur_gulung.first_finder) {
             v31State.telur_gulung.first_finder = player;
             v31State.telur_gulung.current_turn = player;
         }
+        persistV31Session();
         io.to("v31_room").emit("v31_finding_update", {
             results: v31State.telur_gulung.finding_finished,
             current_turn: v31State.telur_gulung.current_turn
@@ -934,6 +1016,7 @@ io.on("connection", (socket) => {
         const progress = await V31Progress.findOne({ session_id: "current_v31" });
         const solvedPairs = progress?.solved_pairs || [];
         if (v31State.telur_gulung.active_pair_index === null) {
+            v31State.telur_gulung.phase = "finding";
             let pairIndex = v31PhysicalPairs.findIndex((pair) => pair.biru === qr_code || pair.kuning === qr_code);
             if (pairIndex === -1) return socket.emit("v31_telur_gulung_error", "QR code tidak dikenali.");
             if (solvedPairs.includes(pairIndex)) return socket.emit("v31_telur_gulung_error", "Pasangan kode ini sudah selesai.");
@@ -941,6 +1024,7 @@ io.on("connection", (socket) => {
             v31State.telur_gulung.active_pair_index = pairIndex;
             v31State.telur_gulung.first_scan = { player, color: firstColor };
             v31State.telur_gulung.current_turn = player === "ida" ? "fendi" : "ida";
+            persistV31Session();
             io.to("v31_room").emit("v31_pair_started", {
                 scanned_by: player,
                 label: v31PhysicalPairs[pairIndex].label,
@@ -961,8 +1045,10 @@ io.on("connection", (socket) => {
             { new: true, upsert: true }
         );
         v31State.telur_gulung.solved_pairs = updated.solved_pairs;
+        v31State.telur_gulung.phase = "completed";
         const rewardIndex = updated.solved_pairs.length;
         const reward = v31RewardSteps[rewardIndex];
+        persistV31Session();
         io.to("v31_room").emit("v31_pair_completed", {
             reward_index: rewardIndex,
             pair_label: pair.label,
@@ -970,6 +1056,7 @@ io.on("connection", (socket) => {
         });
         if (rewardIndex >= 5) {
             v31State.stage = "terang_bulan_intro";
+            persistV31Session();
         }
     });
 
@@ -977,6 +1064,8 @@ io.on("connection", (socket) => {
         v31State.telur_gulung.active_pair_index = null;
         v31State.telur_gulung.first_scan = null;
         v31State.telur_gulung.current_turn = v31State.telur_gulung.first_finder;
+        v31State.telur_gulung.phase = "finding";
+        persistV31Session();
         io.to("v31_room").emit("v31_pair_reset", {
             current_turn: v31State.telur_gulung.current_turn,
             solved_pairs: v31State.telur_gulung.solved_pairs
@@ -1001,8 +1090,11 @@ io.on("connection", (socket) => {
         if (!v31State.terang_bulan.unlocked_flags.includes(index)) {
             v31State.terang_bulan.unlocked_flags.push(index);
         }
+        persistV31Session();
         io.to("v31_room").emit("v31_flag_unlocked", { unlocked_flags: v31State.terang_bulan.unlocked_flags });
         if (v31State.terang_bulan.unlocked_flags.length >= 3) {
+            v31State.stage = "end";
+            persistV31Session();
             io.to("v31_room").emit("v31_endgame_ready", {
                 target: { lat: 34.781223, lng: 127.5562001 }
             });
