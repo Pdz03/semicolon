@@ -254,43 +254,53 @@
         </section>
 
         <section id="stage-jasuke-intro" class="hidden-stage glass rounded-[28px] p-6 space-y-5">
-            <p class="text-xs uppercase tracking-[0.25em] text-gold/80">Stage 1</p>
+            <p class="text-xs uppercase tracking-[0.25em] text-yellow-300/80">Stage 1</p>
             <h2 class="serif text-4xl">Jasuke</h2>
             <p class="text-sm leading-7 text-slate-300">Kalian akan masuk ke kombinasi angka J, S, dan K. Jawab bergantian. Setiap satu siklus selesai, Ida menyimpan koordinat bendera yang baru ditancapkan. Fendi tidak boleh tahu titiknya.</p>
-            <div class="rounded-[24px] border border-gold/20 bg-gold/10 p-4 text-sm leading-7 text-slate-200">
-                <p><span class="font-bold text-gold">Ida:</span> setelah satu putaran jawaban selesai, simpan koordinat diam-diam di device ini.</p>
+            <div class="rounded-[24px] border border-yellow-300/20 bg-yellow-300/10 p-4 text-sm leading-7 text-slate-200">
+                <p><span class="font-bold text-yellow-300">Ida:</span> setelah satu putaran jawaban selesai, simpan koordinat diam-diam di device ini.</p>
                 <p><span class="font-bold text-sky-300">Fendi:</span> fokus bantu jawab dan jangan lihat titik koordinat yang tersimpan.</p>
             </div>
-            <button onclick="readyIntro('jasuke')" class="w-full rounded-2xl bg-gold px-4 py-4 font-bold text-slate-950">Mulai stage Jasuke</button>
+            <button onclick="readyIntro('jasuke')" class="w-full rounded-2xl bg-yellow-300 px-4 py-4 font-bold text-slate-950 shadow-[0_0_24px_rgba(253,224,71,0.25)]">Mulai stage Jasuke</button>
         </section>
 
         <section id="stage-jasuke-live" class="hidden-stage glass rounded-[28px] p-6 space-y-5">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs uppercase tracking-[0.25em] text-gold/80">Stage 1 Live</p>
+                    <p class="text-xs uppercase tracking-[0.25em] text-yellow-300/80">Stage 1 Live</p>
                     <h2 class="text-2xl font-bold">Jasuke</h2>
                 </div>
                 <div class="pill rounded-full px-3 py-2 text-xs">Koordinat tersimpan: <span id="coords-count">0</span>/3</div>
             </div>
-            <div class="grid grid-cols-3 gap-3">
-                <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">J</p><p id="val-j" class="mt-2 text-3xl font-bold">0</p></div>
-                <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">S</p><p id="val-s" class="mt-2 text-3xl font-bold">0</p></div>
-                <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">K</p><p id="val-k" class="mt-2 text-3xl font-bold">0</p></div>
+            <div id="jasuke-question-view" class="hidden-stage space-y-4">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">J</p><p id="val-j" class="mt-2 text-3xl font-bold">0</p></div>
+                    <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">S</p><p id="val-s" class="mt-2 text-3xl font-bold">0</p></div>
+                    <div class="pill rounded-2xl p-4 text-center"><p class="text-xs text-slate-400">K</p><p id="val-k" class="mt-2 text-3xl font-bold">0</p></div>
+                </div>
+                <div class="rounded-[24px] border border-white/10 bg-slate-950/60 p-5">
+                    <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Formula aktif</p>
+                    <p id="jasuke-formula-question" class="mt-2 text-xl font-bold"></p>
+                    <p id="jasuke-question-copy" class="mt-3 text-sm text-slate-300"></p>
+                </div>
             </div>
-            <div class="rounded-[24px] border border-white/10 bg-slate-950/60 p-5">
-                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Formula aktif</p>
-                <p id="jasuke-formula" class="mt-2 text-xl font-bold"></p>
-                <p id="jasuke-turn" class="mt-3 text-sm text-slate-300"></p>
+            <div id="jasuke-answer-view" class="hidden-stage space-y-4">
+                <div class="rounded-[24px] border border-white/10 bg-slate-950/60 p-5">
+                    <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Jawaban aktif</p>
+                    <p id="jasuke-formula-answer" class="mt-2 text-xl font-bold"></p>
+                    <p id="jasuke-turn" class="mt-3 text-sm text-slate-300"></p>
+                </div>
             </div>
-            <div class="space-y-3">
+            <div id="jasuke-answer-panel" class="space-y-3">
                 <input id="jasuke-answer" type="number" class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-4 text-center text-2xl outline-none" placeholder="Jawaban">
                 <button onclick="submitJasuke()" class="w-full rounded-2xl bg-sky-300 px-4 py-4 font-bold text-slate-950">Kirim jawaban</button>
+                <p id="jasuke-answer-copy" class="text-sm text-slate-300"></p>
                 <p id="jasuke-error" class="hidden text-sm text-rose-300"></p>
             </div>
-            <div id="coord-panel" class="hidden-stage rounded-[24px] border border-gold/20 bg-gold/10 p-5 space-y-4">
-                <p class="font-bold text-gold">Saatnya menyimpan koordinat bendera</p>
+            <div id="coord-panel" class="hidden-stage rounded-[24px] border border-yellow-300/20 bg-yellow-300/10 p-5 space-y-4">
+                <p class="font-bold text-yellow-300">Saatnya menyimpan koordinat bendera</p>
                 <p id="coord-copy" class="text-sm leading-7 text-slate-200"></p>
-                <button onclick="saveCoordinates()" class="w-full rounded-2xl bg-gold px-4 py-4 font-bold text-slate-950">Simpan koordinat sekarang</button>
+                <button onclick="saveCoordinates()" class="w-full rounded-2xl bg-yellow-300 px-4 py-4 font-bold text-slate-950 shadow-[0_0_24px_rgba(253,224,71,0.25)]">Simpan koordinat sekarang</button>
             </div>
         </section>
 
@@ -546,11 +556,30 @@
         }
 
         function populateJasuke(data) {
+            const questionPlayer = data.current_turn === "ida" ? "fendi" : "ida";
+            const isQuestionHolder = currentPlayer === questionPlayer;
+            const isAnswerHolder = currentPlayer === data.current_turn;
+            document.getElementById("coord-panel").classList.add("hidden-stage");
             document.getElementById("val-j").innerText = data.j;
             document.getElementById("val-s").innerText = data.s;
             document.getElementById("val-k").innerText = data.k;
-            document.getElementById("jasuke-formula").innerText = data.formula;
-            document.getElementById("jasuke-turn").innerText = data.current_turn === currentPlayer ? "Giliranmu menjawab sekarang." : `Menunggu ${data.current_turn.toUpperCase()} menjawab.`;
+            document.getElementById("jasuke-formula-question").innerText = data.formula;
+            document.getElementById("jasuke-formula-answer").innerText = isAnswerHolder ? "Masukkan hasil akhirnya." : "Pasanganmu sedang menjawab.";
+            document.getElementById("jasuke-question-copy").innerText = isQuestionHolder
+                ? `Soal ada di device ${currentPlayer.toUpperCase()}. Bacakan angka J, S, K ke pasanganmu.`
+                : `Soal saat ini ada di device ${questionPlayer.toUpperCase()}.`;
+            document.getElementById("jasuke-turn").innerText = isAnswerHolder
+                ? "Giliranmu menjawab sekarang."
+                : `Menunggu ${data.current_turn.toUpperCase()} menjawab.`;
+            document.getElementById("jasuke-question-view").classList.toggle("hidden-stage", !isQuestionHolder);
+            document.getElementById("jasuke-answer-view").classList.toggle("hidden-stage", !isAnswerHolder);
+            document.getElementById("jasuke-answer-panel").classList.toggle("hidden-stage", !isAnswerHolder);
+            document.getElementById("jasuke-answer-copy").innerText = isAnswerHolder
+                ? "Di device ini cukup isi jawaban. Soal angka J, S, K ada di device pasangan."
+                : "";
+            if (!isAnswerHolder) {
+                document.getElementById("jasuke-answer").value = "";
+            }
         }
 
         function submitJasuke() {
@@ -781,11 +810,12 @@
             error.classList.remove("hidden");
         });
 
-        socket.on("v31_jasuke_answered", ({ by, next_turn }) => {
+        socket.on("v31_jasuke_answered", ({ by }) => {
             document.getElementById("jasuke-error").classList.add("hidden");
             document.getElementById("jasuke-answer").value = "";
-            if (by === "fendi") return;
-            document.getElementById("jasuke-turn").innerText = next_turn === currentPlayer ? "Giliranmu menjawab sekarang." : `Menunggu ${next_turn.toUpperCase()} menjawab.`;
+            if (currentPlayer === by) {
+                document.getElementById("jasuke-turn").innerText = "Jawaban diterima. Menunggu Ida menyimpan koordinat.";
+            }
         });
 
         socket.on("v31_jasuke_need_coordinates", () => {

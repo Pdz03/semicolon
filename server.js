@@ -234,7 +234,7 @@ function getFreshV31State() {
         jasuke: {
             current_flag: 1,
             active_question: null,
-            current_turn: "ida",
+            current_turn: "fendi",
             coords_saved: 0,
             intro_ready: { ida: false, fendi: false }
         },
@@ -892,27 +892,14 @@ io.on("connection", (socket) => {
         if (parseInt(payload.answer) !== v31State.jasuke.active_question.ans) {
             return socket.emit("v31_jasuke_error", "Jawaban belum tepat.");
         }
-        const nextTurn = payload.player === "ida" ? "fendi" : "ida";
         io.to("v31_room").emit("v31_jasuke_answered", {
-            by: payload.player,
-            next_turn: nextTurn
+            by: payload.player
         });
-        if (payload.player === "fendi") {
-            persistV31Session();
-            io.to("v31_room").emit("v31_jasuke_need_coordinates", {
-                flag: v31State.jasuke.current_flag,
-                saved: v31State.jasuke.coords_saved
-            });
-        } else {
-            v31State.jasuke.current_turn = nextTurn;
-            v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
-            persistV31Session();
-            io.to("v31_room").emit("v31_jasuke_next_question", {
-                current_turn: v31State.jasuke.current_turn,
-                question: v31State.jasuke.active_question,
-                coords_saved: v31State.jasuke.coords_saved
-            });
-        }
+        persistV31Session();
+        io.to("v31_room").emit("v31_jasuke_need_coordinates", {
+            flag: v31State.jasuke.current_flag,
+            saved: v31State.jasuke.coords_saved
+        });
     });
 
     socket.on("v31_save_coordinates", async ({ lat, lng }) => {
@@ -935,7 +922,7 @@ io.on("connection", (socket) => {
             return;
         }
         v31State.jasuke.current_flag += 1;
-        v31State.jasuke.current_turn = "ida";
+        v31State.jasuke.current_turn = v31State.jasuke.current_turn === "ida" ? "fendi" : "ida";
         v31State.jasuke.active_question = buildV31JasukeQuestion(v31State.jasuke.current_flag);
         persistV31Session();
         io.to("v31_room").emit("v31_jasuke_next_question", {
