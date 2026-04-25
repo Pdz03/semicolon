@@ -108,6 +108,12 @@
         .piece-3.done::before { background-position: bottom left; }
         .piece-4.done::before { background-position: bottom right; }
         .piece-label { position: relative; z-index: 1; }
+        .suwit-choice.active {
+            border-color: rgba(244, 114, 182, 0.8);
+            background: rgba(244, 114, 182, 0.16);
+            box-shadow: 0 0 0 1px rgba(244,114,182,0.16) inset, 0 0 24px rgba(244,114,182,0.18);
+            transform: translateY(-2px);
+        }
         #reader { min-height: 280px; border-radius: 22px; overflow: hidden; background: #020617; }
         #map, #end-map { min-height: 320px; border-radius: 22px; overflow: hidden; }
         .hidden-stage { display: none; }
@@ -326,9 +332,9 @@
                 <div id="suwit-panel" class="space-y-4">
                     <p id="suwit-status" class="text-sm text-slate-300">Pilih senjata untuk ronde ini.</p>
                     <div class="grid grid-cols-3 gap-3">
-                        <button onclick="pickSuwit('batu')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center">Batu</button>
-                        <button onclick="pickSuwit('gunting')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center">Gunting</button>
-                        <button onclick="pickSuwit('kertas')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center">Kertas</button>
+                        <button onclick="pickSuwit('batu')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center transition"><div class="text-3xl">✊</div><div class="mt-2">Batu</div></button>
+                        <button onclick="pickSuwit('gunting')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center transition"><div class="text-3xl">✌️</div><div class="mt-2">Gunting</div></button>
+                        <button onclick="pickSuwit('kertas')" class="suwit-choice rounded-2xl border border-white/10 bg-white/5 p-4 text-center transition"><div class="text-3xl">✋</div><div class="mt-2">Kertas</div></button>
                     </div>
                     <button onclick="lockSuwit()" class="w-full rounded-2xl bg-rose-300 px-4 py-4 font-bold text-slate-950">Lock pilihan</button>
                 </div>
@@ -348,7 +354,7 @@
                         <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Timer sembunyi</p>
                         <p id="hiding-timer" class="mt-2 text-5xl font-bold">01:30</p>
                     </div>
-                    <button onclick="startHiding()" class="w-full rounded-2xl bg-rose-300 px-4 py-4 font-bold text-slate-950">Mulai timer sembunyi</button>
+                    <button onclick="toggleHiding()" id="hiding-toggle-btn" class="w-full rounded-2xl bg-rose-300 px-4 py-4 font-bold text-slate-950">Mulai timer sembunyi</button>
                 </div>
 
                 <div id="finding-panel" class="hidden-stage space-y-4">
@@ -357,8 +363,8 @@
                         <p id="finding-time" class="mt-2 text-5xl font-bold">00:00.00</p>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="startFinding()" class="rounded-2xl bg-sky-300 px-4 py-4 font-bold text-slate-950">Mulai cari</button>
-                        <button onclick="finishFinding()" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 font-bold">Sudah ketemu</button>
+                        <button onclick="startFinding()" id="finding-start-btn" class="rounded-2xl bg-sky-300 px-4 py-4 font-bold text-slate-950">Mulai cari</button>
+                        <button onclick="finishFinding()" id="finding-stop-btn" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 font-bold">Sudah ketemu</button>
                     </div>
                     <div id="finding-results" class="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300"></div>
                 </div>
@@ -486,6 +492,8 @@
             if (phase === "suit") {
                 if (state.final_winner) {
                     color.classList.remove("hidden-stage");
+                    const options = color.querySelector("div.grid");
+                    options.classList.toggle("hidden-stage", currentPlayer !== state.final_winner);
                     document.getElementById("color-status").innerText = currentPlayer === state.final_winner
                         ? "Kamu menang BO5. Pilih kupu-kupu yang akan kamu pegang."
                         : `Menunggu ${state.final_winner.toUpperCase()} memilih kupu-kupu.`;
@@ -501,7 +509,7 @@
                     return;
                 }
                 myColor = state.player_colors[currentPlayer];
-                if (state.hide_deadline && state.hide_deadline > Date.now()) {
+                if (state.hiding_started && !state.hiding_stopped) {
                     hiding.classList.remove("hidden-stage");
                     return;
                 }
@@ -636,12 +644,18 @@
             socket.emit("v31_pick_color", { player: currentPlayer, color });
         }
 
-        function startHiding() {
+        function toggleHiding() {
+            const btn = document.getElementById("hiding-toggle-btn");
+            if (btn.dataset.mode === "stop") {
+                socket.emit("v31_stop_hiding");
+                return;
+            }
             socket.emit("v31_start_hiding");
         }
 
         function startFinding() {
             if (findingInterval) return;
+            document.getElementById("finding-start-btn").disabled = true;
             findingStartedAt = Date.now();
             findingInterval = setInterval(() => {
                 const diff = Date.now() - findingStartedAt;
@@ -656,6 +670,7 @@
             if (!findingStartedAt) return;
             clearInterval(findingInterval);
             findingInterval = null;
+            document.getElementById("finding-stop-btn").disabled = true;
             socket.emit("v31_finish_finding", { player: currentPlayer, elapsedMs: Date.now() - findingStartedAt });
         }
 
@@ -846,6 +861,7 @@
             if (final_winner) {
                 document.getElementById("suwit-panel").classList.add("hidden-stage");
                 document.getElementById("color-panel").classList.remove("hidden-stage");
+                document.getElementById("color-panel").querySelector("div.grid").classList.toggle("hidden-stage", currentPlayer !== final_winner);
                 document.getElementById("color-status").innerText = currentPlayer === final_winner ? "Kamu menang BO5. Pilih kupu-kupu yang akan kamu pegang." : `Menunggu ${final_winner.toUpperCase()} memilih kupu-kupu.`;
             }
         });
@@ -854,11 +870,17 @@
             myColor = colors[currentPlayer];
             document.getElementById("color-panel").classList.add("hidden-stage");
             document.getElementById("hiding-panel").classList.remove("hidden-stage");
+            const btn = document.getElementById("hiding-toggle-btn");
+            btn.dataset.mode = "start";
+            btn.innerText = "Mulai timer sembunyi";
             document.getElementById("color-status").innerText = `Warnamu: ${myColor}`;
         });
 
         socket.on("v31_hiding_started", ({ deadline }) => {
             document.getElementById("hiding-panel").classList.remove("hidden-stage");
+            const btn = document.getElementById("hiding-toggle-btn");
+            btn.dataset.mode = "stop";
+            btn.innerText = "Stop dan mulai mencari";
             if (hidingInterval) clearInterval(hidingInterval);
             hidingInterval = setInterval(() => {
                 const diff = Math.max(0, deadline - Date.now());
@@ -867,17 +889,24 @@
                 document.getElementById("hiding-timer").innerText = `${min}:${sec}`;
                 if (diff <= 0) {
                     clearInterval(hidingInterval);
-                    document.getElementById("hiding-panel").classList.add("hidden-stage");
-                    document.getElementById("finding-panel").classList.remove("hidden-stage");
+                    socket.emit("v31_stop_hiding");
                 }
             }, 250);
+        });
+
+        socket.on("v31_hiding_stopped", () => {
+            if (hidingInterval) clearInterval(hidingInterval);
+            document.getElementById("hiding-panel").classList.add("hidden-stage");
+            document.getElementById("finding-panel").classList.remove("hidden-stage");
+            document.getElementById("finding-start-btn").disabled = false;
+            document.getElementById("finding-stop-btn").disabled = false;
         });
 
         socket.on("v31_finding_update", ({ results, current_turn }) => {
             document.getElementById("finding-panel").classList.remove("hidden-stage");
             document.getElementById("scan-panel").classList.remove("hidden-stage");
             const container = document.getElementById("finding-results");
-            container.innerHTML = results.map((item, index) => {
+            container.innerHTML = `<p class="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Podium tercepat</p>` + results.map((item, index) => {
                 const seconds = (item.elapsedMs / 1000).toFixed(2);
                 return `<p>${index + 1}. ${item.player.toUpperCase()} - ${seconds} detik</p>`;
             }).join("") || "Belum ada hasil.";

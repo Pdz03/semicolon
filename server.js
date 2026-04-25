@@ -246,6 +246,7 @@ function getFreshV31State() {
             final_winner: null,
             player_colors: { ida: null, fendi: null },
             hiding_started: false,
+            hiding_stopped: false,
             hide_deadline: null,
             finding_started: { ida: null, fendi: null },
             finding_finished: [],
@@ -285,6 +286,8 @@ async function persistV31Session(extra = {}) {
                         suwit_choices: v31State.telur_gulung.suwit_choices,
                         final_winner: v31State.telur_gulung.final_winner,
                         player_colors: v31State.telur_gulung.player_colors,
+                        hiding_started: v31State.telur_gulung.hiding_started,
+                        hiding_stopped: v31State.telur_gulung.hiding_stopped,
                         hide_deadline: v31State.telur_gulung.hide_deadline,
                         finding_finished: v31State.telur_gulung.finding_finished,
                         first_finder: v31State.telur_gulung.first_finder,
@@ -968,16 +971,26 @@ io.on("connection", (socket) => {
         const other = player === "ida" ? "fendi" : "ida";
         v31State.telur_gulung.player_colors[player] = color;
         v31State.telur_gulung.player_colors[other] = color === "biru" ? "kuning" : "biru";
+        v31State.telur_gulung.hiding_started = false;
+        v31State.telur_gulung.hiding_stopped = false;
         persistV31Session();
         io.to("v31_room").emit("v31_colors_assigned", v31State.telur_gulung.player_colors);
     });
 
     socket.on("v31_start_hiding", () => {
         v31State.telur_gulung.hiding_started = true;
+        v31State.telur_gulung.hiding_stopped = false;
         v31State.telur_gulung.hide_deadline = Date.now() + (90 * 1000);
         v31State.telur_gulung.phase = "finding";
         persistV31Session();
         io.to("v31_room").emit("v31_hiding_started", { deadline: v31State.telur_gulung.hide_deadline });
+    });
+
+    socket.on("v31_stop_hiding", () => {
+        v31State.telur_gulung.hiding_started = false;
+        v31State.telur_gulung.hiding_stopped = true;
+        persistV31Session();
+        io.to("v31_room").emit("v31_hiding_stopped");
     });
 
     socket.on("v31_finish_finding", ({ player, elapsedMs }) => {
