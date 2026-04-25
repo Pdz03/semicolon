@@ -514,7 +514,6 @@
                     return;
                 }
                 finding.classList.remove("hidden-stage");
-                scan.classList.remove("hidden-stage");
                 return;
             }
 
@@ -898,18 +897,28 @@
             if (hidingInterval) clearInterval(hidingInterval);
             document.getElementById("hiding-panel").classList.add("hidden-stage");
             document.getElementById("finding-panel").classList.remove("hidden-stage");
+            document.getElementById("scan-panel").classList.add("hidden-stage");
             document.getElementById("finding-start-btn").disabled = false;
             document.getElementById("finding-stop-btn").disabled = false;
         });
 
         socket.on("v31_finding_update", ({ results, current_turn }) => {
             document.getElementById("finding-panel").classList.remove("hidden-stage");
-            document.getElementById("scan-panel").classList.remove("hidden-stage");
             const container = document.getElementById("finding-results");
             container.innerHTML = `<p class="mb-2 text-xs uppercase tracking-[0.2em] text-slate-400">Podium tercepat</p>` + results.map((item, index) => {
                 const seconds = (item.elapsedMs / 1000).toFixed(2);
                 return `<p>${index + 1}. ${item.player.toUpperCase()} - ${seconds} detik</p>`;
             }).join("") || "Belum ada hasil.";
+            const meDone = results.some((item) => item.player === currentPlayer);
+            if (!meDone) {
+                document.getElementById("finding-start-btn").disabled = true;
+                document.getElementById("finding-stop-btn").disabled = false;
+            }
+            if (results.length < 2) {
+                document.getElementById("scan-panel").classList.add("hidden-stage");
+                return;
+            }
+            document.getElementById("scan-panel").classList.remove("hidden-stage");
             document.getElementById("scan-status").innerText = current_turn === currentPlayer
                 ? `Kamu yang lebih cepat. Silakan scan QR code apa pun duluan.`
                 : `Menunggu ${current_turn.toUpperCase()} scan QR lebih dulu. Setelah itu kamu cari pasangan kodenya sesuai warna lawan.`;
