@@ -114,6 +114,16 @@
             box-shadow: 0 0 0 1px rgba(244,114,182,0.16) inset, 0 0 24px rgba(244,114,182,0.18);
             transform: translateY(-2px);
         }
+        .scan-swap {
+            transition: opacity 220ms ease, transform 220ms ease;
+        }
+        .scan-swap.hidden-stage {
+            display: none;
+        }
+        .scan-swap.is-entering {
+            opacity: 0;
+            transform: translateY(10px) scale(0.985);
+        }
         #reader { min-height: 280px; border-radius: 22px; overflow: hidden; background: #020617; }
         #map, #end-map { min-height: 320px; border-radius: 22px; overflow: hidden; }
         .hidden-stage { display: none; }
@@ -371,14 +381,16 @@
 
                 <div id="scan-panel" class="hidden-stage space-y-4">
                     <p id="scan-status" class="text-sm leading-7 text-slate-300"></p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="piece piece-1"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 1</div></div>
-                        <div class="piece piece-2"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 2</div></div>
-                        <div class="piece piece-3"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 3</div></div>
-                        <div class="piece piece-4"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 4</div></div>
+                    <div id="scan-stage-body" class="space-y-4">
+                        <div id="puzzle-stage" class="scan-swap grid grid-cols-2 gap-3">
+                            <div class="piece piece-1"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 1</div></div>
+                            <div class="piece piece-2"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 2</div></div>
+                            <div class="piece piece-3"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 3</div></div>
+                            <div class="piece piece-4"><div class="piece-label p-4 text-xs uppercase tracking-[0.2em] text-slate-300">Piece 4</div></div>
+                        </div>
+                        <div id="reader" class="scan-swap hidden-stage"></div>
                     </div>
-                    <button onclick="startScanner()" id="open-scanner" class="w-full rounded-2xl bg-sky-300 px-4 py-4 font-bold text-slate-950">Scan QR code</button>
-                    <div id="reader" class="hidden-stage"></div>
+                    <button onclick="toggleScannerView()" id="open-scanner" class="w-full rounded-2xl bg-sky-300 px-4 py-4 font-bold text-slate-950">Scan QR code</button>
                     <p id="scan-error" class="hidden text-sm text-rose-300"></p>
                 </div>
             </div>
@@ -447,6 +459,7 @@
         let findingInterval = null;
         let findingStartedAt = null;
         let qrScanner = null;
+        let scannerVisible = false;
         let pairCount = 0;
         let map = null;
         let endMap = null;
@@ -673,9 +686,36 @@
             socket.emit("v31_finish_finding", { player: currentPlayer, elapsedMs: Date.now() - findingStartedAt });
         }
 
+        function setScannerMode(showCamera) {
+            const puzzle = document.getElementById("puzzle-stage");
+            const reader = document.getElementById("reader");
+            scannerVisible = showCamera;
+            const showEl = showCamera ? reader : puzzle;
+            const hideEl = showCamera ? puzzle : reader;
+            hideEl.classList.add("hidden-stage");
+            showEl.classList.remove("hidden-stage");
+            showEl.classList.add("is-entering");
+            requestAnimationFrame(() => {
+                showEl.classList.remove("is-entering");
+            });
+            document.getElementById("open-scanner").innerText = showCamera ? "Kembali ke puzzle" : "Scan QR code";
+        }
+
+        function toggleScannerView() {
+            if (scannerVisible) {
+                if (qrScanner) {
+                    qrScanner.stop().catch(() => {});
+                    qrScanner = null;
+                }
+                setScannerMode(false);
+                return;
+            }
+            startScanner();
+        }
+
         function startScanner() {
             document.getElementById("scan-error").classList.add("hidden");
-            document.getElementById("reader").classList.remove("hidden-stage");
+            setScannerMode(true);
             if (qrScanner) {
                 qrScanner.stop().catch(() => {});
             }
@@ -685,10 +725,12 @@
                 { fps: 10, qrbox: 240 },
                 (text) => {
                     qrScanner.stop().catch(() => {});
-                    document.getElementById("reader").classList.add("hidden-stage");
+                    qrScanner = null;
+                    setScannerMode(false);
                     socket.emit("v31_scan_qr", { player: currentPlayer, qr_code: text });
                 }
             ).catch(() => {
+                setScannerMode(false);
                 document.getElementById("scan-error").innerText = "Kamera gagal dibuka.";
                 document.getElementById("scan-error").classList.remove("hidden");
             });
@@ -918,7 +960,9 @@
                 document.getElementById("scan-panel").classList.add("hidden-stage");
                 return;
             }
+            document.getElementById("finding-panel").classList.add("hidden-stage");
             document.getElementById("scan-panel").classList.remove("hidden-stage");
+            setScannerMode(false);
             document.getElementById("scan-status").innerText = current_turn === currentPlayer
                 ? `Kamu yang lebih cepat. Silakan scan QR code apa pun duluan.`
                 : `Menunggu ${current_turn.toUpperCase()} scan QR lebih dulu. Setelah itu kamu cari pasangan kodenya sesuai warna lawan.`;
@@ -932,6 +976,7 @@
         });
 
         socket.on("v31_pair_started", ({ scanned_by, label, next_color, current_turn }) => {
+            setScannerMode(false);
             document.getElementById("scan-status").innerText = scanned_by === currentPlayer
                 ? `Scan awal berhasil. Sekarang pasanganmu harus mencari ${next_color.toUpperCase()} ${label}.`
                 : `Pasanganmu sudah scan duluan. Sekarang giliranmu mencari ${next_color.toUpperCase()} ${label}.`;
@@ -952,6 +997,7 @@
         });
 
         socket.on("v31_pair_reset", ({ current_turn, solved_pairs }) => {
+            setScannerMode(false);
             document.getElementById("scan-status").innerText = current_turn === currentPlayer
                 ? "Giliranmu memulai scan pasangan berikutnya."
                 : `Menunggu ${current_turn.toUpperCase()} memulai scan pasangan berikutnya.`;
