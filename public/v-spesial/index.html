@@ -3,115 +3,189 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V-Spesial | Ulang Tahun Ida</title>
+  <title>V-Spesial | Menunggu Momen</title>
+  <meta name="description" content="Sebuah halaman spesial untuk menunggu momen yang sudah disiapkan dengan countdown, kenangan, dan kejutan kecil." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="V-Spesial | Menunggu Momen" />
+  <meta property="og:description" content="Sebuah halaman spesial untuk menunggu momen yang sudah disiapkan dengan countdown, kenangan, dan kejutan kecil." />
+  <meta property="og:site_name" content="V-Spesial" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="V-Spesial | Menunggu Momen" />
+  <meta name="twitter:description" content="Sebuah halaman spesial untuk menunggu momen yang sudah disiapkan dengan countdown, kenangan, dan kejutan kecil." />
+  <link rel="icon" type="image/png" href="/images/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root { color-scheme: dark; }
     body {
       background:
-        radial-gradient(circle at top, rgba(91, 33, 182, 0.35), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.30), transparent 30%),
-        #060816;
-      overflow-x: hidden;
+        radial-gradient(circle at top, rgba(124, 58, 237, 0.22), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.22), transparent 34%),
+        #050816;
+      overflow: hidden;
       font-family: Georgia, "Times New Roman", serif;
-    }
-    .glass {
-      background: rgba(15, 23, 42, 0.58);
-      border: 1px solid rgba(196, 181, 253, 0.18);
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
-      backdrop-filter: blur(20px);
     }
     .heart {
       position: fixed;
       bottom: -40px;
-      width: 18px;
-      height: 18px;
-      background: linear-gradient(135deg, rgba(244, 114, 182, 0.9), rgba(96, 165, 250, 0.7));
+      width: 16px;
+      height: 16px;
+      background: linear-gradient(135deg, rgba(244, 114, 182, 0.8), rgba(96, 165, 250, 0.65));
       transform: rotate(45deg);
       animation: floatUp linear infinite;
-      opacity: 0.6;
+      opacity: 0.5;
       z-index: 0;
     }
     .heart::before, .heart::after {
       content: "";
       position: absolute;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 999px;
       background: inherit;
     }
-    .heart::before { top: -9px; left: 0; }
-    .heart::after { top: 0; left: -9px; }
+    .heart::before { top: -8px; left: 0; }
+    .heart::after { top: 0; left: -8px; }
     @keyframes floatUp {
-      from { transform: translateY(0) rotate(45deg) scale(0.8); opacity: 0; }
-      10% { opacity: 0.65; }
-      to { transform: translateY(-120vh) rotate(45deg) scale(1.3); opacity: 0; }
+      from { transform: translateY(0) rotate(45deg) scale(0.75); opacity: 0; }
+      10% { opacity: 0.5; }
+      to { transform: translateY(-120vh) rotate(45deg) scale(1.2); opacity: 0; }
+    }
+    .glass {
+      background: rgba(2, 6, 23, 0.58);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 25px 80px rgba(15, 23, 42, 0.45);
     }
   </style>
 </head>
 <body class="min-h-screen text-slate-100">
   <div id="hearts"></div>
-  <main class="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center px-6 py-12">
-    <section class="glass grid w-full gap-10 rounded-[2rem] p-8 md:grid-cols-[1.1fr_0.9fr] md:p-12">
-      <div class="space-y-6">
-        <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">V-Spesial</p>
-        <h1 class="max-w-xl text-4xl font-semibold leading-tight text-white md:text-6xl">Sebuah ruang kecil yang menunggu hari ulang tahun Ida.</h1>
-        <p class="max-w-xl text-lg leading-8 text-slate-300">Saat waktunya tiba, halaman ini akan membuka lembaran pesan, kenangan, dan hadiah virtual yang sudah disiapkan khusus.</p>
-        <div class="rounded-3xl border border-white/10 bg-black/20 p-6">
-          <p class="text-sm uppercase tracking-[0.35em] text-sky-200/70">Hitung Mundur</p>
-          <div id="countdown" class="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="days" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Hari</div></div>
-            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="hours" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Jam</div></div>
-            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="minutes" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Menit</div></div>
-            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="seconds" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Detik</div></div>
-          </div>
+
+  <div id="emailModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/80 px-5">
+    <div class="glass w-full max-w-md rounded-[2rem] p-6">
+      <p class="text-xs uppercase tracking-[0.4em] text-violet-200/70">Sebelum Mulai</p>
+      <h2 class="mt-3 text-2xl font-semibold text-white">Masukkan emailmu dulu ya</h2>
+      <p class="mt-3 text-sm leading-7 text-slate-300">Email ini hanya disimpan di perangkat ini agar halaman berikutnya tidak menanyakan lagi.</p>
+      <form id="emailForm" class="mt-5 space-y-4">
+        <input id="idaEmail" type="email" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-violet-300/50" placeholder="contoh: ida@email.com" required />
+        <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Simpan & Lanjut</button>
+      </form>
+      <p id="emailMessage" class="mt-3 text-sm text-rose-300"></p>
+    </div>
+  </div>
+
+  <main class="relative z-10 flex min-h-screen items-center justify-center px-5">
+    <section class="glass w-full max-w-md rounded-[2.2rem] px-6 py-8 text-center md:px-8 md:py-10">
+      <p class="text-xs uppercase tracking-[0.45em] text-violet-200/70">V-Spesial</p>
+      <h1 class="mt-4 text-3xl font-semibold leading-tight text-white md:text-4xl">Menunggu momen spesial.</h1>
+      <p id="savedEmailInfo" class="mt-3 min-h-6 text-sm text-slate-400"></p>
+
+      <div class="mt-8 grid grid-cols-2 gap-3">
+        <div class="rounded-[1.5rem] bg-white/5 px-3 py-4">
+          <div id="days" class="text-3xl font-semibold text-white md:text-4xl">0</div>
+          <div class="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-400">Hari</div>
+        </div>
+        <div class="rounded-[1.5rem] bg-white/5 px-3 py-4">
+          <div id="hours" class="text-3xl font-semibold text-white md:text-4xl">00</div>
+          <div class="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-400">Jam</div>
+        </div>
+        <div class="rounded-[1.5rem] bg-white/5 px-3 py-4">
+          <div id="minutes" class="text-3xl font-semibold text-white md:text-4xl">00</div>
+          <div class="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-400">Menit</div>
+        </div>
+        <div class="rounded-[1.5rem] bg-white/5 px-3 py-4">
+          <div id="seconds" class="text-3xl font-semibold text-white md:text-4xl">00</div>
+          <div class="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-400">Detik</div>
         </div>
       </div>
 
-      <div class="flex items-center">
-        <div class="w-full rounded-[2rem] border border-violet-300/15 bg-slate-950/60 p-8">
-          <p class="text-sm uppercase tracking-[0.4em] text-violet-200/70">Akses Rahasia</p>
-          <h2 class="mt-3 text-3xl font-semibold">Masuk ke Scrapbook</h2>
-          <p id="loginHint" class="mt-4 text-slate-300">Kolom kode akan terbuka otomatis saat hitung mundur selesai.</p>
-          <form id="loginForm" class="mt-6 hidden space-y-4">
-            <label class="block">
-              <span class="mb-2 block text-sm text-slate-300">Masukkan Kode Rahasia dari Email</span>
-              <input id="passcode" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none ring-0 placeholder:text-slate-500 focus:border-violet-300/50" placeholder="Kode rahasia..." />
-            </label>
-            <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white transition hover:brightness-110">Buka Scrapbook</button>
-          </form>
-          <p id="message" class="mt-4 text-sm text-rose-300"></p>
-        </div>
+      <div id="unlockSection" class="mt-8 hidden">
+        <form id="loginForm" class="space-y-3">
+          <input id="passcode" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-white outline-none placeholder:text-slate-500 focus:border-violet-300/50" placeholder="Masukkan kode rahasia" />
+          <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Buka Momen</button>
+        </form>
       </div>
+
+      <div id="devActions" class="mt-8 hidden space-y-3">
+        <div class="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Mode dev aktif. Popup email, timer, dan kode dilewati.</div>
+        <a href="/v-spesial/scrapbook?akses=dev" class="block w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Masuk ke Scrapbook</a>
+        <a href="/v-spesial/reward?akses=dev" class="block w-full rounded-2xl border border-white/10 px-5 py-3 font-medium text-white hover:bg-white/5">Langsung ke Hadiah</a>
+      </div>
+
+      <p id="message" class="mt-4 min-h-6 text-sm text-slate-300"></p>
     </section>
   </main>
 
   <script>
+    const EMAIL_KEY = "v_spesial_ida_email";
+    const DEV_KEY = "v_spesial_dev_mode";
     const heartsHost = document.getElementById("hearts");
-    for (let i = 0; i < 18; i += 1) {
+    const emailModal = document.getElementById("emailModal");
+    const savedEmailInfo = document.getElementById("savedEmailInfo");
+    const unlockSection = document.getElementById("unlockSection");
+    const devActions = document.getElementById("devActions");
+    const message = document.getElementById("message");
+    const url = new URL(window.location.href);
+    const akses = url.searchParams.get("akses");
+    let targetDate = null;
+    let isDevMode = false;
+
+    for (let i = 0; i < 16; i += 1) {
       const heart = document.createElement("div");
       heart.className = "heart";
       heart.style.left = `${Math.random() * 100}%`;
-      heart.style.animationDuration = `${10 + Math.random() * 10}s`;
-      heart.style.animationDelay = `${Math.random() * 8}s`;
-      heart.style.opacity = (0.25 + Math.random() * 0.5).toFixed(2);
+      heart.style.animationDuration = `${10 + Math.random() * 8}s`;
+      heart.style.animationDelay = `${Math.random() * 7}s`;
       heartsHost.appendChild(heart);
     }
 
-    const loginForm = document.getElementById("loginForm");
-    const loginHint = document.getElementById("loginHint");
-    const message = document.getElementById("message");
-    let targetDate = null;
+    function updateSavedEmailInfo() {
+      const savedEmail = localStorage.getItem(EMAIL_KEY);
+      savedEmailInfo.textContent = savedEmail && !isDevMode ? `Email tersimpan: ${savedEmail}` : "";
+      return savedEmail;
+    }
+
+    function syncDevMode() {
+      if (akses === "dev") {
+        localStorage.setItem(DEV_KEY, "1");
+      } else {
+        localStorage.removeItem(DEV_KEY);
+      }
+      isDevMode = localStorage.getItem(DEV_KEY) === "1";
+    }
+
+    function showEmailModalIfNeeded() {
+      if (isDevMode) {
+        emailModal.classList.add("hidden");
+        emailModal.classList.remove("flex");
+        return;
+      }
+      const savedEmail = updateSavedEmailInfo();
+      if (savedEmail) {
+        emailModal.classList.add("hidden");
+        emailModal.classList.remove("flex");
+        return;
+      }
+      emailModal.classList.remove("hidden");
+      emailModal.classList.add("flex");
+    }
 
     async function loadConfig() {
       const response = await fetch("/api/v-bday/config");
       const config = await response.json();
       targetDate = config.target_date ? new Date(config.target_date) : new Date();
+      if (isDevMode) {
+        unlockSection.classList.add("hidden");
+        devActions.classList.remove("hidden");
+        message.textContent = "Mode dev aktif.";
+        tick();
+        return;
+      }
       tick();
       setInterval(tick, 1000);
     }
 
-    function tick() {
+    function tick(forceUnlock = false) {
       const diff = targetDate.getTime() - Date.now();
       const safeDiff = Math.max(diff, 0);
       const days = Math.floor(safeDiff / 86400000);
@@ -123,13 +197,25 @@
       document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
       document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
 
-      if (diff <= 0) {
-        loginForm.classList.remove("hidden");
-        loginHint.textContent = "Waktunya tiba. Masukkan kode dari email untuk melanjutkan.";
+      if (!isDevMode && (forceUnlock || diff <= 0)) {
+        unlockSection.classList.remove("hidden");
+        message.textContent = "Waktunya sudah tiba.";
       }
     }
 
-    loginForm.addEventListener("submit", async (event) => {
+    document.getElementById("emailForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const email = document.getElementById("idaEmail").value.trim();
+      if (!email || !email.includes("@")) {
+        document.getElementById("emailMessage").textContent = "Masukkan email yang valid.";
+        return;
+      }
+      localStorage.setItem(EMAIL_KEY, email);
+      document.getElementById("emailMessage").textContent = "";
+      showEmailModalIfNeeded();
+    });
+
+    document.getElementById("loginForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       message.textContent = "";
       const code = document.getElementById("passcode").value.trim();
@@ -143,11 +229,14 @@
         window.location.href = "/v-spesial/scrapbook";
         return;
       }
-      message.textContent = "Kode belum cocok. Coba cek lagi email rahasianya.";
+      message.textContent = "Kode belum cocok.";
     });
 
+    syncDevMode();
+    updateSavedEmailInfo();
+    showEmailModalIfNeeded();
     loadConfig().catch(() => {
-      message.textContent = "Gagal memuat konfigurasi. Coba refresh halaman.";
+      message.textContent = "Gagal memuat timer.";
     });
   </script>
 </body>

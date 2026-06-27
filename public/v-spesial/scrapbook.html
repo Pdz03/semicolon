@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scrapbook Ida</title>
+  <meta name="description" content="Lembaran digital berisi pesan-pesan hangat, kenangan kecil, dan jalan menuju kejutan berikutnya." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="V-Spesial | Scrapbook Digital" />
+  <meta property="og:description" content="Lembaran digital berisi pesan-pesan hangat, kenangan kecil, dan jalan menuju kejutan berikutnya." />
+  <meta property="og:site_name" content="V-Spesial" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="V-Spesial | Scrapbook Digital" />
+  <meta name="twitter:description" content="Lembaran digital berisi pesan-pesan hangat, kenangan kecil, dan jalan menuju kejutan berikutnya." />
+  <link rel="icon" type="image/png" href="/images/logo.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <style>
@@ -86,11 +95,16 @@
         </label>
         <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Buka Hadiah Virtual</button>
       </form>
+      <div id="devRewardActions" class="mx-auto mt-6 hidden max-w-xl space-y-3">
+        <div class="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Mode dev aktif. Validasi kode reward dilewati.</div>
+        <a href="/v-spesial/reward?akses=dev" class="block w-full rounded-2xl border border-white/10 px-5 py-3 font-medium text-white hover:bg-white/5">Lanjut langsung ke hadiah</a>
+      </div>
       <p id="rewardMessage" class="mt-4 text-sm text-rose-300"></p>
     </section>
   </main>
 
   <script>
+    const DEV_KEY = "v_spesial_dev_mode";
     const heartsHost = document.getElementById("hearts");
     for (let i = 0; i < 20; i += 1) {
       const heart = document.createElement("div");
@@ -103,7 +117,24 @@
 
     const notesContainer = document.getElementById("notesContainer");
     const rewardMessage = document.getElementById("rewardMessage");
+    const rewardForm = document.getElementById("rewardForm");
+    const devRewardActions = document.getElementById("devRewardActions");
+    const url = new URL(window.location.href);
+    const akses = url.searchParams.get("akses");
     let scrapbookData = [];
+    let isDevMode = false;
+
+    function syncDevMode() {
+      if (akses === "dev") {
+        localStorage.setItem(DEV_KEY, "1");
+      }
+      isDevMode = localStorage.getItem(DEV_KEY) === "1";
+      if (isDevMode) {
+        rewardForm.classList.add("hidden");
+        devRewardActions.classList.remove("hidden");
+        rewardMessage.textContent = "Mode dev aktif.";
+      }
+    }
 
     async function loadScrapbook() {
       const response = await fetch("/api/v-bday/scrapbook");
@@ -165,6 +196,7 @@
       rewardMessage.textContent = "Kodenya belum cocok. Coba cek lagi QR-nya.";
     });
 
+    syncDevMode();
     loadScrapbook().catch(() => {
       rewardMessage.textContent = "Gagal memuat scrapbook.";
     });

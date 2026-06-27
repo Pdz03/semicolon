@@ -319,6 +319,25 @@ function serializeBirthdayConfig(config) {
   };
 }
 
+function buildFromAddress() {
+  const rawFrom = (process.env.SMTP_FROM || "").trim();
+  const smtpUser = (process.env.SMTP_USER || "").trim();
+
+  if (!rawFrom) {
+    return smtpUser;
+  }
+
+  if (rawFrom.includes("<") && rawFrom.includes(">")) {
+    return rawFrom;
+  }
+
+  if (smtpUser) {
+    return `"${rawFrom.replaceAll('"', "")}" <${smtpUser}>`;
+  }
+
+  return rawFrom;
+}
+
 async function persistV31Session(extra = {}) {
     await V31Progress.findOneAndUpdate(
         { session_id: "current_v31" },
@@ -1768,7 +1787,7 @@ app.post("/api/v-bday/send-email", async (req, res) => {
   });
 
   const result = await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    from: buildFromAddress(),
     to,
     subject,
     text: text || "Ada pesan spesial untuk Ida.",
