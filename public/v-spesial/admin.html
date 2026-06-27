@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin V-Spesial</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.20), transparent 35%),
+        #050816;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .panel {
+      background: rgba(2, 6, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100">
+  <main class="mx-auto max-w-7xl px-6 py-10">
+    <section id="loginSection" class="mx-auto mt-16 max-w-xl rounded-[2rem] panel p-8">
+      <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">Admin</p>
+      <h1 class="mt-3 text-4xl font-semibold">Dashboard V-Spesial</h1>
+      <form id="loginForm" class="mt-6 space-y-4">
+        <input id="adminSecret" type="password" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none" placeholder="Masukkan password admin" />
+        <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white">Masuk</button>
+      </form>
+      <p id="loginMessage" class="mt-4 text-sm text-rose-300"></p>
+    </section>
+
+    <section id="dashboard" class="hidden space-y-8">
+      <header>
+        <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">Admin Dinamis</p>
+        <h1 class="mt-3 text-4xl font-semibold">Panel Ulang Tahun Ida</h1>
+      </header>
+
+      <div class="grid gap-8 xl:grid-cols-2">
+        <section class="panel rounded-[2rem] p-6">
+          <h2 class="text-2xl font-semibold">Konfigurasi Global</h2>
+          <form id="configForm" class="mt-5 space-y-4">
+            <input id="targetDate" type="datetime-local" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3" />
+            <input id="emailPasscode" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="Email passcode" />
+            <input id="rewardPasscode" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="Reward passcode" />
+            <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white">Simpan Konfigurasi</button>
+          </form>
+        </section>
+
+        <section class="panel rounded-[2rem] p-6">
+          <h2 class="text-2xl font-semibold">QR Generator</h2>
+          <p class="mt-3 text-slate-300">QR dibuat langsung dari `reward_passcode` terbaru.</p>
+          <div class="mt-6 flex justify-center rounded-[2rem] bg-white p-6">
+            <canvas id="adminQrCanvas"></canvas>
+          </div>
+          <button id="downloadQr" class="mt-6 rounded-2xl border border-white/10 px-5 py-3">Download QR</button>
+        </section>
+      </div>
+
+      <section class="panel rounded-[2rem] p-6">
+        <h2 class="text-2xl font-semibold">Testing Kirim Email</h2>
+        <p class="mt-3 text-slate-300">Form ini untuk tes koneksi SMTP dan melihat email masuk ke alamat tujuan yang kamu tentukan.</p>
+        <form id="emailTestForm" class="mt-5 grid gap-4 md:grid-cols-2">
+          <input id="emailTo" type="email" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Tujuan email, contoh: ida@example.com" />
+          <input id="emailSubject" type="text" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Subject email" value="Pesan Uji Coba V-Spesial" />
+          <textarea id="emailText" rows="4" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Isi email versi teks">Halo Ida, ini email percobaan dari dashboard V-Spesial.</textarea>
+          <textarea id="emailHtml" rows="6" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Isi email versi HTML"><h1>Halo Ida</h1><p>Ini email percobaan dari dashboard <strong>V-Spesial</strong>.</p></textarea>
+          <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white md:col-span-2">Kirim Test Email</button>
+        </form>
+        <p id="emailTestMessage" class="mt-4 text-sm text-sky-200"></p>
+      </section>
+
+      <section class="panel rounded-[2rem] p-6">
+        <h2 class="text-2xl font-semibold">Aset & Media</h2>
+        <form id="assetsForm" class="mt-5 grid gap-4 md:grid-cols-2">
+          <input id="scrapbookPhotoUrl" type="url" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="URL foto utama scrapbook" />
+          <input id="rewardImage1" type="url" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="URL kado 1" />
+          <input id="rewardImage2" type="url" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="URL kado 2" />
+          <input id="rewardImage3" type="url" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="URL kado 3" />
+          <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white md:col-span-2">Simpan Aset</button>
+        </form>
+      </section>
+
+      <div class="grid gap-8 xl:grid-cols-[0.95fr_1.05fr]">
+        <section class="panel rounded-[2rem] p-6">
+          <h2 class="text-2xl font-semibold">Scrapbook Manager</h2>
+          <form id="scrapbookForm" class="mt-5 space-y-4">
+            <input id="scrapbookOrder" type="number" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="Urutan" />
+            <textarea id="scrapbookNotes" rows="5" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3" placeholder="Isi pesan scrapbook"></textarea>
+            <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white">Tambah Pesan</button>
+          </form>
+          <div id="scrapbookList" class="mt-6 space-y-4"></div>
+        </section>
+
+        <section class="panel rounded-[2rem] p-6">
+          <h2 class="text-2xl font-semibold">Inbox Balasan</h2>
+          <div id="replyList" class="mt-5 space-y-4"></div>
+        </section>
+      </div>
+
+      <p id="globalMessage" class="text-sm text-sky-200"></p>
+    </section>
+  </main>
+
+  <script>
+    let adminSecret = "";
+    let fullConfig = null;
+
+    async function api(url, options = {}) {
+      const response = await fetch(url, options);
+      return response.json();
+    }
+
+    function formatDatetimeLocal(dateValue) {
+      if (!dateValue) return "";
+      const date = new Date(dateValue);
+      const pad = (value) => String(value).padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    async function loadDashboard() {
+      fullConfig = await api(`/api/v-bday/admin/config?secret=${encodeURIComponent(adminSecret)}`);
+      const scrapbook = await api("/api/v-bday/scrapbook");
+      const replies = await api(`/api/v-bday/replies?secret=${encodeURIComponent(adminSecret)}`);
+
+      document.getElementById("targetDate").value = formatDatetimeLocal(fullConfig.target_date);
+      document.getElementById("emailPasscode").value = fullConfig.email_passcode || "";
+      document.getElementById("rewardPasscode").value = fullConfig.reward_passcode || "";
+      document.getElementById("scrapbookPhotoUrl").value = fullConfig.scrapbook_photo_url || "";
+      document.getElementById("rewardImage1").value = fullConfig.reward_image_1 || "";
+      document.getElementById("rewardImage2").value = fullConfig.reward_image_2 || "";
+      document.getElementById("rewardImage3").value = fullConfig.reward_image_3 || "";
+
+      QRCode.toCanvas(document.getElementById("adminQrCanvas"), fullConfig.reward_passcode || "", {
+        width: 240,
+        margin: 1,
+        color: { dark: "#4c1d95", light: "#ffffff" },
+      });
+
+      document.getElementById("scrapbookList").innerHTML = (scrapbook.notes || []).map((item) => `
+        <article class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-xs uppercase tracking-[0.35em] text-violet-200/70">Urutan ${item.order}</div>
+              <p class="mt-2 text-sm leading-7 text-slate-200">${escapeHtml(item.notes || "")}</p>
+            </div>
+            <div class="flex gap-2">
+              <button data-edit="${item._id}" class="rounded-xl border border-white/10 px-3 py-2 text-sm">Edit</button>
+              <button data-delete="${item._id}" class="rounded-xl border border-rose-400/30 px-3 py-2 text-sm text-rose-200">Hapus</button>
+            </div>
+          </div>
+        </article>
+      `).join("");
+
+      document.getElementById("replyList").innerHTML = replies.map((item) => `
+        <article class="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+          <div class="text-xs uppercase tracking-[0.35em] text-sky-200/70">${new Date(item.created_at).toLocaleString("id-ID")}</div>
+          <h3 class="mt-2 text-lg font-semibold">${escapeHtml(item.gift_choice || "-")}</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-200">${escapeHtml(item.reply_message || "")}</p>
+        </article>
+      `).join("") || '<p class="text-slate-400">Belum ada balasan masuk.</p>';
+
+      bindScrapbookActions(scrapbook.notes || []);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function bindScrapbookActions(items) {
+      document.querySelectorAll("[data-delete]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          await api(`/api/v-bday/admin/scrapbook/${button.dataset.delete}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: adminSecret }),
+          });
+          setMessage("Pesan scrapbook dihapus.");
+          loadDashboard();
+        });
+      });
+
+      document.querySelectorAll("[data-edit]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const item = items.find((entry) => entry._id === button.dataset.edit);
+          if (!item) return;
+          const notes = prompt("Edit pesan scrapbook", item.notes || "");
+          if (notes === null) return;
+          const order = prompt("Edit urutan", item.order ?? 0);
+          if (order === null) return;
+          await api(`/api/v-bday/admin/scrapbook/${button.dataset.edit}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ secret: adminSecret, notes, order }),
+          });
+          setMessage("Pesan scrapbook diperbarui.");
+          loadDashboard();
+        });
+      });
+    }
+
+    function setMessage(text) {
+      document.getElementById("globalMessage").textContent = text;
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      adminSecret = document.getElementById("adminSecret").value.trim();
+      const result = await api(`/api/v-bday/admin/config?secret=${encodeURIComponent(adminSecret)}`);
+      if (result.error) {
+        document.getElementById("loginMessage").textContent = result.error;
+        return;
+      }
+      document.getElementById("loginSection").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      loadDashboard();
+    });
+
+    document.getElementById("configForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await api("/api/v-bday/admin/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: adminSecret,
+          target_date: document.getElementById("targetDate").value,
+          email_passcode: document.getElementById("emailPasscode").value,
+          reward_passcode: document.getElementById("rewardPasscode").value,
+          scrapbook_photo_url: document.getElementById("scrapbookPhotoUrl").value,
+          reward_image_1: document.getElementById("rewardImage1").value,
+          reward_image_2: document.getElementById("rewardImage2").value,
+          reward_image_3: document.getElementById("rewardImage3").value,
+        }),
+      });
+      setMessage("Konfigurasi global disimpan.");
+      loadDashboard();
+    });
+
+    document.getElementById("assetsForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await api("/api/v-bday/admin/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: adminSecret,
+          target_date: document.getElementById("targetDate").value,
+          email_passcode: document.getElementById("emailPasscode").value,
+          reward_passcode: document.getElementById("rewardPasscode").value,
+          scrapbook_photo_url: document.getElementById("scrapbookPhotoUrl").value,
+          reward_image_1: document.getElementById("rewardImage1").value,
+          reward_image_2: document.getElementById("rewardImage2").value,
+          reward_image_3: document.getElementById("rewardImage3").value,
+        }),
+      });
+      setMessage("Aset dan media disimpan.");
+      loadDashboard();
+    });
+
+    document.getElementById("scrapbookForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await api("/api/v-bday/admin/scrapbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: adminSecret,
+          order: document.getElementById("scrapbookOrder").value,
+          notes: document.getElementById("scrapbookNotes").value,
+        }),
+      });
+      document.getElementById("scrapbookForm").reset();
+      setMessage("Pesan scrapbook ditambahkan.");
+      loadDashboard();
+    });
+
+    document.getElementById("emailTestForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const messageHost = document.getElementById("emailTestMessage");
+      messageHost.textContent = "Mengirim email percobaan...";
+
+      const result = await api("/api/v-bday/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: document.getElementById("emailTo").value.trim(),
+          subject: document.getElementById("emailSubject").value.trim(),
+          text: document.getElementById("emailText").value,
+          html: document.getElementById("emailHtml").value,
+        }),
+      });
+
+      if (result.success) {
+        messageHost.textContent = `Email test berhasil dikirim. Message ID: ${result.messageId}`;
+        return;
+      }
+
+      messageHost.textContent = result.error || "Gagal mengirim email test.";
+    });
+
+    document.getElementById("downloadQr").addEventListener("click", () => {
+      const canvas = document.getElementById("adminQrCanvas");
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      link.download = "v-spesial-qr.png";
+      link.click();
+    });
+  </script>
+</body>
+</html>

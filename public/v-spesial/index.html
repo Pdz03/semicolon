@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V-Spesial | Ulang Tahun Ida</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(circle at top, rgba(91, 33, 182, 0.35), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.30), transparent 30%),
+        #060816;
+      overflow-x: hidden;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.58);
+      border: 1px solid rgba(196, 181, 253, 0.18);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(20px);
+    }
+    .heart {
+      position: fixed;
+      bottom: -40px;
+      width: 18px;
+      height: 18px;
+      background: linear-gradient(135deg, rgba(244, 114, 182, 0.9), rgba(96, 165, 250, 0.7));
+      transform: rotate(45deg);
+      animation: floatUp linear infinite;
+      opacity: 0.6;
+      z-index: 0;
+    }
+    .heart::before, .heart::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: inherit;
+    }
+    .heart::before { top: -9px; left: 0; }
+    .heart::after { top: 0; left: -9px; }
+    @keyframes floatUp {
+      from { transform: translateY(0) rotate(45deg) scale(0.8); opacity: 0; }
+      10% { opacity: 0.65; }
+      to { transform: translateY(-120vh) rotate(45deg) scale(1.3); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100">
+  <div id="hearts"></div>
+  <main class="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center px-6 py-12">
+    <section class="glass grid w-full gap-10 rounded-[2rem] p-8 md:grid-cols-[1.1fr_0.9fr] md:p-12">
+      <div class="space-y-6">
+        <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">V-Spesial</p>
+        <h1 class="max-w-xl text-4xl font-semibold leading-tight text-white md:text-6xl">Sebuah ruang kecil yang menunggu hari ulang tahun Ida.</h1>
+        <p class="max-w-xl text-lg leading-8 text-slate-300">Saat waktunya tiba, halaman ini akan membuka lembaran pesan, kenangan, dan hadiah virtual yang sudah disiapkan khusus.</p>
+        <div class="rounded-3xl border border-white/10 bg-black/20 p-6">
+          <p class="text-sm uppercase tracking-[0.35em] text-sky-200/70">Hitung Mundur</p>
+          <div id="countdown" class="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="days" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Hari</div></div>
+            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="hours" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Jam</div></div>
+            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="minutes" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Menit</div></div>
+            <div class="rounded-2xl bg-white/5 p-4 text-center"><div id="seconds" class="text-4xl font-bold">0</div><div class="mt-2 text-xs uppercase tracking-[0.3em] text-slate-400">Detik</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center">
+        <div class="w-full rounded-[2rem] border border-violet-300/15 bg-slate-950/60 p-8">
+          <p class="text-sm uppercase tracking-[0.4em] text-violet-200/70">Akses Rahasia</p>
+          <h2 class="mt-3 text-3xl font-semibold">Masuk ke Scrapbook</h2>
+          <p id="loginHint" class="mt-4 text-slate-300">Kolom kode akan terbuka otomatis saat hitung mundur selesai.</p>
+          <form id="loginForm" class="mt-6 hidden space-y-4">
+            <label class="block">
+              <span class="mb-2 block text-sm text-slate-300">Masukkan Kode Rahasia dari Email</span>
+              <input id="passcode" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none ring-0 placeholder:text-slate-500 focus:border-violet-300/50" placeholder="Kode rahasia..." />
+            </label>
+            <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white transition hover:brightness-110">Buka Scrapbook</button>
+          </form>
+          <p id="message" class="mt-4 text-sm text-rose-300"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const heartsHost = document.getElementById("hearts");
+    for (let i = 0; i < 18; i += 1) {
+      const heart = document.createElement("div");
+      heart.className = "heart";
+      heart.style.left = `${Math.random() * 100}%`;
+      heart.style.animationDuration = `${10 + Math.random() * 10}s`;
+      heart.style.animationDelay = `${Math.random() * 8}s`;
+      heart.style.opacity = (0.25 + Math.random() * 0.5).toFixed(2);
+      heartsHost.appendChild(heart);
+    }
+
+    const loginForm = document.getElementById("loginForm");
+    const loginHint = document.getElementById("loginHint");
+    const message = document.getElementById("message");
+    let targetDate = null;
+
+    async function loadConfig() {
+      const response = await fetch("/api/v-bday/config");
+      const config = await response.json();
+      targetDate = config.target_date ? new Date(config.target_date) : new Date();
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    function tick() {
+      const diff = targetDate.getTime() - Date.now();
+      const safeDiff = Math.max(diff, 0);
+      const days = Math.floor(safeDiff / 86400000);
+      const hours = Math.floor((safeDiff % 86400000) / 3600000);
+      const minutes = Math.floor((safeDiff % 3600000) / 60000);
+      const seconds = Math.floor((safeDiff % 60000) / 1000);
+      document.getElementById("days").textContent = days;
+      document.getElementById("hours").textContent = String(hours).padStart(2, "0");
+      document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
+      document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+
+      if (diff <= 0) {
+        loginForm.classList.remove("hidden");
+        loginHint.textContent = "Waktunya tiba. Masukkan kode dari email untuk melanjutkan.";
+      }
+    }
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      message.textContent = "";
+      const code = document.getElementById("passcode").value.trim();
+      const response = await fetch("/api/v-bday/validate-email-passcode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        window.location.href = "/v-spesial/scrapbook";
+        return;
+      }
+      message.textContent = "Kode belum cocok. Coba cek lagi email rahasianya.";
+    });
+
+    loadConfig().catch(() => {
+      message.textContent = "Gagal memuat konfigurasi. Coba refresh halaman.";
+    });
+  </script>
+</body>
+</html>

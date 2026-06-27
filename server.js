@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
+const nodemailer = require("nodemailer");
 const app = express();
 const path = require("path");
 const http = require("http").createServer(app); // Wajib pakai http server untuk socket
@@ -83,6 +84,29 @@ const SettingSchema = new mongoose.Schema({
 
 const Memory = mongoose.model("Memory", MemorySchema);
 const Setting = mongoose.model("Setting", SettingSchema);
+
+const BirthdayConfigSchema = new mongoose.Schema({
+  target_date: Date,
+  email_passcode: String,
+  reward_passcode: String,
+  scrapbook_photo_url: String,
+  reward_image_1: String,
+  reward_image_2: String,
+  reward_image_3: String,
+});
+const BirthdayScrapbookSchema = new mongoose.Schema({
+  notes: String,
+  order: Number,
+});
+const BirthdayReplySchema = new mongoose.Schema({
+  gift_choice: String,
+  reply_message: String,
+  created_at: { type: Date, default: Date.now },
+});
+
+const BirthdayConfig = mongoose.model("BirthdayConfig", BirthdayConfigSchema);
+const BirthdayScrapbook = mongoose.model("BirthdayScrapbook", BirthdayScrapbookSchema);
+const BirthdayReply = mongoose.model("BirthdayReply", BirthdayReplySchema);
 
 // --- SCHEMA V2: CHAT HISTORY & SESSION ---
 const ChatMessageSchema = new mongoose.Schema({
@@ -264,6 +288,36 @@ function getFreshV31State() {
 }
 
 let v31State = getFreshV31State();
+
+function getBirthdayDefaults() {
+  return {
+    target_date: new Date("2026-07-04T00:00:00+07:00"),
+    email_passcode: "IDA-EMAIL",
+    reward_passcode: "IDA-REWARD",
+    scrapbook_photo_url: "https://placehold.co/1200x900/12091f/e9d5ff?text=Ida",
+    reward_image_1: "https://placehold.co/800x800/312e81/e0e7ff?text=Kado+1",
+    reward_image_2: "https://placehold.co/800x800/4c1d95/f5d0fe?text=Kado+2",
+    reward_image_3: "https://placehold.co/800x800/1e3a8a/bfdbfe?text=Kado+3",
+  };
+}
+
+async function ensureBirthdayConfig() {
+  let config = await BirthdayConfig.findOne();
+  if (!config) {
+    config = await BirthdayConfig.create(getBirthdayDefaults());
+  }
+  return config;
+}
+
+function serializeBirthdayConfig(config) {
+  return {
+    target_date: config.target_date,
+    scrapbook_photo_url: config.scrapbook_photo_url || "",
+    reward_image_1: config.reward_image_1 || "",
+    reward_image_2: config.reward_image_2 || "",
+    reward_image_3: config.reward_image_3 || "",
+  };
+}
 
 async function persistV31Session(extra = {}) {
     await V31Progress.findOneAndUpdate(
@@ -1104,12 +1158,29 @@ io.on("connection", (socket) => {
 
 // Redirect root to /v3
 app.get("/", (req, res) => {
-  res.redirect("/v3.1");
+  res.redirect("/v-spesial");
 });
 
 // Fix asset paths for v1 (supporting relative paths like images/ and music/)
 app.use("/v1/images", express.static(path.join(__dirname, "public/images")));
 app.use("/v1/music", express.static(path.join(__dirname, "public/music")));
+app.use("/v-spesial", express.static(path.join(__dirname, "public/v-spesial")));
+
+app.get("/v-spesial", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v-spesial/index.html"));
+});
+
+app.get("/v-spesial/scrapbook", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v-spesial/scrapbook.html"));
+});
+
+app.get("/v-spesial/reward", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v-spesial/reward.html"));
+});
+
+app.get("/v-spesial/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v-spesial/admin.html"));
+});
 
 app.use(express.static(path.join(__dirname, "public")));
 // --- INIT DATA (Jalankan sekali via browser: /init) ---
@@ -1525,6 +1596,187 @@ app.post("/api/v2/update-time", async (req, res) => {
   // ==========================================
   
   
+
+// --- API V-SPESIAL ---
+app.get("/api/v-bday/config", async (req, res) => {
+  const config = await ensureBirthdayConfig();
+  res.json(serializeBirthdayConfig(config));
+});
+
+app.get("/api/v-bday/admin/config", async (req, res) => {
+  const { secret } = req.query;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+  const config = await ensureBirthdayConfig();
+  res.json(config);
+});
+
+app.post("/api/v-bday/validate-email-passcode", async (req, res) => {
+  const { code } = req.body;
+  const config = await ensureBirthdayConfig();
+  res.json({ success: (code || "").trim() === (config.email_passcode || "").trim() });
+});
+
+app.post("/api/v-bday/validate-reward-passcode", async (req, res) => {
+  const { code } = req.body;
+  const config = await ensureBirthdayConfig();
+  res.json({ success: (code || "").trim() === (config.reward_passcode || "").trim() });
+});
+
+app.get("/api/v-bday/reward-passcode", async (req, res) => {
+  const config = await ensureBirthdayConfig();
+  res.json({ reward_passcode: config.reward_passcode || "" });
+});
+
+app.get("/api/v-bday/scrapbook", async (req, res) => {
+  const config = await ensureBirthdayConfig();
+  const notes = await BirthdayScrapbook.find().sort({ order: 1, _id: 1 });
+  res.json({
+    scrapbook_photo_url: config.scrapbook_photo_url || "",
+    reward_passcode: config.reward_passcode || "",
+    notes,
+  });
+});
+
+app.get("/api/v-bday/replies", async (req, res) => {
+  const { secret } = req.query;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+  const replies = await BirthdayReply.find().sort({ created_at: -1 });
+  res.json(replies);
+});
+
+app.post("/api/v-bday/reply", async (req, res) => {
+  const { gift_choice, reply_message } = req.body;
+  if (!gift_choice || !reply_message) {
+    return res.status(400).json({ error: "Pilihan kado dan pesan wajib diisi." });
+  }
+
+  const saved = await BirthdayReply.create({
+    gift_choice: String(gift_choice).trim(),
+    reply_message: String(reply_message).trim(),
+  });
+
+  res.json({
+    success: true,
+    message: "Pesan tersimpan. Sampai ketemu hari Sabtu, Sayang.",
+    reply: saved,
+  });
+});
+
+app.post("/api/v-bday/admin/config", async (req, res) => {
+  const {
+    secret,
+    target_date,
+    email_passcode,
+    reward_passcode,
+    scrapbook_photo_url,
+    reward_image_1,
+    reward_image_2,
+    reward_image_3,
+  } = req.body;
+
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  await ensureBirthdayConfig();
+  const config = await BirthdayConfig.findOneAndUpdate(
+    {},
+    {
+      target_date: target_date ? new Date(target_date) : null,
+      email_passcode: email_passcode || "",
+      reward_passcode: reward_passcode || "",
+      scrapbook_photo_url: scrapbook_photo_url || "",
+      reward_image_1: reward_image_1 || "",
+      reward_image_2: reward_image_2 || "",
+      reward_image_3: reward_image_3 || "",
+    },
+    { new: true }
+  );
+
+  res.json({ success: true, config });
+});
+
+app.post("/api/v-bday/admin/scrapbook", async (req, res) => {
+  const { secret, notes, order } = req.body;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  const created = await BirthdayScrapbook.create({
+    notes: notes || "",
+    order: Number(order) || 0,
+  });
+
+  res.json({ success: true, item: created });
+});
+
+app.put("/api/v-bday/admin/scrapbook/:id", async (req, res) => {
+  const { secret, notes, order } = req.body;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  const updated = await BirthdayScrapbook.findByIdAndUpdate(
+    req.params.id,
+    { notes: notes || "", order: Number(order) || 0 },
+    { new: true }
+  );
+
+  res.json({ success: true, item: updated });
+});
+
+app.delete("/api/v-bday/admin/scrapbook/:id", async (req, res) => {
+  const { secret } = req.body;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  await BirthdayScrapbook.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
+});
+
+app.post("/api/v-bday/send-email", async (req, res) => {
+  const {
+    to,
+    subject = "Pesan Ulang Tahun untuk Ida",
+    html,
+    text,
+  } = req.body;
+
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return res.status(400).json({
+      error: "SMTP belum dikonfigurasi. Isi SMTP_HOST, SMTP_PORT, SMTP_USER, dan SMTP_PASS di environment.",
+    });
+  }
+
+  if (!to) {
+    return res.status(400).json({ error: "Penerima email wajib diisi." });
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || "false") === "true",
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  const result = await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to,
+    subject,
+    text: text || "Ada pesan spesial untuk Ida.",
+    html: html || "<p>Ada pesan spesial untuk Ida.</p>",
+  });
+
+  res.json({ success: true, messageId: result.messageId });
+});
 
 // Cek Waktu & Status (Public)
 app.get("/api/status", async (req, res) => {

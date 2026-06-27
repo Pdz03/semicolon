@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Gift Ida</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(circle at top, rgba(109, 40, 217, 0.24), transparent 28%),
+        radial-gradient(circle at right, rgba(37, 99, 235, 0.22), transparent 32%),
+        #040612;
+      font-family: Georgia, "Times New Roman", serif;
+      overflow-x: hidden;
+    }
+    .heart {
+      position: fixed;
+      bottom: -40px;
+      width: 18px;
+      height: 18px;
+      background: linear-gradient(135deg, rgba(244, 114, 182, 0.85), rgba(96, 165, 250, 0.7));
+      transform: rotate(45deg);
+      animation: floatUp linear infinite;
+      opacity: 0.55;
+      z-index: 0;
+    }
+    .heart::before, .heart::after {
+      content: "";
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: inherit;
+    }
+    .heart::before { top: -9px; left: 0; }
+    .heart::after { top: 0; left: -9px; }
+    @keyframes floatUp {
+      from { transform: translateY(0) rotate(45deg) scale(0.8); opacity: 0; }
+      10% { opacity: 0.55; }
+      to { transform: translateY(-120vh) rotate(45deg) scale(1.25); opacity: 0; }
+    }
+    .gift-card {
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(7, 10, 25, 0.95));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .gift-card.active {
+      border-color: rgba(196, 181, 253, 0.8);
+      box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.4), 0 0 45px rgba(109, 40, 217, 0.35);
+      transform: translateY(-4px);
+    }
+  </style>
+</head>
+<body class="text-slate-100">
+  <div id="hearts"></div>
+  <main class="relative z-10 mx-auto max-w-6xl px-6 py-12">
+    <section class="rounded-[2rem] border border-white/10 bg-slate-950/50 p-8 shadow-2xl shadow-violet-950/30 md:p-10">
+      <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">The Virtual Gift</p>
+      <h1 class="mt-3 text-4xl font-semibold md:text-6xl">Voucher Virtual Kado Ulang Tahun</h1>
+      <p class="mt-6 max-w-3xl text-lg leading-8 text-slate-300">Tidak semua hadiah harus langsung dipegang untuk bisa terasa berarti. Tiga pilihan ini disiapkan sebagai simbol kecil dari perhatian, dan surat balasanmu akan jadi bagian paling berharga dari halaman ini.</p>
+
+      <div id="giftGrid" class="mt-10 grid gap-6 md:grid-cols-3"></div>
+
+      <form id="replyForm" class="mt-10 space-y-5">
+        <label class="block">
+          <span class="mb-2 block text-sm uppercase tracking-[0.3em] text-sky-200/70">Surat Balasan Ida</span>
+          <textarea id="replyMessage" rows="8" class="w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:border-violet-300/50" placeholder="Tuliskan balasanmu di sini..."></textarea>
+        </label>
+        <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-6 py-3 font-medium text-white hover:brightness-110">Kirim Pesan</button>
+        <p id="statusMessage" class="text-sm text-sky-200"></p>
+      </form>
+    </section>
+  </main>
+
+  <button id="openModal" class="fixed bottom-6 right-6 z-20 rounded-full bg-gradient-to-r from-fuchsia-500 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/40 hover:brightness-110">Baca Ulang Scrapbook</button>
+
+  <div id="scrapbookModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/75 p-6">
+    <div class="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950">
+      <div class="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <h2 class="text-2xl font-semibold">Scrapbook Review</h2>
+        <button id="closeModal" class="rounded-full border border-white/10 px-4 py-2 text-sm">Tutup</button>
+      </div>
+      <div class="max-h-[calc(85vh-80px)] overflow-y-auto px-6 py-6">
+        <div id="modalContent" class="space-y-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const heartsHost = document.getElementById("hearts");
+    for (let i = 0; i < 18; i += 1) {
+      const heart = document.createElement("div");
+      heart.className = "heart";
+      heart.style.left = `${Math.random() * 100}%`;
+      heart.style.animationDuration = `${10 + Math.random() * 10}s`;
+      heart.style.animationDelay = `${Math.random() * 7}s`;
+      heartsHost.appendChild(heart);
+    }
+
+    let selectedGift = "";
+    let scrapbookNotes = [];
+
+    async function loadPage() {
+      const [configResponse, scrapbookResponse] = await Promise.all([
+        fetch("/api/v-bday/config"),
+        fetch("/api/v-bday/scrapbook"),
+      ]);
+      const config = await configResponse.json();
+      const scrapbook = await scrapbookResponse.json();
+      scrapbookNotes = scrapbook.notes || [];
+
+      const gifts = [
+        { key: "reward_image_1", label: "Pilihan Kado 1", url: config.reward_image_1 },
+        { key: "reward_image_2", label: "Pilihan Kado 2", url: config.reward_image_2 },
+        { key: "reward_image_3", label: "Pilihan Kado 3", url: config.reward_image_3 },
+      ];
+
+      document.getElementById("giftGrid").innerHTML = gifts.map((gift, index) => `
+        <button type="button" class="gift-card rounded-[1.75rem] p-4 text-left" data-gift="${gift.label}">
+          <img src="${gift.url || `https://placehold.co/800x800/1e1b4b/e9d5ff?text=Gift+${index + 1}`}" alt="${gift.label}" class="h-72 w-full rounded-[1.25rem] object-cover" />
+          <div class="mt-4 text-xl font-semibold">${gift.label}</div>
+          <p class="mt-2 text-sm leading-7 text-slate-300">Klik untuk memilih hadiah ini sebagai jawabanmu.</p>
+        </button>
+      `).join("");
+
+      document.getElementById("modalContent").innerHTML = scrapbookNotes.map((item, index) => `
+        <article class="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+          <div class="text-xs uppercase tracking-[0.35em] text-violet-200/70">Lembar ${String(index + 1).padStart(2, "0")}</div>
+          <p class="mt-3 text-base leading-8 text-slate-100">${escapeHtml(item.notes || "")}</p>
+        </article>
+      `).join("");
+
+      document.querySelectorAll(".gift-card").forEach((element) => {
+        element.addEventListener("click", () => {
+          document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
+          element.classList.add("active");
+          selectedGift = element.dataset.gift;
+        });
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    document.getElementById("replyForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const statusMessage = document.getElementById("statusMessage");
+      const replyMessage = document.getElementById("replyMessage").value.trim();
+
+      if (!selectedGift) {
+        statusMessage.textContent = "Pilih salah satu hadiah dulu ya.";
+        return;
+      }
+      if (!replyMessage) {
+        statusMessage.textContent = "Isi surat balasannya dulu ya.";
+        return;
+      }
+
+      const response = await fetch("/api/v-bday/reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gift_choice: selectedGift,
+          reply_message: replyMessage,
+        }),
+      });
+      const result = await response.json();
+      statusMessage.textContent = result.message || result.error || "Terjadi kendala.";
+      if (result.success) {
+        document.getElementById("replyForm").reset();
+        selectedGift = "";
+        document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
+      }
+    });
+
+    const modal = document.getElementById("scrapbookModal");
+    document.getElementById("openModal").addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    });
+    document.getElementById("closeModal").addEventListener("click", () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    });
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    });
+
+    loadPage().catch(() => {
+      document.getElementById("statusMessage").textContent = "Gagal memuat halaman hadiah.";
+    });
+  </script>
+</body>
+</html>
