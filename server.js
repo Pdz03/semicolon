@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
 const multer = require("multer");
+const cron = require("node-cron");
 const app = express();
 const path = require("path");
 const http = require("http").createServer(app); // Wajib pakai http server untuk socket
@@ -113,10 +114,17 @@ const BirthdayReplySchema = new mongoose.Schema({
   photo_reply_note: String,
   created_at: { type: Date, default: Date.now },
 });
+const BirthdaySubscriberSchema = new mongoose.Schema({
+  email: { type: String, unique: true },
+  created_at: { type: Date, default: Date.now },
+  last_code_sent_at: Date,
+  last_code_sent_for: String,
+});
 
 const BirthdayConfig = mongoose.model("BirthdayConfig", BirthdayConfigSchema);
 const BirthdayScrapbook = mongoose.model("BirthdayScrapbook", BirthdayScrapbookSchema);
 const BirthdayReply = mongoose.model("BirthdayReply", BirthdayReplySchema);
+const BirthdaySubscriber = mongoose.model("BirthdaySubscriber", BirthdaySubscriberSchema);
 
 // --- SCHEMA V2: CHAT HISTORY & SESSION ---
 const ChatMessageSchema = new mongoose.Schema({
@@ -378,6 +386,82 @@ const birthdayUpload = multer({
     fileSize: 15 * 1024 * 1024,
   },
 });
+
+function getBirthdaySendKey(dateValue) {
+  const date = new Date(dateValue);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+async function sendBirthdayCodes({ force = false } = {}) {
+  const config = await ensureBirthdayConfig();
+  const targetDate = config.target_date ? new Date(config.target_date) : null;
+  if (!targetDate) {
+    return { success: false, reason: "Tanggal target belum diatur.", sent_count: 0 };
+  }
+
+  const sendKey = getBirthdaySendKey(targetDate);
+  const todayKey = getBirthdaySendKey(new Date());
+  if (!force && sendKey !== todayKey) {
+    return { success: false, reason: "Belum masuk tanggal target.", sent_count: 0, send_key: sendKey, today_key: todayKey };
+  }
+
+  const subscribers = await BirthdaySubscriber.find();
+  if (!subscribers.length) {
+    return { success: true, reason: "Belum ada email subscriber.", sent_count: 0, send_key: sendKey };
+  }
+
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return { success: false, reason: "SMTP belum dikonfigurasi.", sent_count: 0 };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || "false") === "true",
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+
+  let sentCount = 0;
+  for (const subscriber of subscribers) {
+    if (!force && subscriber.last_code_sent_for === sendKey) {
+      continue;
+    }
+
+    const html = `
+      <div style="font-family: Georgia, serif; line-height: 1.7; color: #111827; max-width: 640px; margin: 0 auto; padding: 28px; background: #f8f5ff; border-radius: 24px;">
+        <div style="font-size: 12px; letter-spacing: 0.35em; text-transform: uppercase; color: #7c3aed;">V-Spesial</div>
+        <h1 style="margin: 14px 0 10px; font-size: 30px; color: #1f1640;">Momen spesialnya sudah tiba.</h1>
+        <p style="margin: 0 0 18px;">Ada satu halaman kecil yang sedang menunggu untuk dibuka.</p>
+        <div style="margin: 24px 0; padding: 20px; background: #ffffff; border-radius: 18px; border: 1px solid #ddd6fe;">
+          <div style="font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: #6d28d9;">Kode Rahasia</div>
+          <div style="margin-top: 10px; font-size: 28px; font-weight: 700; letter-spacing: 0.14em; color: #4c1d95;">${config.email_passcode || ""}</div>
+        </div>
+        <p style="margin: 0;">Silakan buka kembali halaman V-Spesial, lalu masukkan kode ini saat waktunya tiba.</p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: buildFromAddress(),
+      to: subscriber.email,
+      subject: "Kode Rahasia V-Spesial",
+      text: `Momen spesialnya sudah tiba. Kode rahasia: ${config.email_passcode || ""}`,
+      html,
+    });
+
+    subscriber.last_code_sent_at = new Date();
+    subscriber.last_code_sent_for = sendKey;
+    await subscriber.save();
+    sentCount += 1;
+  }
+
+  return { success: true, sent_count: sentCount, send_key: sendKey };
+}
 
 async function persistV31Session(extra = {}) {
     await V31Progress.findOneAndUpdate(
@@ -1713,6 +1797,51 @@ app.get("/api/v-bday/replies", async (req, res) => {
   res.json(replies);
 });
 
+app.get("/api/v-bday/subscribers", async (req, res) => {
+  const { secret } = req.query;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+  const subscribers = await BirthdaySubscriber.find().sort({ created_at: -1 });
+  res.json(subscribers);
+});
+
+app.get("/api/v-bday/subscriber-status", async (req, res) => {
+  const subscriber = await BirthdaySubscriber.findOne().sort({ created_at: 1 });
+  res.json({
+    has_subscriber: Boolean(subscriber),
+    email: subscriber?.email || "",
+  });
+});
+
+app.post("/api/v-bday/subscribe-email", async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
+    return res.status(400).json({ error: "Email tidak valid." });
+  }
+
+  const existing = await BirthdaySubscriber.findOne().sort({ created_at: 1 });
+  if (existing && existing.email !== normalizedEmail) {
+    return res.status(409).json({
+      success: false,
+      error: "Email untuk halaman ini sudah tersimpan. Tidak bisa menambah email baru.",
+      existing_email: existing.email,
+    });
+  }
+
+  if (existing && existing.email === normalizedEmail) {
+    return res.json({ success: true, subscriber: existing, already_exists: true });
+  }
+
+  const subscriber = await BirthdaySubscriber.create({
+    email: normalizedEmail,
+    created_at: new Date(),
+  });
+
+  res.json({ success: true, subscriber, already_exists: false });
+});
+
 app.post("/api/v-bday/reply", birthdayUpload.fields([
   { name: "voice_reply", maxCount: 1 },
   { name: "photo_reply", maxCount: 1 },
@@ -1782,6 +1911,19 @@ app.post("/api/v-bday/admin/config", async (req, res) => {
   );
 
   res.json({ success: true, config });
+});
+
+app.post("/api/v-bday/admin/send-codes", async (req, res) => {
+  const { secret, force } = req.body;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  const result = await sendBirthdayCodes({ force: Boolean(force) });
+  if (!result.success) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
 });
 
 app.post("/api/v-bday/admin/scrapbook", async (req, res) => {
@@ -1860,6 +2002,18 @@ app.post("/api/v-bday/send-email", async (req, res) => {
   });
 
   res.json({ success: true, messageId: result.messageId });
+});
+
+cron.schedule("*/10 * * * *", async () => {
+  try {
+    await connectDB();
+    const result = await sendBirthdayCodes();
+    if (result.success && result.sent_count > 0) {
+      console.log(`[v-spesial] sent birthday codes to ${result.sent_count} subscriber(s) for ${result.send_key}`);
+    }
+  } catch (error) {
+    console.error("[v-spesial] cron send codes failed:", error.message);
+  }
 });
 
 // Cek Waktu & Status (Public)

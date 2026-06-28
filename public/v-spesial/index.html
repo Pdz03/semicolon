@@ -60,6 +60,12 @@
 </head>
 <body class="min-h-screen text-slate-100">
   <div id="hearts"></div>
+  <div id="bootOverlay" class="fixed inset-0 z-40 flex items-center justify-center bg-[#050816] px-6">
+    <div class="text-center">
+      <div class="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-violet-300"></div>
+      <p id="bootMessage" class="mt-5 text-sm uppercase tracking-[0.35em] text-violet-100/75">Menyiapkan halaman...</p>
+    </div>
+  </div>
 
   <div id="emailModal" class="fixed inset-0 z-30 hidden items-center justify-center bg-slate-950/80 px-5">
     <div class="glass w-full max-w-md rounded-[2rem] p-6">
@@ -125,6 +131,8 @@
     const unlockSection = document.getElementById("unlockSection");
     const devActions = document.getElementById("devActions");
     const message = document.getElementById("message");
+    const bootOverlay = document.getElementById("bootOverlay");
+    const bootMessage = document.getElementById("bootMessage");
     const url = new URL(window.location.href);
     const akses = url.searchParams.get("akses");
     let targetDate = null;
@@ -154,14 +162,14 @@
       isDevMode = localStorage.getItem(DEV_KEY) === "1";
     }
 
-    function showEmailModalIfNeeded() {
+    function showEmailModalIfNeeded(serverEmail = "") {
       if (isDevMode) {
         emailModal.classList.add("hidden");
         emailModal.classList.remove("flex");
         return;
       }
       const savedEmail = updateSavedEmailInfo();
-      if (savedEmail) {
+      if (savedEmail || serverEmail) {
         emailModal.classList.add("hidden");
         emailModal.classList.remove("flex");
         return;
@@ -203,15 +211,68 @@
       }
     }
 
-    document.getElementById("emailForm").addEventListener("submit", (event) => {
+    function finishBoot() {
+      bootOverlay.classList.add("hidden");
+    }
+
+    async function syncEmailState() {
+      if (isDevMode) {
+        finishBoot();
+        showEmailModalIfNeeded();
+        return;
+      }
+
+      const localEmail = localStorage.getItem(EMAIL_KEY) || "";
+      bootMessage.textContent = "Mengecek email tersimpan...";
+      const statusResponse = await fetch("/api/v-bday/subscriber-status");
+      const status = await statusResponse.json();
+
+      if (localEmail && (!status.has_subscriber || status.email === localEmail)) {
+        bootMessage.textContent = "Menyinkronkan email...";
+        const subscribeResponse = await fetch("/api/v-bday/subscribe-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: localEmail }),
+        });
+        const subscribeResult = await subscribeResponse.json();
+        if (!subscribeResult.success) {
+          localStorage.removeItem(EMAIL_KEY);
+          document.getElementById("emailMessage").textContent = subscribeResult.error || "Sinkronisasi email gagal.";
+          finishBoot();
+          showEmailModalIfNeeded(status.email || "");
+          return;
+        }
+      }
+
+      if (!localEmail && status.has_subscriber) {
+        localStorage.setItem(EMAIL_KEY, status.email);
+      }
+
+      finishBoot();
+      showEmailModalIfNeeded(status.email || localStorage.getItem(EMAIL_KEY) || "");
+    }
+
+    document.getElementById("emailForm").addEventListener("submit", async (event) => {
       event.preventDefault();
       const email = document.getElementById("idaEmail").value.trim();
       if (!email || !email.includes("@")) {
         document.getElementById("emailMessage").textContent = "Masukkan email yang valid.";
         return;
       }
+      const emailMessage = document.getElementById("emailMessage");
+      emailMessage.textContent = "Menyimpan email...";
+      const response = await fetch("/api/v-bday/subscribe-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        emailMessage.textContent = result.error || "Gagal menyimpan email.";
+        return;
+      }
       localStorage.setItem(EMAIL_KEY, email);
-      document.getElementById("emailMessage").textContent = "";
+      emailMessage.textContent = "";
       showEmailModalIfNeeded();
     });
 
@@ -234,7 +295,10 @@
 
     syncDevMode();
     updateSavedEmailInfo();
-    showEmailModalIfNeeded();
+    syncEmailState().catch(() => {
+      bootOverlay.classList.add("hidden");
+      message.textContent = "Gagal menyiapkan halaman.";
+    });
     loadConfig().catch(() => {
       message.textContent = "Gagal memuat timer.";
     });
