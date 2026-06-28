@@ -3,6 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const nodemailer = require("nodemailer");
+const fs = require("fs");
+const multer = require("multer");
 const app = express();
 const path = require("path");
 const http = require("http").createServer(app); // Wajib pakai http server untuk socket
@@ -90,6 +92,11 @@ const BirthdayConfigSchema = new mongoose.Schema({
   email_passcode: String,
   reward_passcode: String,
   scrapbook_photo_url: String,
+  scrapbook_title: String,
+  scrapbook_intro_text: String,
+  scrapbook_outro_photo_url: String,
+  scrapbook_outro_text: String,
+  scrapbook_outro_audio_url: String,
   reward_image_1: String,
   reward_image_2: String,
   reward_image_3: String,
@@ -101,6 +108,9 @@ const BirthdayScrapbookSchema = new mongoose.Schema({
 const BirthdayReplySchema = new mongoose.Schema({
   gift_choice: String,
   reply_message: String,
+  voice_reply_url: String,
+  photo_reply_url: String,
+  photo_reply_note: String,
   created_at: { type: Date, default: Date.now },
 });
 
@@ -295,6 +305,11 @@ function getBirthdayDefaults() {
     email_passcode: "IDA-EMAIL",
     reward_passcode: "IDA-REWARD",
     scrapbook_photo_url: "https://placehold.co/1200x900/12091f/e9d5ff?text=Ida",
+    scrapbook_title: "Scrapbook Spesial",
+    scrapbook_intro_text: "Beberapa lembar kecil yang disimpan untuk dibuka perlahan.",
+    scrapbook_outro_photo_url: "https://placehold.co/1200x900/12091f/e9d5ff?text=Penutup",
+    scrapbook_outro_text: "Terima kasih sudah membuka setiap lembarnya sampai akhir.",
+    scrapbook_outro_audio_url: "",
     reward_image_1: "https://placehold.co/800x800/312e81/e0e7ff?text=Kado+1",
     reward_image_2: "https://placehold.co/800x800/4c1d95/f5d0fe?text=Kado+2",
     reward_image_3: "https://placehold.co/800x800/1e3a8a/bfdbfe?text=Kado+3",
@@ -313,6 +328,11 @@ function serializeBirthdayConfig(config) {
   return {
     target_date: config.target_date,
     scrapbook_photo_url: config.scrapbook_photo_url || "",
+    scrapbook_title: config.scrapbook_title || "",
+    scrapbook_intro_text: config.scrapbook_intro_text || "",
+    scrapbook_outro_photo_url: config.scrapbook_outro_photo_url || "",
+    scrapbook_outro_text: config.scrapbook_outro_text || "",
+    scrapbook_outro_audio_url: config.scrapbook_outro_audio_url || "",
     reward_image_1: config.reward_image_1 || "",
     reward_image_2: config.reward_image_2 || "",
     reward_image_3: config.reward_image_3 || "",
@@ -337,6 +357,27 @@ function buildFromAddress() {
 
   return rawFrom;
 }
+
+const birthdayUploadDir = path.join(__dirname, "public/v-spesial/uploads");
+if (!fs.existsSync(birthdayUploadDir)) {
+  fs.mkdirSync(birthdayUploadDir, { recursive: true });
+}
+
+const birthdayStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, birthdayUploadDir),
+  filename: (req, file, cb) => {
+    const safeExt = path.extname(file.originalname || "").toLowerCase() || "";
+    const base = `${file.fieldname}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    cb(null, `${base}${safeExt}`);
+  },
+});
+
+const birthdayUpload = multer({
+  storage: birthdayStorage,
+  limits: {
+    fileSize: 15 * 1024 * 1024,
+  },
+});
 
 async function persistV31Session(extra = {}) {
     await V31Progress.findOneAndUpdate(
@@ -1653,6 +1694,11 @@ app.get("/api/v-bday/scrapbook", async (req, res) => {
   const notes = await BirthdayScrapbook.find().sort({ order: 1, _id: 1 });
   res.json({
     scrapbook_photo_url: config.scrapbook_photo_url || "",
+    scrapbook_title: config.scrapbook_title || "",
+    scrapbook_intro_text: config.scrapbook_intro_text || "",
+    scrapbook_outro_photo_url: config.scrapbook_outro_photo_url || "",
+    scrapbook_outro_text: config.scrapbook_outro_text || "",
+    scrapbook_outro_audio_url: config.scrapbook_outro_audio_url || "",
     reward_passcode: config.reward_passcode || "",
     notes,
   });
@@ -1667,15 +1713,24 @@ app.get("/api/v-bday/replies", async (req, res) => {
   res.json(replies);
 });
 
-app.post("/api/v-bday/reply", async (req, res) => {
-  const { gift_choice, reply_message } = req.body;
-  if (!gift_choice || !reply_message) {
-    return res.status(400).json({ error: "Pilihan kado dan pesan wajib diisi." });
+app.post("/api/v-bday/reply", birthdayUpload.fields([
+  { name: "voice_reply", maxCount: 1 },
+  { name: "photo_reply", maxCount: 1 },
+]), async (req, res) => {
+  const { gift_choice, reply_message, photo_reply_note } = req.body;
+  if (!gift_choice) {
+    return res.status(400).json({ error: "Pilihan kado wajib diisi." });
+  }
+  if (!reply_message && !req.files?.voice_reply?.[0] && !req.files?.photo_reply?.[0]) {
+    return res.status(400).json({ error: "Minimal kirim salah satu: surat, pesan suara, atau foto." });
   }
 
   const saved = await BirthdayReply.create({
     gift_choice: String(gift_choice).trim(),
-    reply_message: String(reply_message).trim(),
+    reply_message: String(reply_message || "").trim(),
+    voice_reply_url: req.files?.voice_reply?.[0] ? `/v-spesial/uploads/${req.files.voice_reply[0].filename}` : "",
+    photo_reply_url: req.files?.photo_reply?.[0] ? `/v-spesial/uploads/${req.files.photo_reply[0].filename}` : "",
+    photo_reply_note: String(photo_reply_note || "").trim(),
   });
 
   res.json({
@@ -1692,6 +1747,11 @@ app.post("/api/v-bday/admin/config", async (req, res) => {
     email_passcode,
     reward_passcode,
     scrapbook_photo_url,
+    scrapbook_title,
+    scrapbook_intro_text,
+    scrapbook_outro_photo_url,
+    scrapbook_outro_text,
+    scrapbook_outro_audio_url,
     reward_image_1,
     reward_image_2,
     reward_image_3,
@@ -1709,6 +1769,11 @@ app.post("/api/v-bday/admin/config", async (req, res) => {
       email_passcode: email_passcode || "",
       reward_passcode: reward_passcode || "",
       scrapbook_photo_url: scrapbook_photo_url || "",
+      scrapbook_title: scrapbook_title || "",
+      scrapbook_intro_text: scrapbook_intro_text || "",
+      scrapbook_outro_photo_url: scrapbook_outro_photo_url || "",
+      scrapbook_outro_text: scrapbook_outro_text || "",
+      scrapbook_outro_audio_url: scrapbook_outro_audio_url || "",
       reward_image_1: reward_image_1 || "",
       reward_image_2: reward_image_2 || "",
       reward_image_3: reward_image_3 || "",
