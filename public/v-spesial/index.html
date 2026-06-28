@@ -227,7 +227,15 @@
       const statusResponse = await fetch("/api/v-bday/subscriber-status");
       const status = await statusResponse.json();
 
-      if (localEmail && (!status.has_subscriber || status.email === localEmail)) {
+      if (!status.has_subscriber) {
+        localStorage.removeItem(EMAIL_KEY);
+        updateSavedEmailInfo();
+        finishBoot();
+        showEmailModalIfNeeded("");
+        return;
+      }
+
+      if (localEmail && status.email === localEmail) {
         bootMessage.textContent = "Menyinkronkan email...";
         const subscribeResponse = await fetch("/api/v-bday/subscribe-email", {
           method: "POST",

@@ -1926,6 +1926,16 @@ app.post("/api/v-bday/admin/send-codes", async (req, res) => {
   res.json(result);
 });
 
+app.post("/api/v-bday/admin/reset-subscriber", async (req, res) => {
+  const { secret } = req.body;
+  if (secret !== "sajak-admin") {
+    return res.status(403).json({ error: "Akses ditolak" });
+  }
+
+  const deleted = await BirthdaySubscriber.deleteMany({});
+  res.json({ success: true, deleted_count: deleted.deletedCount || 0 });
+});
+
 app.post("/api/v-bday/admin/scrapbook", async (req, res) => {
   const { secret, notes, order } = req.body;
   if (secret !== "sajak-admin") {

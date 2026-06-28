@@ -100,6 +100,7 @@
           <div class="flex flex-wrap gap-3">
             <button id="sendCodesToday" class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white">Kirim Kode Sesuai Jadwal</button>
             <button id="sendCodesForce" class="rounded-2xl border border-white/10 px-5 py-3 font-medium text-white">Paksa Kirim Sekarang</button>
+            <button id="resetSubscriber" class="rounded-2xl border border-rose-400/30 px-5 py-3 font-medium text-rose-100">Reset Email Utama</button>
           </div>
         </div>
         <p id="sendCodesMessage" class="mt-4 text-sm text-sky-200"></p>
@@ -417,6 +418,21 @@
         body: JSON.stringify({ secret: adminSecret, force: true }),
       });
       document.getElementById("sendCodesMessage").textContent = result.reason || `Paksa kirim berhasil ke ${result.sent_count || 0} email.`;
+      loadDashboard();
+    });
+
+    document.getElementById("resetSubscriber").addEventListener("click", async () => {
+      const confirmed = window.confirm("Reset email utama? Setelah ini Ida harus input email lagi dari halaman awal.");
+      if (!confirmed) return;
+
+      const result = await api("/api/v-bday/admin/reset-subscriber", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: adminSecret }),
+      });
+      document.getElementById("sendCodesMessage").textContent = result.success
+        ? `Email utama direset. ${result.deleted_count || 0} data dihapus.`
+        : (result.error || "Gagal reset email utama.");
       loadDashboard();
     });
   </script>
