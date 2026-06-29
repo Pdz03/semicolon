@@ -60,6 +60,48 @@
       box-shadow: 0 0 0 1px rgba(196, 181, 253, 0.4), 0 0 45px rgba(109, 40, 217, 0.35);
       transform: translateY(-4px);
     }
+    .gift-card.locked {
+      opacity: 0.55;
+      filter: saturate(0.7);
+    }
+    .mystery-face {
+      background:
+        radial-gradient(circle at top, rgba(196, 181, 253, 0.16), transparent 35%),
+        linear-gradient(180deg, rgba(76, 29, 149, 0.4), rgba(15, 23, 42, 0.95));
+    }
+    .mystery-badge {
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+    }
+    .gift-flip {
+      position: relative;
+      height: 18rem;
+      transform-style: preserve-3d;
+      transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .gift-card.revealed .gift-flip {
+      transform: rotateY(180deg);
+    }
+    .gift-face,
+    .gift-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 1.25rem;
+      overflow: hidden;
+    }
+    .gift-face {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    .gift-back {
+      transform: rotateY(180deg);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.22));
+    }
     .book-frame {
       position: relative;
       min-height: 32rem;
@@ -128,7 +170,7 @@
     <section class="rounded-[2rem] border border-white/10 bg-slate-950/50 p-8 shadow-2xl shadow-violet-950/30 md:p-10">
       <p class="text-sm uppercase tracking-[0.45em] text-violet-200/70">The Virtual Gift</p>
       <h1 class="mt-3 text-4xl font-semibold md:text-6xl">Voucher Virtual Kado Ulang Tahun</h1>
-      <p class="mt-6 max-w-3xl text-lg leading-8 text-slate-300">Pilih hadiah yang paling kamu suka, lalu balas dengan tulisan, suara, atau foto kalau kamu mau.</p>
+      <p class="mt-6 max-w-3xl text-lg leading-8 text-slate-300">Tiga hadiah ini masih disembunyikan. Pilih satu kartu misteri, lalu biarkan hadiahmu terbuka setelah itu.</p>
 
       <div id="giftGrid" class="mt-10 grid gap-6 md:grid-cols-3"></div>
 
@@ -202,6 +244,7 @@
     }
 
     let selectedGift = "";
+    let mysteryLocked = false;
     let scrapbookData = null;
     let pages = [];
     let currentPage = 0;
@@ -410,18 +453,41 @@
       ];
 
       document.getElementById("giftGrid").innerHTML = gifts.map((gift, index) => `
-        <button type="button" class="gift-card rounded-[1.75rem] p-4 text-left" data-gift="${gift.label}">
-          <img src="${gift.url || `https://placehold.co/800x800/1e1b4b/e9d5ff?text=Gift+${index + 1}`}" alt="${gift.label}" class="h-72 w-full rounded-[1.25rem] object-cover" />
-          <div class="mt-4 text-xl font-semibold">${gift.label}</div>
-          <p class="mt-2 text-sm leading-7 text-slate-300">Klik untuk memilih hadiah ini sebagai jawabanmu.</p>
+        <button type="button" class="gift-card rounded-[1.75rem] p-4 text-left" data-gift="${gift.label}" data-url="${gift.url || `https://placehold.co/800x800/1e1b4b/e9d5ff?text=Gift+${index + 1}`}">
+          <div class="gift-flip">
+            <div class="gift-face mystery-face border border-white/10">
+              <div class="mystery-badge text-violet-100/75">Mystery Gift</div>
+              <div class="mt-5 text-6xl">?</div>
+              <p class="mt-5 max-w-[14rem] text-sm leading-7 text-slate-200">Kartu ${index + 1}. Klik untuk membuka hadiah yang tersembunyi.</p>
+            </div>
+            <div class="gift-back">
+              <img src="${gift.url || `https://placehold.co/800x800/1e1b4b/e9d5ff?text=Gift+${index + 1}`}" alt="${gift.label}" class="h-full w-full object-cover" />
+            </div>
+          </div>
+          <div class="mt-4 text-xl font-semibold gift-title">Kartu Misteri ${index + 1}</div>
+          <p class="mt-2 text-sm leading-7 text-slate-300 gift-caption">Begitu dibuka, pilihan akan dikunci di kartu ini.</p>
         </button>
       `).join("");
 
       document.querySelectorAll(".gift-card").forEach((element) => {
         element.addEventListener("click", () => {
-          document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
-          element.classList.add("active");
+          if (mysteryLocked) return;
+          mysteryLocked = true;
           selectedGift = element.dataset.gift;
+
+          document.querySelectorAll(".gift-card").forEach((card) => {
+            const isPicked = card === element;
+            card.classList.toggle("active", isPicked);
+            card.classList.toggle("locked", !isPicked);
+            card.classList.toggle("revealed", isPicked);
+            if (isPicked) {
+              card.querySelector(".gift-title").textContent = card.dataset.gift;
+              card.querySelector(".gift-caption").textContent = "Hadiahmu terbuka. Kalau sudah, kamu bisa kirim balasan di bawah.";
+            }
+          });
+
+          const statusMessage = document.getElementById("statusMessage");
+          statusMessage.textContent = `${selectedGift} terbuka. Sekarang kamu bisa balas dengan tulisan, suara, atau foto.`;
         });
       });
     }
@@ -464,7 +530,9 @@
       if (result.success) {
         document.getElementById("replyForm").reset();
         selectedGift = "";
+        mysteryLocked = false;
         document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
+        loadPage();
         recordedBlob = null;
         if (recordedUrl) URL.revokeObjectURL(recordedUrl);
         recordedUrl = "";
