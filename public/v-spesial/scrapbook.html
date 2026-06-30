@@ -52,11 +52,15 @@
       to { transform: translateY(-120vh) rotate(45deg) scale(1.25); opacity: 0; }
     }
     .book-shell {
+      position: relative;
       perspective: 2200px;
+      width: 100%;
+      max-width: 32rem;
+      margin-inline: auto;
     }
     .book-frame {
       position: relative;
-      min-height: 38rem;
+      min-height: 37rem;
       border-radius: 2rem;
       background: linear-gradient(145deg, rgba(14, 20, 39, 0.98), rgba(10, 13, 29, 0.96));
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -103,6 +107,11 @@
       background-position: center;
       color: #ffffff;
     }
+    .cover-page .page-copy {
+      justify-content: flex-end;
+      padding-top: 8rem;
+      padding-bottom: 2.25rem;
+    }
     .closing-page {
       background:
         linear-gradient(180deg, rgba(11, 14, 32, 0.26), rgba(11, 14, 32, 0.82)),
@@ -110,6 +119,11 @@
       background-size: cover;
       background-position: center;
       color: #ffffff;
+    }
+    .closing-page .page-copy {
+      justify-content: flex-end;
+      padding-top: 9rem;
+      padding-bottom: 2rem;
     }
     .page-copy {
       padding: 2rem;
@@ -139,6 +153,33 @@
     }
     .nav-btn[disabled] {
       opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .book-nav-arrow {
+      position: absolute;
+      top: 50%;
+      z-index: 8;
+      display: none;
+      width: 3.5rem;
+      height: 3.5rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(2, 6, 23, 0.78);
+      color: #ffffff;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.38);
+      transform: translateY(-50%);
+      backdrop-filter: blur(12px);
+    }
+    .book-nav-arrow--left {
+      left: -4.5rem;
+    }
+    .book-nav-arrow--right {
+      right: -4.5rem;
+    }
+    .book-nav-arrow[disabled] {
+      opacity: 0.35;
       cursor: not-allowed;
     }
     .qr-heart-shell {
@@ -217,11 +258,24 @@
       opacity: 1;
     }
     @media (min-width: 768px) {
-      .page-face {
-        grid-template-columns: 1.02fr 0.98fr;
-      }
       .page-copy {
         padding: 3rem;
+      }
+      .cover-page .page-copy {
+        padding-top: 11rem;
+        padding-bottom: 2.75rem;
+      }
+      .closing-page .page-copy {
+        padding-top: 12rem;
+        padding-bottom: 2.5rem;
+      }
+      .book-nav-arrow {
+        display: inline-flex;
+      }
+    }
+    @media (max-width: 767px) {
+      .book-frame {
+        min-height: 34rem;
       }
     }
   </style>
@@ -235,6 +289,12 @@
     </header>
 
     <section class="book-shell">
+      <button id="prevPageSide" class="book-nav-arrow book-nav-arrow--left" type="button" aria-label="Lembar sebelumnya">
+        <span class="text-2xl leading-none">&#8249;</span>
+      </button>
+      <button id="nextPageSide" class="book-nav-arrow book-nav-arrow--right" type="button" aria-label="Lembar berikutnya">
+        <span class="text-2xl leading-none">&#8250;</span>
+      </button>
       <div class="book-frame">
         <div id="bookSheet" class="page-sheet">
           <div id="pageFront" class="page-face"></div>
@@ -242,10 +302,10 @@
         </div>
         <div class="book-shadow"></div>
       </div>
-      <div class="mt-6 flex items-center justify-between gap-4">
-        <button id="prevPage" class="nav-btn rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white hover:bg-white/10">Sebelumnya</button>
+      <div class="mt-6 flex items-center justify-between gap-4 md:justify-center">
+        <button id="prevPage" class="nav-btn rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white hover:bg-white/10 md:hidden">Sebelumnya</button>
         <div id="pageIndicator" class="text-sm uppercase tracking-[0.35em] text-violet-200/70">Lembar 01</div>
-        <button id="nextPage" class="nav-btn rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 text-sm font-medium text-white hover:brightness-110">Selanjutnya</button>
+        <button id="nextPage" class="nav-btn rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 text-sm font-medium text-white hover:brightness-110 md:hidden">Selanjutnya</button>
       </div>
     </section>
 
@@ -273,7 +333,7 @@
         <button class="w-full rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Buka Hadiah Virtual</button>
       </form>
       <div id="devRewardActions" class="mx-auto mt-6 hidden max-w-xl space-y-3">
-        <div class="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Mode dev aktif. Validasi kode reward dilewati.</div>
+        <div class="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">Mode dev aktif. Form kode reward tetap bisa dites, dan tombol ini hanya untuk bypass cepat.</div>
         <a href="/v-spesial/reward?akses=dev" class="block w-full rounded-2xl border border-white/10 px-5 py-3 font-medium text-white hover:bg-white/5">Lanjut langsung ke hadiah</a>
       </div>
       <p id="rewardMessage" class="mt-4 text-sm text-rose-300"></p>
@@ -300,6 +360,8 @@
     const bookSheet = document.getElementById("bookSheet");
     const prevPage = document.getElementById("prevPage");
     const nextPage = document.getElementById("nextPage");
+    const prevPageSide = document.getElementById("prevPageSide");
+    const nextPageSide = document.getElementById("nextPageSide");
     const pageIndicator = document.getElementById("pageIndicator");
     const url = new URL(window.location.href);
     const akses = url.searchParams.get("akses");
@@ -342,9 +404,8 @@
       }
       isDevMode = localStorage.getItem(DEV_KEY) === "1";
       if (isDevMode) {
-        rewardForm.classList.add("hidden");
         devRewardActions.classList.remove("hidden");
-        rewardMessage.textContent = "Mode dev aktif.";
+        rewardMessage.textContent = "Mode dev aktif. Kamu bisa tes input kode reward atau bypass langsung.";
       }
     }
 
@@ -361,7 +422,7 @@
       if (page.type === "cover") {
         return `
           <div class="page-face cover-page" style="--cover-image: linear-gradient(180deg, rgba(11, 14, 32, 0.20), rgba(11, 14, 32, 0.78)), url('${escapeHtml(page.image)}')">
-            <div class="page-copy md:col-span-2 justify-end">
+            <div class="page-copy md:col-span-2">
               <div class="max-w-3xl rounded-[1.75rem] border border-white/10 bg-black/25 p-6 backdrop-blur-md md:p-8">
                 <div class="text-xs uppercase tracking-[0.45em] text-violet-100/70">Sampul</div>
                 <h2 class="mt-4 text-3xl font-semibold md:text-5xl">${escapeHtml(page.title)}</h2>
@@ -378,7 +439,8 @@
             <div class="page-copy md:col-span-2 justify-end">
               <div class="max-w-3xl rounded-[1.75rem] border border-white/10 bg-black/30 p-6 backdrop-blur-md md:p-8">
                 <div class="text-xs uppercase tracking-[0.45em] text-sky-100/70">Penutup</div>
-                <p class="mt-4 text-lg leading-8 text-white md:text-2xl md:leading-10">${escapeHtml(page.text)}</p>
+                <p class="mt-4 text-base leading-7 text-white md:text-xl md:leading-9">${escapeHtml(page.text)}</p>
+                ${page.audio ? `<audio class="mt-5 w-full" controls src="${escapeHtml(page.audio)}"></audio>` : ""}
               </div>
             </div>
           </div>
@@ -411,6 +473,8 @@
       pageIndicator.textContent = `Lembar ${String(currentPage + 1).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
       prevPage.disabled = currentPage === 0;
       nextPage.disabled = currentPage === pages.length - 1;
+      prevPageSide.disabled = currentPage === 0;
+      nextPageSide.disabled = currentPage === pages.length - 1;
     }
 
     function goToPage(direction) {
@@ -453,6 +517,7 @@
           type: "closing",
           image: data.scrapbook_outro_photo_url || data.scrapbook_photo_url || "https://placehold.co/1200x900/12091f/e9d5ff?text=Penutup",
           text: data.scrapbook_outro_text || "Terima kasih sudah membuka setiap lembarnya sampai akhir.",
+          audio: data.scrapbook_outro_audio_url || "",
         },
       ];
 
@@ -478,6 +543,8 @@
 
     prevPage.addEventListener("click", () => goToPage(-1));
     nextPage.addEventListener("click", () => goToPage(1));
+    prevPageSide.addEventListener("click", () => goToPage(-1));
+    nextPageSide.addEventListener("click", () => goToPage(1));
 
     document.getElementById("rewardForm").addEventListener("submit", async (event) => {
       event.preventDefault();

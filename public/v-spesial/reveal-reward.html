@@ -29,6 +29,14 @@
       <p class="text-xs uppercase tracking-[0.4em] text-violet-200/70">V-Spesial</p>
       <h1 class="mt-4 text-4xl font-semibold md:text-5xl">Kode hadiah berhasil ditemukan.</h1>
       <p class="mt-5 text-lg leading-8 text-slate-300">Kalau halaman utama V-Spesial sedang terbuka di laptop, tuliskan kode di bawah ini ke kolom yang tersedia di sana.</p>
+      <div id="devTokenPanel" class="mt-6 hidden rounded-[1.5rem] border border-amber-300/20 bg-amber-400/10 p-5">
+        <div class="text-xs uppercase tracking-[0.3em] text-amber-100/80">Mode Dev</div>
+        <p class="mt-3 text-sm leading-7 text-amber-50/90">Untuk testing tanpa scan QR, kamu bisa isi token manual di bawah ini.</p>
+        <form id="devTokenForm" class="mt-4 space-y-3">
+          <input id="devTokenInput" type="text" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500" placeholder="Masukkan token reward..." />
+          <button class="w-full rounded-2xl border border-white/10 px-5 py-3 font-medium text-white hover:bg-white/5">Cek Token Manual</button>
+        </form>
+      </div>
       <div class="mt-8 rounded-[1.75rem] border border-violet-300/15 bg-white/5 p-6">
         <div class="text-xs uppercase tracking-[0.3em] text-violet-200/70">Kode Untuk Ditulis</div>
         <div id="codeBox" class="mt-4 hidden rounded-[1.5rem] border border-white/10 bg-slate-950/60 px-5 py-4 text-center text-3xl font-semibold tracking-[0.2em] text-white md:text-4xl">-</div>
@@ -43,14 +51,28 @@
 
   <script>
     const params = new URL(window.location.href).searchParams;
+    const DEV_KEY = "v_spesial_dev_mode";
     const token = params.get("token") || "";
+    const akses = params.get("akses");
     const statusText = document.getElementById("statusText");
     const codeBox = document.getElementById("codeBox");
     const copyBtn = document.getElementById("copyBtn");
+    const devTokenPanel = document.getElementById("devTokenPanel");
     let currentCode = "";
+    let isDevMode = false;
 
-    async function validate() {
-      if (!token) {
+    function syncDevMode() {
+      if (akses === "dev") {
+        localStorage.setItem(DEV_KEY, "1");
+      }
+      isDevMode = localStorage.getItem(DEV_KEY) === "1";
+      if (isDevMode) {
+        devTokenPanel.classList.remove("hidden");
+      }
+    }
+
+    async function validate(codeValue = token) {
+      if (!codeValue) {
         statusText.textContent = "Tautan QR ini belum lengkap.";
         return;
       }
@@ -58,15 +80,17 @@
       const response = await fetch("/api/v-bday/validate-reward-passcode", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: token }),
+        body: JSON.stringify({ code: codeValue }),
       });
       const result = await response.json();
       if (!result.success) {
         statusText.textContent = "Tautan QR ini sudah tidak cocok dengan hadiah yang tersimpan saat ini.";
+        codeBox.classList.add("hidden");
+        copyBtn.classList.add("hidden");
         return;
       }
 
-      currentCode = token;
+      currentCode = codeValue;
       codeBox.textContent = currentCode;
       codeBox.classList.remove("hidden");
       copyBtn.classList.remove("hidden");
@@ -83,8 +107,17 @@
       }
     });
 
+    document.getElementById("devTokenForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const manualToken = document.getElementById("devTokenInput").value.trim();
+      await validate(manualToken);
+    });
+
+    syncDevMode();
     validate().catch(() => {
-      statusText.textContent = "Gagal memeriksa akses hadiah.";
+      statusText.textContent = isDevMode
+        ? "Mode dev aktif. Isi token manual atau buka halaman ini lewat hasil scan QR."
+        : "Gagal memeriksa akses hadiah.";
     });
   </script>
 </body>
