@@ -185,7 +185,7 @@
     }
 
     function updateEmailPreview(htmlOverride) {
-      const html = htmlOverride ?? document.getElementById("emailHtml").value || "<p>Belum ada HTML.</p>";
+      const html = htmlOverride ?? (document.getElementById("emailHtml").value || "<p>Belum ada HTML.</p>");
       document.getElementById("emailHtmlPreview").srcdoc = html;
     }
 
