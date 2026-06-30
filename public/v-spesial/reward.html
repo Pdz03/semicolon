@@ -185,6 +185,11 @@
       <div id="giftGrid" class="mt-10 grid gap-6 md:grid-cols-3"></div>
 
       <form id="replyForm" class="mt-10 space-y-6">
+        <div id="giftPrivacyNotice" class="hidden rounded-[1.75rem] border border-amber-300/20 bg-amber-400/10 px-5 py-4 text-amber-50">
+          <div class="text-xs uppercase tracking-[0.3em] text-amber-100/80">Catatan Kecil</div>
+          <p class="mt-3 text-sm leading-7">Hadiah yang terpilih akan tiba dalam beberapa hari lagi, kalo memungkinkan, ketika telp chat atu ketemu sebelum hari Sabtu, tidak diperkenankan untuk membahas soal hadiah ini dulu yaaa.</p>
+        </div>
+
         <label class="block">
           <span class="mb-2 block text-sm uppercase tracking-[0.3em] text-sky-200/70">Surat Balasan Ida</span>
           <textarea id="replyMessage" rows="8" class="w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:border-violet-300/50" placeholder="Tuliskan balasanmu di sini..."></textarea>
@@ -285,6 +290,7 @@
     const voiceFile = document.getElementById("voiceFile");
     const photoFile = document.getElementById("photoFile");
     const photoPreview = document.getElementById("photoPreview");
+    const giftPrivacyNotice = document.getElementById("giftPrivacyNotice");
     const recordStatus = document.getElementById("recordStatus");
     const recordDuration = document.getElementById("recordDuration");
 
@@ -509,6 +515,7 @@
           });
 
           const statusMessage = document.getElementById("statusMessage");
+          giftPrivacyNotice.classList.remove("hidden");
           statusMessage.textContent = `${selectedGift} terbuka. Sekarang kamu bisa balas dengan tulisan, suara, atau foto.`;
         });
       });
@@ -553,6 +560,7 @@
         document.getElementById("replyForm").reset();
         selectedGift = "";
         mysteryLocked = false;
+        giftPrivacyNotice.classList.add("hidden");
         document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
         loadPage();
         recordedBlob = null;
