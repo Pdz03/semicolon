@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V-Spesial | Gerbang Hadiah</title>
+  <link rel="icon" type="image/png" href="/images/logo.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      background:
+        radial-gradient(circle at top, rgba(124, 58, 237, 0.22), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.22), transparent 34%),
+        #050816;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    .glass {
+      background: rgba(2, 6, 23, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 25px 80px rgba(15, 23, 42, 0.45);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100">
+  <main class="mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
+    <section class="glass w-full rounded-[2rem] p-8 md:p-10">
+      <p class="text-xs uppercase tracking-[0.4em] text-violet-200/70">V-Spesial</p>
+      <h1 class="mt-4 text-4xl font-semibold md:text-5xl">Kode hadiah berhasil terkirim.</h1>
+      <p class="mt-5 text-lg leading-8 text-slate-300">Halo Ida Indarwati, selamat ulang tahun ya! Kode hadiah kamu sudah terkirim.</p>
+      <div class="mt-8 rounded-[1.75rem] border border-violet-300/15 bg-white/5 p-6">
+        <div class="text-xs uppercase tracking-[0.3em] text-violet-200/70">Kode Untuk Ditulis</div>
+        <div id="codeBox" class="mt-4 hidden rounded-[1.5rem] border border-white/10 bg-slate-950/60 px-5 py-4 text-center text-3xl font-semibold tracking-[0.2em] text-white md:text-4xl">#jangansampailupa</div>
+      </div>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <button id="copyBtn" class="hidden rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white hover:brightness-110">Salin Kode</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const params = new URL(window.location.href).searchParams;
+    const token = params.get("token") || "";
+    const statusText = document.getElementById("statusText");
+    const codeBox = document.getElementById("codeBox");
+    const copyBtn = document.getElementById("copyBtn");
+    let currentCode = "";
+
+    copyBtn.addEventListener("click", async () => {
+      if (!currentCode) return;
+      try {
+        await navigator.clipboard.writeText(currentCode);
+        statusText.textContent = "Kode berhasil disalin. Tempelkan ke halaman utama V-Spesial.";
+      } catch (error) {
+        statusText.textContent = "Salin manual saja ya, clipboard di perangkat ini tidak tersedia.";
+      }
+    });
+
+    validate().catch(() => {
+      statusText.textContent = "Gagal memeriksa akses hadiah.";
+    });
+  </script>
+</body>
+</html>

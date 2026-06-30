@@ -395,6 +395,48 @@ function getBirthdaySendKey(dateValue) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function escapeBirthdayHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getBirthdayEmailTemplate() {
+  const templatePath = path.join(__dirname, "public/v-spesial/email-template.html");
+  return fs.readFileSync(templatePath, "utf8");
+}
+
+function renderBirthdayEmailTemplate({
+  preheader = "Ada halaman kecil yang menunggu untuk dibuka.",
+  eyebrow = "V-Spesial",
+  title = "Momen spesialnya sudah tiba.",
+  greeting = "Halo Ida Indarwati,",
+  body = "Ada satu halaman kecil yang sedang menunggu untuk dibuka.",
+  cardLabel = "Kode Untuk Ditulis",
+  code = "",
+  footer = "Silakan buka kembali halaman V-Spesial, lalu masukkan kode ini saat waktunya tiba.",
+} = {}) {
+  const template = getBirthdayEmailTemplate();
+  const replacements = {
+    "{{preheader}}": escapeBirthdayHtml(preheader),
+    "{{eyebrow}}": escapeBirthdayHtml(eyebrow),
+    "{{title}}": escapeBirthdayHtml(title),
+    "{{greeting}}": escapeBirthdayHtml(greeting),
+    "{{body}}": escapeBirthdayHtml(body),
+    "{{card_label}}": escapeBirthdayHtml(cardLabel),
+    "{{code}}": escapeBirthdayHtml(code),
+    "{{footer}}": escapeBirthdayHtml(footer),
+  };
+
+  return Object.entries(replacements).reduce(
+    (html, [placeholder, value]) => html.replaceAll(placeholder, value),
+    template
+  );
+}
+
 async function sendBirthdayCodes({ force = false } = {}) {
   const config = await ensureBirthdayConfig();
   const targetDate = config.target_date ? new Date(config.target_date) : null;
@@ -433,18 +475,15 @@ async function sendBirthdayCodes({ force = false } = {}) {
       continue;
     }
 
-    const html = `
-      <div style="font-family: Georgia, serif; line-height: 1.7; color: #111827; max-width: 640px; margin: 0 auto; padding: 28px; background: #f8f5ff; border-radius: 24px;">
-        <div style="font-size: 12px; letter-spacing: 0.35em; text-transform: uppercase; color: #7c3aed;">V-Spesial</div>
-        <h1 style="margin: 14px 0 10px; font-size: 30px; color: #1f1640;">Momen spesialnya sudah tiba.</h1>
-        <p style="margin: 0 0 18px;">Ada satu halaman kecil yang sedang menunggu untuk dibuka.</p>
-        <div style="margin: 24px 0; padding: 20px; background: #ffffff; border-radius: 18px; border: 1px solid #ddd6fe;">
-          <div style="font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase; color: #6d28d9;">Kode Rahasia</div>
-          <div style="margin-top: 10px; font-size: 28px; font-weight: 700; letter-spacing: 0.14em; color: #4c1d95;">${config.email_passcode || ""}</div>
-        </div>
-        <p style="margin: 0;">Silakan buka kembali halaman V-Spesial, lalu masukkan kode ini saat waktunya tiba.</p>
-      </div>
-    `;
+    const html = renderBirthdayEmailTemplate({
+      preheader: "Momen spesialnya sudah tiba.",
+      title: "Momen spesialnya sudah tiba.",
+      greeting: "Halo Ida Indarwati,",
+      body: "Ada satu halaman kecil yang sedang menunggu untuk dibuka.",
+      cardLabel: "Kode Rahasia",
+      code: config.email_passcode || "",
+      footer: "Silakan buka kembali halaman V-Spesial, lalu masukkan kode ini saat waktunya tiba.",
+    });
 
     await transporter.sendMail({
       from: buildFromAddress(),
@@ -1985,6 +2024,8 @@ app.post("/api/v-bday/send-email", async (req, res) => {
     subject = "Pesan Ulang Tahun untuk Ida",
     html,
     text,
+    use_template,
+    template_data,
   } = req.body;
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -2012,10 +2053,27 @@ app.post("/api/v-bday/send-email", async (req, res) => {
     to,
     subject,
     text: text || "Ada pesan spesial untuk Ida.",
-    html: html || "<p>Ada pesan spesial untuk Ida.</p>",
+    html: use_template
+      ? renderBirthdayEmailTemplate(template_data || {})
+      : (html || renderBirthdayEmailTemplate()),
   });
 
   res.json({ success: true, messageId: result.messageId });
+});
+
+app.get("/api/v-bday/email-template-preview", async (req, res) => {
+  const config = await ensureBirthdayConfig();
+  const html = renderBirthdayEmailTemplate({
+    preheader: "Momen spesialnya sudah tiba.",
+    title: "Kode hadiah berhasil terkirim.",
+    greeting: "Halo Ida Indarwati,",
+    body: "Kode rahasia ini bisa kamu tulis di halaman utama V-Spesial saat momen itu tiba.",
+    cardLabel: "Kode Untuk Ditulis",
+    code: config.email_passcode || "#jangansampailupa",
+    footer: "Simpan email ini dulu ya. Nanti cukup buka V-Spesial dan masukkan kodenya di sana.",
+  });
+
+  res.json({ success: true, html });
 });
 
 cron.schedule("*/10 * * * *", async () => {

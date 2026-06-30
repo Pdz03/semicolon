@@ -85,7 +85,10 @@
           <input id="emailTo" type="email" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Tujuan email, contoh: ida@example.com" />
           <input id="emailSubject" type="text" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Subject email" value="Pesan Uji Coba V-Spesial" />
           <textarea id="emailText" rows="4" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Isi email versi teks">Halo Ida, ini email percobaan dari dashboard V-Spesial.</textarea>
-          <textarea id="emailHtml" rows="6" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Isi email versi HTML"><h1>Halo Ida</h1><p>Ini email percobaan dari dashboard <strong>V-Spesial</strong>.</p></textarea>
+          <textarea id="emailHtml" rows="6" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 md:col-span-2" placeholder="Isi email versi HTML"></textarea>
+          <div class="flex flex-wrap gap-3 md:col-span-2">
+            <button id="loadEmailTemplate" type="button" class="rounded-2xl border border-white/10 px-5 py-3 font-medium text-white">Pakai Template Email-Safe</button>
+          </div>
           <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white md:col-span-2">Kirim Test Email</button>
         </form>
         <p id="emailTestMessage" class="mt-4 text-sm text-sky-200"></p>
@@ -181,9 +184,16 @@
       return target.toString();
     }
 
-    function updateEmailPreview() {
-      const html = document.getElementById("emailHtml").value || "<p>Belum ada HTML.</p>";
+    function updateEmailPreview(htmlOverride) {
+      const html = htmlOverride ?? document.getElementById("emailHtml").value || "<p>Belum ada HTML.</p>";
       document.getElementById("emailHtmlPreview").srcdoc = html;
+    }
+
+    async function loadEmailTemplatePreview() {
+      const result = await api("/api/v-bday/email-template-preview");
+      if (!result.success) return;
+      document.getElementById("emailHtml").value = result.html || "";
+      updateEmailPreview(result.html || "");
     }
 
     async function loadDashboard() {
@@ -210,7 +220,7 @@
         dark: "#e11d48",
         light: "#ffffff",
       });
-      updateEmailPreview();
+      await loadEmailTemplatePreview();
 
       document.getElementById("scrapbookList").innerHTML = (scrapbook.notes || []).map((item) => `
         <article class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
@@ -410,6 +420,7 @@
     });
 
     document.getElementById("emailHtml").addEventListener("input", updateEmailPreview);
+    document.getElementById("loadEmailTemplate").addEventListener("click", loadEmailTemplatePreview);
 
     document.getElementById("downloadQr").addEventListener("click", () => {
       const canvas = document.getElementById("adminQrCanvas");
