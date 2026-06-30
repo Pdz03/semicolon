@@ -1322,6 +1322,10 @@ app.get("/v-spesial/reward", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/reward.html"));
 });
 
+app.get("/v-spesial/reveal-reward", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v-spesial/reveal-reward.html"));
+});
+
 app.get("/v-spesial/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/admin.html"));
 });

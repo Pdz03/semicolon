@@ -162,6 +162,16 @@
       .page-face { grid-template-columns: 1.02fr 0.98fr; }
       .page-copy { padding: 3rem; }
     }
+    @media (max-width: 767px) {
+      .modal-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 5;
+      }
+      .modal-nav--left { left: 0.75rem; }
+      .modal-nav--right { right: 0.75rem; }
+    }
   </style>
 </head>
 <body class="text-slate-100">
@@ -223,11 +233,16 @@
           <div id="pageFront" class="page-face"></div>
           <div id="pageBack" class="page-back"></div>
         </div>
+        <button id="prevPageMobile" class="modal-nav modal-nav--left rounded-full border border-white/10 bg-slate-950/75 px-4 py-3 text-white md:hidden">‹</button>
+        <button id="nextPageMobile" class="modal-nav modal-nav--right rounded-full border border-white/10 bg-slate-950/75 px-4 py-3 text-white md:hidden">›</button>
       </div>
-      <div class="mt-5 flex items-center justify-between gap-4">
+      <div class="mt-5 hidden items-center justify-between gap-4 md:flex">
         <button id="prevPage" class="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white">Sebelumnya</button>
         <div id="pageIndicator" class="text-sm uppercase tracking-[0.35em] text-violet-200/70">Lembar 01</div>
         <button id="nextPage" class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 text-sm font-medium text-white">Selanjutnya</button>
+      </div>
+      <div class="mt-5 text-center md:hidden">
+        <div id="pageIndicatorMobile" class="text-sm uppercase tracking-[0.35em] text-violet-200/70">Lembar 01</div>
       </div>
     </div>
   </div>
@@ -262,6 +277,9 @@
     const prevPage = document.getElementById("prevPage");
     const nextPage = document.getElementById("nextPage");
     const pageIndicator = document.getElementById("pageIndicator");
+    const prevPageMobile = document.getElementById("prevPageMobile");
+    const nextPageMobile = document.getElementById("nextPageMobile");
+    const pageIndicatorMobile = document.getElementById("pageIndicatorMobile");
     const modal = document.getElementById("scrapbookModal");
     const voicePreview = document.getElementById("voicePreview");
     const voiceFile = document.getElementById("voiceFile");
@@ -367,9 +385,13 @@
       const page = pages[currentPage];
       pageFront.innerHTML = buildPageContent(page);
       pageBack.innerHTML = '<div class="h-full w-full bg-[linear-gradient(135deg,rgba(224,231,255,0.9),rgba(243,232,255,0.96))]"></div>';
-      pageIndicator.textContent = `Lembar ${String(currentPage + 1).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
+      const indicatorText = `Lembar ${String(currentPage + 1).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
+      pageIndicator.textContent = indicatorText;
+      pageIndicatorMobile.textContent = indicatorText;
       prevPage.disabled = currentPage === 0;
       nextPage.disabled = currentPage === pages.length - 1;
+      prevPageMobile.disabled = currentPage === 0;
+      nextPageMobile.disabled = currentPage === pages.length - 1;
     }
 
     function goToPage(direction) {
@@ -574,6 +596,8 @@
     });
     prevPage.addEventListener("click", () => goToPage(-1));
     nextPage.addEventListener("click", () => goToPage(1));
+    prevPageMobile.addEventListener("click", () => goToPage(-1));
+    nextPageMobile.addEventListener("click", () => goToPage(1));
 
     loadPage().catch(() => {
       document.getElementById("statusMessage").textContent = "Gagal memuat halaman hadiah.";

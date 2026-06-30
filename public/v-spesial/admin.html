@@ -89,6 +89,10 @@
           <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-5 py-3 font-medium text-white md:col-span-2">Kirim Test Email</button>
         </form>
         <p id="emailTestMessage" class="mt-4 text-sm text-sky-200"></p>
+        <div class="mt-6">
+          <div class="mb-3 text-sm uppercase tracking-[0.3em] text-violet-200/70">Preview HTML Email</div>
+          <iframe id="emailHtmlPreview" class="h-80 w-full rounded-[1.5rem] border border-white/10 bg-white" title="Preview HTML Email"></iframe>
+        </div>
       </section>
 
       <section class="panel rounded-[2rem] p-6">
@@ -171,6 +175,17 @@
       });
     }
 
+    function buildRewardQrValue(passcode) {
+      const target = new URL("/v-spesial/reveal-reward", window.location.origin);
+      target.searchParams.set("token", passcode || "");
+      return target.toString();
+    }
+
+    function updateEmailPreview() {
+      const html = document.getElementById("emailHtml").value || "<p>Belum ada HTML.</p>";
+      document.getElementById("emailHtmlPreview").srcdoc = html;
+    }
+
     async function loadDashboard() {
       fullConfig = await api(`/api/v-bday/admin/config?secret=${encodeURIComponent(adminSecret)}`);
       const scrapbook = await api("/api/v-bday/scrapbook");
@@ -190,11 +205,12 @@
       document.getElementById("rewardImage2").value = fullConfig.reward_image_2 || "";
       document.getElementById("rewardImage3").value = fullConfig.reward_image_3 || "";
 
-      drawHeartQr(document.getElementById("adminQrCanvas"), fullConfig.reward_passcode || "", {
+      drawHeartQr(document.getElementById("adminQrCanvas"), buildRewardQrValue(fullConfig.reward_passcode || ""), {
         width: 240,
         dark: "#e11d48",
         light: "#ffffff",
       });
+      updateEmailPreview();
 
       document.getElementById("scrapbookList").innerHTML = (scrapbook.notes || []).map((item) => `
         <article class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
@@ -392,6 +408,8 @@
 
       messageHost.textContent = result.error || "Gagal mengirim email test.";
     });
+
+    document.getElementById("emailHtml").addEventListener("input", updateEmailPreview);
 
     document.getElementById("downloadQr").addEventListener("click", () => {
       const canvas = document.getElementById("adminQrCanvas");

@@ -330,6 +330,12 @@
       });
     }
 
+    function buildRewardQrValue(passcode) {
+      const target = new URL("/v-spesial/reveal-reward", window.location.origin);
+      target.searchParams.set("token", passcode || "");
+      return target.toString();
+    }
+
     function syncDevMode() {
       if (akses === "dev") {
         localStorage.setItem(DEV_KEY, "1");
@@ -452,17 +458,18 @@
 
       renderCurrentPage();
 
-      drawHeartQr(document.getElementById("qrCanvas"), data.reward_passcode || "", {
+      const qrValue = buildRewardQrValue(data.reward_passcode || "");
+      drawHeartQr(document.getElementById("qrCanvas"), qrValue, {
         width: 170,
         dark: "#4c1d95",
         light: "#ffffff",
       });
-      drawLobeQr(document.getElementById("qrLobeLeft"), data.reward_passcode || "", {
+      drawLobeQr(document.getElementById("qrLobeLeft"), qrValue, {
         width: 170,
         dark: "#4c1d95",
         light: "#ffffff",
       });
-      drawLobeQr(document.getElementById("qrLobeRight"), data.reward_passcode || "", {
+      drawLobeQr(document.getElementById("qrLobeRight"), qrValue, {
         width: 170,
         dark: "#4c1d95",
         light: "#ffffff",
