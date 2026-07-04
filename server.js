@@ -201,6 +201,13 @@ const V31ProgressSchema = new mongoose.Schema({
 });
 const V31Progress = mongoose.model("V31Progress", V31ProgressSchema);
 
+const V4CardSchema = new mongoose.Schema({
+  type: { type: String, enum: ["truth", "dare"], required: true },
+  level: { type: Number, enum: [1, 2, 3], required: true },
+  content: { type: String, required: true },
+});
+const V4Card = mongoose.model("V4Card", V4CardSchema);
+
 let v3State = {
     current_number: null,
     jasuke: { current_flag: 1, is_solved: false, data: {}, coordinates: [] },
@@ -306,6 +313,91 @@ function getFreshV31State() {
 }
 
 let v31State = getFreshV31State();
+
+function getFreshV4State() {
+  return {
+    players: [],
+    suwitChoices: {},
+    score: { fendi: 0, ida: 0 },
+    totalRounds: 0,
+    finalPunishment: "",
+    phase: "lobby",
+    loser: null,
+    winner: null,
+    currentCard: null,
+    roundResolved: false,
+    timerTarget: "11:00",
+  };
+}
+
+let v4State = getFreshV4State();
+const v4PlayerSockets = { fendi: null, ida: null };
+const V4_CHOICES = ["batu", "gunting", "kertas"];
+
+function normalizeV4PlayerName(name) {
+  if (!name) return "";
+  const value = String(name).trim().toLowerCase();
+  return value === "fendi" || value === "ida" ? value : "";
+}
+
+function getV4Level(totalRounds) {
+  if (totalRounds <= 2) return 1;
+  if (totalRounds <= 5) return 2;
+  return 3;
+}
+
+function getV4PublicState() {
+  return {
+    players: [...v4State.players],
+    score: { ...v4State.score },
+    totalRounds: v4State.totalRounds,
+    finalPunishment: v4State.finalPunishment,
+    phase: v4State.phase,
+    loser: v4State.loser,
+    winner: v4State.winner,
+    currentCard: v4State.currentCard,
+    roundResolved: v4State.roundResolved,
+    timerTarget: v4State.timerTarget,
+    connectedDevices: {
+      host: Boolean(v4PlayerSockets.host),
+      admin: Boolean(v4PlayerSockets.admin),
+      fendi: Boolean(v4PlayerSockets.fendi),
+      ida: Boolean(v4PlayerSockets.ida),
+    },
+  };
+}
+
+function emitV4State() {
+  io.to("v4_room").emit("v4_state_sync", getV4PublicState());
+}
+
+function resetV4RoundChoices() {
+  v4State.suwitChoices = {};
+  v4State.roundResolved = false;
+}
+
+function resetV4GameState() {
+  v4State = getFreshV4State();
+  resetV4RoundChoices();
+}
+
+function resolveSuitWinner(fendiChoice, idaChoice) {
+  if (fendiChoice === idaChoice) {
+    return { isDraw: true, winner: null, loser: null };
+  }
+
+  const beats = {
+    batu: "gunting",
+    gunting: "kertas",
+    kertas: "batu",
+  };
+
+  if (beats[fendiChoice] === idaChoice) {
+    return { isDraw: false, winner: "fendi", loser: "ida" };
+  }
+
+  return { isDraw: false, winner: "ida", loser: "fendi" };
+}
 
 function getBirthdayDefaults() {
   return {
@@ -1337,17 +1429,252 @@ io.on("connection", (socket) => {
             });
         }
     });
+
+    socket.on("v4_join", ({ role, player }) => {
+        socket.join("v4_room");
+
+        if (role === "host") {
+            v4PlayerSockets.host = socket.id;
+            socket.data.v4Role = "host";
+            emitV4State();
+            return;
+        }
+
+        if (role === "admin") {
+            v4PlayerSockets.admin = socket.id;
+            socket.data.v4Role = "admin";
+            emitV4State();
+            return;
+        }
+
+        if (role === "player") {
+            const normalizedPlayer = normalizeV4PlayerName(player);
+            if (!normalizedPlayer) {
+                socket.emit("v4_error", "Pemain tidak valid.");
+                return;
+            }
+
+            const existingSocketId = v4PlayerSockets[normalizedPlayer];
+            if (existingSocketId && existingSocketId !== socket.id) {
+                io.to(existingSocketId).emit("v4_force_logout", "Perangkat lain mengambil slot pemain ini.");
+            }
+
+            v4PlayerSockets[normalizedPlayer] = socket.id;
+            socket.data.v4Role = "player";
+            socket.data.v4Player = normalizedPlayer;
+            if (!v4State.players.includes(normalizedPlayer)) {
+                v4State.players.push(normalizedPlayer);
+                v4State.players.sort();
+            }
+            emitV4State();
+            return;
+        }
+
+        socket.emit("v4_error", "Role tidak valid.");
+    });
+
+    socket.on("v4_start_game", ({ punishment }) => {
+        if (socket.id !== v4PlayerSockets.host) {
+            socket.emit("v4_error", "Hanya host yang bisa memulai game.");
+            return;
+        }
+
+        const hasPlayers = v4State.players.includes("fendi") && v4State.players.includes("ida");
+        if (!hasPlayers) {
+            socket.emit("v4_error", "Fendi dan Ida harus bergabung dulu.");
+            return;
+        }
+
+        v4State.finalPunishment = String(punishment || "").trim();
+        v4State.phase = "suit";
+        v4State.loser = null;
+        v4State.winner = null;
+        v4State.currentCard = null;
+        v4State.timerTarget = v4State.timerTarget || "11:00";
+        resetV4RoundChoices();
+        io.to("v4_room").emit("v4_game_started", getV4PublicState());
+        emitV4State();
+    });
+
+    socket.on("v4_suwit_action", ({ choice }) => {
+        const player = socket.data.v4Player;
+        if (!player) {
+            socket.emit("v4_error", "Slot pemain belum aktif.");
+            return;
+        }
+        if (v4State.phase !== "suit") {
+            socket.emit("v4_error", "Fase suit belum aktif.");
+            return;
+        }
+        if (!V4_CHOICES.includes(choice)) {
+            socket.emit("v4_error", "Pilihan suit tidak valid.");
+            return;
+        }
+
+        v4State.suwitChoices[player] = choice;
+        socket.emit("v4_choice_locked", { choice });
+        io.to("v4_room").emit("v4_suwit_waiting", {
+            locked: {
+                fendi: Boolean(v4State.suwitChoices.fendi),
+                ida: Boolean(v4State.suwitChoices.ida),
+            },
+        });
+
+        const fendiChoice = v4State.suwitChoices.fendi;
+        const idaChoice = v4State.suwitChoices.ida;
+        if (!fendiChoice || !idaChoice) {
+            emitV4State();
+            return;
+        }
+
+        const result = resolveSuitWinner(fendiChoice, idaChoice);
+        if (result.isDraw) {
+            resetV4RoundChoices();
+            io.to("v4_room").emit("v4_suwit_result", {
+                isDraw: true,
+                choices: { fendi: fendiChoice, ida: idaChoice },
+                message: "SERI! ULANGI!",
+            });
+            v4State.phase = "suit";
+            emitV4State();
+            return;
+        }
+
+        v4State.winner = result.winner;
+        v4State.loser = result.loser;
+        v4State.phase = "tod_choice";
+        v4State.roundResolved = true;
+        io.to("v4_room").emit("v4_suwit_result", {
+            isDraw: false,
+            choices: { fendi: fendiChoice, ida: idaChoice },
+            winner: result.winner,
+            loser: result.loser,
+        });
+        emitV4State();
+    });
+
+    socket.on("v4_tod_choice", async ({ type }) => {
+        const player = socket.data.v4Player;
+        if (!player || player !== v4State.loser) {
+            socket.emit("v4_error", "Hanya pemain yang kalah yang boleh memilih.");
+            return;
+        }
+        if (v4State.phase !== "tod_choice") {
+            socket.emit("v4_error", "Belum waktunya memilih Truth atau Dare.");
+            return;
+        }
+        if (!["truth", "dare"].includes(type)) {
+            socket.emit("v4_error", "Pilihan Truth/Dare tidak valid.");
+            return;
+        }
+
+        const level = getV4Level(v4State.totalRounds);
+        const cards = await V4Card.find({ type, level }).lean();
+        if (!cards.length) {
+            socket.emit("v4_error", "Kartu untuk level ini belum tersedia.");
+            return;
+        }
+
+        const randomCard = cards[Math.floor(Math.random() * cards.length)];
+        v4State.currentCard = {
+            _id: String(randomCard._id),
+            type: randomCard.type,
+            level: randomCard.level,
+            content: randomCard.content,
+        };
+        v4State.phase = "card";
+        io.to("v4_room").emit("v4_card_revealed", {
+            loser: v4State.loser,
+            winner: v4State.winner,
+            card: v4State.currentCard,
+        });
+        emitV4State();
+    });
+
+    socket.on("v4_next_round", () => {
+        const player = socket.data.v4Player;
+        if (!player || player !== v4State.winner) {
+            socket.emit("v4_error", "Hanya pemenang ronde yang bisa lanjut.");
+            return;
+        }
+        if (v4State.phase !== "card" || !v4State.loser) {
+            socket.emit("v4_error", "Belum ada kartu aktif.");
+            return;
+        }
+
+        v4State.score[v4State.loser] += 1;
+        v4State.totalRounds += 1;
+
+        const loserScore = v4State.score[v4State.loser];
+        if (loserScore >= 5) {
+            v4State.phase = "endgame";
+            io.to("v4_room").emit("v4_endgame", {
+                loser: v4State.loser,
+                winner: v4State.winner,
+                score: { ...v4State.score },
+                finalPunishment: v4State.finalPunishment,
+            });
+            emitV4State();
+            return;
+        }
+
+        v4State.phase = "suit";
+        v4State.currentCard = null;
+        v4State.loser = null;
+        v4State.winner = null;
+        resetV4RoundChoices();
+        io.to("v4_room").emit("v4_round_reset", getV4PublicState());
+        emitV4State();
+    });
+
+    socket.on("v4_reset_game", () => {
+        const isAdmin = socket.id === v4PlayerSockets.admin;
+        const isHost = socket.id === v4PlayerSockets.host;
+        if (!isAdmin && !isHost) {
+            socket.emit("v4_error", "Tidak punya akses reset game.");
+            return;
+        }
+
+        const preservedTimerTarget = v4State.timerTarget || "11:00";
+        resetV4GameState();
+        v4State.timerTarget = preservedTimerTarget;
+        io.to("v4_room").emit("v4_game_reset", getV4PublicState());
+        emitV4State();
+    });
+
+    socket.on("disconnect", () => {
+        if (socket.id === v4PlayerSockets.host) v4PlayerSockets.host = null;
+        if (socket.id === v4PlayerSockets.admin) v4PlayerSockets.admin = null;
+
+        const disconnectedPlayer = socket.data.v4Player;
+        if (disconnectedPlayer && v4PlayerSockets[disconnectedPlayer] === socket.id) {
+            v4PlayerSockets[disconnectedPlayer] = null;
+        }
+
+        emitV4State();
+    });
 });
 
-// Redirect root to /v3
+const V4_ADMIN_PASSWORD = process.env.V4_ADMIN_PASSWORD || "sajak-admin";
+
+function requireV4Admin(req, res, next) {
+  const password = req.headers["x-v4-admin-password"];
+  if (password !== V4_ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: "Password admin salah." });
+  }
+  next();
+}
+
+// Redirect root to /v4
 app.get("/", (req, res) => {
-  res.redirect("/v-spesial");
+  res.redirect("/v4");
 });
 
 // Fix asset paths for v1 (supporting relative paths like images/ and music/)
 app.use("/v1/images", express.static(path.join(__dirname, "public/images")));
 app.use("/v1/music", express.static(path.join(__dirname, "public/music")));
 app.use("/v-spesial", express.static(path.join(__dirname, "public/v-spesial")));
+app.use("/v4", express.static(path.join(__dirname, "public/v4"), { index: false, redirect: false }));
 
 app.get("/v-spesial", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/index.html"));
@@ -1367,6 +1694,22 @@ app.get("/v-spesial/reveal-reward", (req, res) => {
 
 app.get("/v-spesial/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/admin.html"));
+});
+
+app.get("/v4", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v4/host.html"));
+});
+
+app.get("/v4/host", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v4/host.html"));
+});
+
+app.get("/v4/player", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v4/player.html"));
+});
+
+app.get("/v4/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/v4/admin.html"));
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -2117,6 +2460,93 @@ app.post("/api/login", async (req, res) => {
 app.get("/api/memories", async (req, res) => {
   const memories = await Memory.find().sort({ order: 1 });
   res.json(memories);
+});
+
+app.get("/api/v4/state", async (req, res) => {
+  res.json({ success: true, state: getV4PublicState() });
+});
+
+app.get("/api/v4/init-cards", async (req, res) => {
+  const seedCards = [
+    { type: "truth", level: 1, content: "Coba ceritain jujur, first impression kamu pas pertama kali liat profil sosmed pasanganmu gimana?" },
+    { type: "truth", level: 1, content: "Hal paling receh apa yang sering bikin kalian berantem kecil atau ngambekan?" },
+    { type: "dare", level: 1, content: "Tiruin gaya bicara atau kebiasaan pasanganmu pas dia lagi ngambek/kesel." },
+    { type: "dare", level: 1, content: "Tahan tawa selama 1 menit sambil digombalin pasanganmu dan saling menatap mata." },
+    { type: "truth", level: 2, content: "Waktu muter-muter cari kos di Magelang buat persiapan PPG, momen kecil apa dari pasanganmu yang paling bikin berkesan?" },
+    { type: "truth", level: 2, content: "Momen LDR apa yang paling berat, dan gimana kamu ngelewatinnya pas lagi kangen banget sama pasanganmu?" },
+    { type: "dare", level: 2, content: "Ceritain ulang detik-detik pas kalian jadian tanggal 19 Oktober di Balekambang versi sudut pandangmu, pakai gaya lebay/dramatis." },
+    { type: "dare", level: 2, content: "Tunjukin satu chat/VN dari pasanganmu yang paling sering kamu buka ulang pas lagi rindu." },
+    { type: "truth", level: 3, content: "Apa ketakutan terbesarmu dalam hubungan ini, dan gimana pasanganmu bisa bantu nenangin ketakutan itu?" },
+    { type: "truth", level: 3, content: "Sebutkan satu janji kecil yang paling pengen kamu tepati buat hubungan kalian di masa depan nanti." },
+    { type: "dare", level: 3, content: "Pegang kedua tangan pasanganmu, tatap matanya selama 1 menit penuh tanpa ngomong apa-apa, lalu peluk." },
+    { type: "dare", level: 3, content: "Ucapkan 3 hal yang paling kamu syukuri dari kehadiran pasanganmu di hidupmu sambil mengelus tangannya." },
+  ];
+
+  await V4Card.deleteMany({});
+  await V4Card.insertMany(seedCards);
+  res.send("Data berhasil di-seed!");
+});
+
+app.post("/api/v4/admin/login", (req, res) => {
+  const password = String(req.body?.password || "");
+  if (password !== V4_ADMIN_PASSWORD) {
+    return res.status(401).json({ success: false, message: "Password admin salah." });
+  }
+  res.json({ success: true });
+});
+
+app.post("/api/v4/admin/timer", requireV4Admin, async (req, res) => {
+  const timerTarget = String(req.body?.timerTarget || "").trim();
+  const isValid = /^([01]\d|2[0-3]):([0-5]\d)$/.test(timerTarget);
+  if (!isValid) {
+    return res.status(422).json({ success: false, message: "Format jam harus HH:mm." });
+  }
+
+  v4State.timerTarget = timerTarget;
+  emitV4State();
+  res.json({ success: true, timerTarget });
+});
+
+app.get("/api/v4/cards", requireV4Admin, async (req, res) => {
+  const cards = await V4Card.find().sort({ level: 1, type: 1, createdAt: 1, _id: 1 }).lean();
+  res.json({ success: true, cards });
+});
+
+app.post("/api/v4/cards", requireV4Admin, async (req, res) => {
+  const { type, level, content } = req.body || {};
+  const card = await V4Card.create({
+    type,
+    level: Number(level),
+    content: String(content || "").trim(),
+  });
+  res.json({ success: true, card });
+});
+
+app.put("/api/v4/cards/:id", requireV4Admin, async (req, res) => {
+  const { type, level, content } = req.body || {};
+  const card = await V4Card.findByIdAndUpdate(
+    req.params.id,
+    {
+      type,
+      level: Number(level),
+      content: String(content || "").trim(),
+    },
+    { new: true, runValidators: true },
+  ).lean();
+
+  if (!card) {
+    return res.status(404).json({ success: false, message: "Kartu tidak ditemukan." });
+  }
+
+  res.json({ success: true, card });
+});
+
+app.delete("/api/v4/cards/:id", requireV4Admin, async (req, res) => {
+  const card = await V4Card.findByIdAndDelete(req.params.id).lean();
+  if (!card) {
+    return res.status(404).json({ success: false, message: "Kartu tidak ditemukan." });
+  }
+  res.json({ success: true });
 });
 
 // --- SERVER ---

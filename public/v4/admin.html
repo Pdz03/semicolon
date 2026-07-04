@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semicolon V4 Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Outfit", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.24), transparent 30%),
+        radial-gradient(circle at top right, rgba(217,70,239,0.18), transparent 34%),
+        linear-gradient(180deg, #f9fcff 0%, #eff8ff 56%, #fff6fd 100%);
+      color: #19263b;
+      min-height: 100vh;
+    }
+    .font-display { font-family: "Playfair Display", serif; }
+    .panel {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.82);
+      box-shadow: 0 22px 70px rgba(29,78,216,0.12);
+      backdrop-filter: blur(16px);
+    }
+  </style>
+</head>
+<body>
+  <main class="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
+    <section class="panel rounded-[2rem] p-6 md:p-8">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.45em] text-sky-700/70">Semicolon V4</p>
+          <h1 class="font-display mt-3 text-4xl font-semibold md:text-5xl">Admin Kartu</h1>
+          <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600">Kelola kartu Truth or Dare, lakukan seed data bawaan, dan reset game realtime untuk semua device.</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <button id="seedButton" class="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-white">Seed Default</button>
+          <button id="resetButton" class="rounded-full bg-gradient-to-r from-fuchsia-500 to-pink-600 px-5 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-white">Reset Game</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <div class="panel rounded-[2rem] p-6 md:p-8">
+        <h2 class="text-2xl font-semibold text-slate-800">Form Kartu</h2>
+        <div class="mt-6 rounded-[1.5rem] border border-sky-100 bg-sky-50/70 p-5">
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <label class="block flex-1">
+              <span class="text-sm font-medium text-slate-700">Jam Timer Player</span>
+              <input id="timerTarget" type="time" value="11:00" class="mt-2 w-full rounded-[1.25rem] border border-sky-100 bg-white px-4 py-3 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100" />
+            </label>
+            <button id="saveTimerButton" class="rounded-full bg-gradient-to-r from-sky-500 to-fuchsia-500 px-5 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-white">Simpan Timer</button>
+          </div>
+        </div>
+        <form id="cardForm" class="mt-6 space-y-4">
+          <input type="hidden" id="cardId" />
+          <label class="block">
+            <span class="text-sm font-medium text-slate-700">Type</span>
+            <select id="type" class="mt-2 w-full rounded-[1.25rem] border border-sky-100 bg-white px-4 py-3 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100">
+              <option value="truth">Truth</option>
+              <option value="dare">Dare</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium text-slate-700">Level</span>
+            <select id="level" class="mt-2 w-full rounded-[1.25rem] border border-sky-100 bg-white px-4 py-3 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100">
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-sm font-medium text-slate-700">Isi Kartu</span>
+            <textarea id="content" rows="6" class="mt-2 w-full rounded-[1.25rem] border border-sky-100 bg-white px-4 py-3 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100" placeholder="Tuliskan pertanyaan atau tantangan di sini."></textarea>
+          </label>
+          <div class="flex flex-wrap gap-3">
+            <button class="rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-fuchsia-500 px-5 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-white" type="submit">Simpan</button>
+            <button id="cancelEdit" class="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-slate-700" type="button">Batal Edit</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel rounded-[2rem] p-6 md:p-8">
+        <div class="flex items-center justify-between gap-4">
+          <h2 class="text-2xl font-semibold text-slate-800">Daftar Kartu</h2>
+          <button id="refreshButton" class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Refresh</button>
+        </div>
+        <div id="cardsTable" class="mt-6 overflow-x-auto"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const socket = io();
+    let adminPassword = "";
+    let latestState = { timerTarget: "11:00" };
+
+    function headers() {
+      return {
+        "Content-Type": "application/json",
+        "x-v4-admin-password": adminPassword,
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    async function requestPassword() {
+      const result = await Swal.fire({
+        title: "Masuk Admin V4",
+        input: "password",
+        inputLabel: "Masukkan password admin",
+        inputPlaceholder: "Password admin",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        confirmButtonText: "Masuk",
+        preConfirm: async (password) => {
+          const response = await fetch("/api/v4/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.success) {
+            throw new Error(payload.message || "Password salah.");
+          }
+          return password;
+        },
+      }).catch(() => null);
+
+      if (!result || !result.value) {
+        window.location.href = "/v4";
+        return false;
+      }
+
+      adminPassword = result.value;
+      socket.emit("v4_join", { role: "admin" });
+      return true;
+    }
+
+    function clearForm() {
+      document.getElementById("cardId").value = "";
+      document.getElementById("type").value = "truth";
+      document.getElementById("level").value = "1";
+      document.getElementById("content").value = "";
+    }
+
+    async function loadCards() {
+      const response = await fetch("/api/v4/cards", { headers: { "x-v4-admin-password": adminPassword } });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.message || "Gagal memuat kartu.");
+      }
+
+      const rows = payload.cards.map((card, index) => `
+        <tr class="border-b border-slate-100">
+          <td class="px-4 py-3 text-sm text-slate-500">${index + 1}</td>
+          <td class="px-4 py-3 text-sm font-semibold uppercase text-slate-700">${escapeHtml(card.type)}</td>
+          <td class="px-4 py-3 text-sm text-slate-600">Level ${card.level}</td>
+          <td class="px-4 py-3 text-sm leading-7 text-slate-700">${escapeHtml(card.content)}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-wrap gap-2">
+              <button class="edit-btn rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700" data-id="${card._id}" data-type="${card.type}" data-level="${card.level}" data-content="${escapeHtml(card.content)}">Edit</button>
+              <button class="delete-btn rounded-full border border-pink-200 bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-700" data-id="${card._id}">Hapus</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+
+      document.getElementById("cardsTable").innerHTML = `
+        <table class="min-w-full overflow-hidden rounded-[1.5rem] border border-slate-100 bg-white">
+          <thead class="bg-slate-50 text-left">
+            <tr>
+              <th class="px-4 py-3 text-xs uppercase tracking-[0.3em] text-slate-500">No</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-[0.3em] text-slate-500">Type</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-[0.3em] text-slate-500">Level</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-[0.3em] text-slate-500">Content</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-[0.3em] text-slate-500">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">Belum ada kartu.</td></tr>'}</tbody>
+        </table>
+      `;
+
+      document.querySelectorAll(".edit-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.getElementById("cardId").value = button.dataset.id;
+          document.getElementById("type").value = button.dataset.type;
+          document.getElementById("level").value = button.dataset.level;
+          document.getElementById("content").value = button.dataset.content
+            .replaceAll("&amp;", "&")
+            .replaceAll("&lt;", "<")
+            .replaceAll("&gt;", ">")
+            .replaceAll("&quot;", "\"")
+            .replaceAll("&#39;", "'");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      });
+
+      document.querySelectorAll(".delete-btn").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const confirm = await Swal.fire({
+            icon: "warning",
+            title: "Hapus kartu ini?",
+            showCancelButton: true,
+            confirmButtonText: "Hapus",
+          });
+          if (!confirm.isConfirmed) return;
+          const response = await fetch(`/api/v4/cards/${button.dataset.id}`, {
+            method: "DELETE",
+            headers: { "x-v4-admin-password": adminPassword },
+          });
+          const payload = await response.json();
+          if (!response.ok) {
+            Swal.fire({ icon: "error", title: "Gagal", text: payload.message || "Gagal menghapus kartu." });
+            return;
+          }
+          await loadCards();
+          Swal.fire({ icon: "success", title: "Kartu dihapus", timer: 1400, showConfirmButton: false });
+        });
+      });
+    }
+
+    async function loadState() {
+      const response = await fetch("/api/v4/state");
+      const payload = await response.json();
+      latestState = payload.state || latestState;
+      document.getElementById("timerTarget").value = latestState.timerTarget || "11:00";
+    }
+
+    document.getElementById("cardForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const id = document.getElementById("cardId").value;
+      const payload = {
+        type: document.getElementById("type").value,
+        level: Number(document.getElementById("level").value),
+        content: document.getElementById("content").value.trim(),
+      };
+
+      if (!payload.content) {
+        Swal.fire({ icon: "warning", title: "Isi kartu belum diisi" });
+        return;
+      }
+
+      const response = await fetch(id ? `/api/v4/cards/${id}` : "/api/v4/cards", {
+        method: id ? "PUT" : "POST",
+        headers: headers(),
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        Swal.fire({ icon: "error", title: "Gagal menyimpan", text: result.message || "Cek data kartu." });
+        return;
+      }
+      clearForm();
+      await loadCards();
+      Swal.fire({ icon: "success", title: id ? "Kartu diperbarui" : "Kartu ditambahkan", timer: 1500, showConfirmButton: false });
+    });
+
+    document.getElementById("cancelEdit").addEventListener("click", clearForm);
+    document.getElementById("refreshButton").addEventListener("click", loadCards);
+    document.getElementById("saveTimerButton").addEventListener("click", async () => {
+      const timerTarget = document.getElementById("timerTarget").value || "11:00";
+      const response = await fetch("/api/v4/admin/timer", {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({ timerTarget }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        Swal.fire({ icon: "error", title: "Gagal simpan timer", text: payload.message || "Timer belum tersimpan." });
+        return;
+      }
+      latestState.timerTarget = payload.timerTarget;
+      Swal.fire({ icon: "success", title: "Timer diperbarui", text: `Player sekarang pakai target ${payload.timerTarget}.`, timer: 1500, showConfirmButton: false });
+    });
+
+    document.getElementById("seedButton").addEventListener("click", async () => {
+      const confirm = await Swal.fire({
+        icon: "question",
+        title: "Seed ulang semua kartu?",
+        text: "Semua data V4Card sekarang akan dihapus lalu diisi ulang dengan data default.",
+        showCancelButton: true,
+        confirmButtonText: "Lanjut seed",
+      });
+      if (!confirm.isConfirmed) return;
+      const response = await fetch("/api/v4/init-cards");
+      const text = await response.text();
+      await loadCards();
+      Swal.fire({ icon: "success", title: "Seed selesai", text });
+    });
+
+    document.getElementById("resetButton").addEventListener("click", async () => {
+      const confirm = await Swal.fire({
+        icon: "warning",
+        title: "Reset game sekarang?",
+        text: "Skor, ronde, pilihan suit, dan hukuman final akan kembali ke kondisi awal.",
+        showCancelButton: true,
+        confirmButtonText: "Reset",
+      });
+      if (!confirm.isConfirmed) return;
+      socket.emit("v4_reset_game");
+    });
+
+    socket.on("v4_game_reset", () => {
+      Swal.fire({ icon: "success", title: "Game berhasil direset", timer: 1500, showConfirmButton: false });
+    });
+    socket.on("v4_state_sync", (payload) => {
+      latestState = payload;
+      if (payload.timerTarget) {
+        document.getElementById("timerTarget").value = payload.timerTarget;
+      }
+    });
+    socket.on("v4_error", (message) => {
+      Swal.fire({ icon: "error", title: "Tidak bisa diproses", text: message });
+    });
+
+    requestPassword().then((ok) => {
+      if (!ok) return;
+      Promise.all([loadCards(), loadState()]).catch((error) => {
+        Swal.fire({ icon: "error", title: "Gagal memuat data", text: error.message });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semicolon V4 Host</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-soft: #f5fbff;
+      --bg-panel: rgba(255,255,255,0.72);
+      --line: rgba(29, 78, 216, 0.12);
+      --blue: #1d4ed8;
+      --pink: #ec4899;
+      --purple: #9333ea;
+      --ink: #132238;
+    }
+    body {
+      font-family: "Outfit", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.28), transparent 30%),
+        radial-gradient(circle at top right, rgba(236, 72, 153, 0.22), transparent 32%),
+        linear-gradient(180deg, #fdfcff 0%, #eef7ff 54%, #fdf5ff 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-display { font-family: "Playfair Display", serif; }
+    .glass {
+      background: var(--bg-panel);
+      border: 1px solid rgba(255,255,255,0.75);
+      box-shadow: 0 24px 80px rgba(29, 78, 216, 0.12);
+      backdrop-filter: blur(18px);
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1) rotateZ(var(--rot)); }
+      50% { transform: translateY(-20px) scale(1.05) rotateZ(var(--rot)); }
+    }
+    @keyframes flap-l {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(60deg); }
+    }
+    @keyframes flap-r {
+      0% { transform: rotateY(180deg); }
+      100% { transform: rotateY(120deg); }
+    }
+    .butterfly {
+      position: fixed;
+      width: var(--size);
+      height: calc(var(--size) * 1.25);
+      transform-origin: 100% 50%;
+      transform-style: preserve-3d;
+      animation: float 6s ease-in-out infinite;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    .wing-left, .wing-right {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: 100% 50%;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+    .wing-right { animation: flap-r var(--dur) ease-in-out infinite alternate; }
+    .wing-left { animation: flap-l var(--dur) ease-in-out infinite alternate; }
+    .bf-1 { top: 10%; left: 10%; color: rgba(59, 130, 246, 0.6); --size: 1.5rem; --rot: -15deg; animation-delay: 0s; --dur: 0.15s; }
+    .bf-2 { top: 20%; right: 10%; color: rgba(236, 72, 153, 0.52); --size: 2rem; --rot: 15deg; animation-delay: 1.5s; --dur: 0.25s; }
+    .bf-3 { bottom: 16%; left: 12%; color: rgba(59, 130, 246, 0.5); --size: 2.4rem; --rot: -25deg; animation-delay: 3s; --dur: 0.3s; }
+    .bf-4 { bottom: 18%; right: 15%; color: rgba(217, 70, 239, 0.45); --size: 1.25rem; --rot: 25deg; animation-delay: 0.5s; --dur: 0.2s; }
+    .bf-5 { top: 50%; left: 4%; color: rgba(14, 165, 233, 0.56); --size: 1rem; --rot: -10deg; animation-delay: 2s; --dur: 0.22s; }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+    <defs>
+      <g id="shape-moth">
+        <path fill="currentColor" d="M2.457,32.759c6.752,15.757,12.862,9.004,19.615,31.513c4.96,16.533,12.703,21.434,25.763,19.562c-8.291,5.666-11.245,14.512-2.29,30.097c10.611,18.467,29.262,32.338,38.587,34.268s19.615-6.431,21.866-18.328c2.251-11.898,3.216-13.185,11.255-50.485V66.202v-8.039c0,0-44.054-38.266-73.637-42.767C14.033,10.894-4.296,17.003,2.457,32.759z"/>
+        <path style="fill:#2A0E07;" d="M119.744,44.906c-0.432,0-0.834,0.038-1.212,0.105C111.203,25.333,94.966,3.371,94.218,2.517c-0.767-0.877-1.425-3.234-2.521-2.302c-1.096,0.932,1.37,2.138,1.37,2.138S92.929,3.372,94,3.503c0,0,5.938,7.827,10.25,14.964c6.474,10.715,11.965,22.628,13.779,26.68c-3.596,0.985-4.503,5.059-3.919,8.202l-2.333-1.103C98.575,41.592,67.056,17.901,43.774,14.358c-6.339-0.964-12.222-1.454-17.484-1.454c-12.627,0-21.129,2.773-24.588,8.019c-2.196,3.33-2.266,7.452-0.209,12.25c3.013,7.032,5.939,9.746,8.77,12.371c0.7,0.648,1.392,1.292,2.08,1.995c0.094,0.257,0.285,0.479,0.555,0.6c0.009,0.004,0.019,0.007,0.027,0.011c1.989,2.152,3.956,4.984,5.989,10.133c0.001,0.003,0.002,0.005,0.003,0.008c0.708,1.792,1.423,3.858,2.15,6.283c4.352,14.506,10.892,20.695,21.869,20.696c0,0,0.001,0,0.001,0c0.481,0,0.975-0.017,1.477-0.04c-2.246,2.095-3.779,4.438-4.62,7.069c-1.897,5.936-0.312,13.184,4.842,22.155c1.815,3.158,3.898,6.22,6.15,9.136c0.008,0.014,0.021,0.024,0.029,0.037c10.451,13.517,24.587,23.839,33.105,25.601c0.958,0.198,1.948,0.299,2.94,0.299c9.246,0,18.105-8.548,20.169-19.461c1.029-5.438,1.804-8.716,3.087-14.144c1.128-4.771,2.685-11.36,5.195-22.707c0.665,10.199,2.016,24.19,4.432,24.19V44.906z"/>
+      </g>
+    </defs>
+  </svg>
+  <div class="butterfly bf-1"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-2"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-3"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-4"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-5"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <main class="relative z-10 min-h-screen px-4 py-6 md:px-8 md:py-8">
+    <div class="mx-auto flex max-w-7xl flex-col gap-6">
+      <section class="glass overflow-hidden rounded-[2rem] p-6 md:p-8">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-[0.5em] text-sky-700/70">Semicolon V4</p>
+            <h1 class="font-display mt-3 text-4xl font-semibold md:text-6xl">Truth or Dare</h1>
+            <p class="mt-4 max-w-2xl text-sm leading-7 text-slate-600 md:text-base">Layar utama untuk mengatur ritme permainan, melihat hasil suwit realtime, dan menampilkan kartu tantangan romantis tiap ronde.</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-sm md:min-w-[24rem]">
+            <div class="rounded-3xl border border-sky-200/60 bg-white/70 px-4 py-3">
+              <div class="text-xs uppercase tracking-[0.3em] text-sky-700/70">Fendi</div>
+              <div id="scoreFendi" class="mt-2 text-3xl font-bold text-sky-700">0</div>
+            </div>
+            <div class="rounded-3xl border border-pink-200/70 bg-white/70 px-4 py-3">
+              <div class="text-xs uppercase tracking-[0.3em] text-pink-700/70">Ida</div>
+              <div id="scoreIda" class="mt-2 text-3xl font-bold text-pink-600">0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <div class="glass rounded-[2rem] p-6 md:p-8">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-xs uppercase tracking-[0.35em] text-violet-700/70">Status Game</p>
+              <h2 id="phaseTitle" class="mt-3 text-3xl font-semibold text-slate-800 md:text-4xl">Menunggu Fendi &amp; Ida Bergabung...</h2>
+            </div>
+            <div class="rounded-full border border-slate-200/80 bg-white/80 px-4 py-2 text-xs uppercase tracking-[0.35em] text-slate-600">
+              Ronde <span id="roundDisplay">0</span>
+            </div>
+          </div>
+          <p id="phaseDescription" class="mt-5 max-w-3xl text-sm leading-7 text-slate-600 md:text-base">Buka `/v4/player` di dua HP, lalu pilih nama pemain di masing-masing device.</p>
+
+          <div id="lobbyPanel" class="mt-8 rounded-[1.75rem] border border-dashed border-sky-200/80 bg-white/65 p-5 md:p-6">
+            <div class="flex flex-wrap gap-3">
+              <div id="badgeFendi" class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500">Fendi belum join</div>
+              <div id="badgeIda" class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500">Ida belum join</div>
+            </div>
+            <div id="startForm" class="mt-6 hidden space-y-4">
+              <label class="block">
+                <span class="text-sm font-medium text-slate-700">Masukkan Hukuman Untuk Yang Kalah Bermain Nanti</span>
+                <textarea id="punishmentInput" rows="4" class="mt-3 w-full rounded-[1.5rem] border border-sky-100 bg-white/85 px-4 py-4 text-slate-800 outline-none transition focus:border-pink-300 focus:ring-4 focus:ring-pink-100" placeholder="Contoh: Bacakan 3 alasan kenapa pasanganmu paling berharga hari ini."></textarea>
+              </label>
+              <button id="startButton" class="inline-flex rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-fuchsia-500 px-6 py-3 text-sm font-semibold uppercase tracking-[0.28em] text-white shadow-lg shadow-sky-200/70 transition hover:scale-[1.02]">Mulai Game</button>
+            </div>
+          </div>
+
+          <div id="suitPanel" class="mt-8 hidden rounded-[1.75rem] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-fuchsia-50 p-6">
+            <div class="text-center">
+              <p class="text-xs uppercase tracking-[0.45em] text-sky-700/70">Suit Realtime</p>
+              <h3 class="mt-3 text-4xl font-black text-slate-900 md:text-6xl">SUWIT SEKARANG!</h3>
+              <p id="suitMessage" class="mt-4 text-base text-slate-600">Menunggu pilihan dari kedua pemain.</p>
+            </div>
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+              <div class="rounded-[1.5rem] border border-sky-100 bg-white/85 p-5">
+                <div class="text-xs uppercase tracking-[0.3em] text-sky-700/70">Pilihan Fendi</div>
+                <div id="fendiChoice" class="mt-3 text-2xl font-bold text-sky-700">...</div>
+              </div>
+              <div class="rounded-[1.5rem] border border-pink-100 bg-white/85 p-5">
+                <div class="text-xs uppercase tracking-[0.3em] text-pink-700/70">Pilihan Ida</div>
+                <div id="idaChoice" class="mt-3 text-2xl font-bold text-pink-600">...</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="cardPanel" class="mt-8 hidden rounded-[2rem] bg-[linear-gradient(145deg,rgba(14,165,233,0.10),rgba(236,72,153,0.12))] p-[1px]">
+            <div class="rounded-[calc(2rem-1px)] bg-white/90 p-6 md:p-8">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="inline-flex rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-violet-700">
+                  Level <span id="cardLevel" class="ml-2">1</span>
+                </div>
+                <div id="cardType" class="rounded-full border border-pink-200 bg-pink-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-pink-700">Truth</div>
+              </div>
+              <h3 class="mt-6 font-display text-3xl font-semibold text-slate-900 md:text-5xl">Kartu Aktif</h3>
+              <p id="cardContent" class="mt-6 text-lg leading-9 text-slate-700 md:text-2xl">Belum ada kartu ditampilkan.</p>
+            </div>
+          </div>
+
+          <div id="endPanel" class="mt-8 hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-blue-950 to-fuchsia-950 p-6 text-white md:p-8">
+            <p class="text-xs uppercase tracking-[0.45em] text-sky-100/70">Game Over</p>
+            <h3 id="endTitle" class="mt-4 font-display text-4xl font-semibold md:text-6xl">Saatnya menjalankan hukuman utama.</h3>
+            <p id="endPunishment" class="mt-6 max-w-3xl text-lg leading-9 text-slate-100/90"></p>
+          </div>
+        </div>
+
+        <aside class="glass rounded-[2rem] p-6 md:p-8">
+          <p class="text-xs uppercase tracking-[0.35em] text-slate-600">Perangkat</p>
+          <div class="mt-5 space-y-3">
+            <div id="deviceHost" class="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">Host terhubung</div>
+            <div id="deviceFendi" class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">HP Fendi belum terhubung</div>
+            <div id="deviceIda" class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">HP Ida belum terhubung</div>
+          </div>
+          <div class="mt-8 rounded-[1.5rem] border border-slate-100 bg-white/70 p-5">
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Hukuman Final</p>
+            <p id="punishmentPreview" class="mt-3 text-sm leading-7 text-slate-600">Belum diisi.</p>
+          </div>
+          <div class="mt-6 rounded-[1.5rem] border border-slate-100 bg-white/70 p-5">
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Akses Cepat</p>
+            <div class="mt-4 grid gap-3">
+              <a href="/v4/player" class="rounded-full border border-sky-200 bg-sky-50 px-4 py-3 text-center text-sm font-semibold text-sky-700">Buka Player</a>
+              <a href="/v4/admin" class="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-center text-sm font-semibold text-fuchsia-700">Buka Admin</a>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const socket = io();
+    const state = { connectedDevices: {} };
+
+    function labelChoice(choice) {
+      const map = { batu: "Batu", gunting: "Gunting", kertas: "Kertas" };
+      return map[choice] || "...";
+    }
+
+    function setDeviceBox(id, connected, textConnected, textDisconnected, color) {
+      const el = document.getElementById(id);
+      el.className = connected
+        ? `rounded-[1.25rem] border px-4 py-3 text-sm ${color}`
+        : "rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500";
+      el.textContent = connected ? textConnected : textDisconnected;
+    }
+
+    function renderView(viewState) {
+      Object.assign(state, viewState);
+      document.getElementById("scoreFendi").textContent = viewState.score.fendi;
+      document.getElementById("scoreIda").textContent = viewState.score.ida;
+      document.getElementById("roundDisplay").textContent = viewState.totalRounds;
+      document.getElementById("punishmentPreview").textContent = viewState.finalPunishment || "Belum diisi.";
+
+      const fendiJoined = viewState.players.includes("fendi");
+      const idaJoined = viewState.players.includes("ida");
+      document.getElementById("badgeFendi").className = fendiJoined
+        ? "rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700"
+        : "rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500";
+      document.getElementById("badgeFendi").textContent = fendiJoined ? "Fendi sudah join" : "Fendi belum join";
+      document.getElementById("badgeIda").className = idaJoined
+        ? "rounded-full border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-medium text-pink-700"
+        : "rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-500";
+      document.getElementById("badgeIda").textContent = idaJoined ? "Ida sudah join" : "Ida belum join";
+
+      document.getElementById("startForm").classList.toggle("hidden", !(fendiJoined && idaJoined && viewState.phase === "lobby"));
+      document.getElementById("lobbyPanel").classList.toggle("hidden", viewState.phase !== "lobby");
+      document.getElementById("suitPanel").classList.toggle("hidden", !["suit", "tod_choice", "card"].includes(viewState.phase));
+      document.getElementById("cardPanel").classList.toggle("hidden", viewState.phase !== "card");
+      document.getElementById("endPanel").classList.toggle("hidden", viewState.phase !== "endgame");
+
+      setDeviceBox("deviceHost", true, "Host terhubung", "Host belum terhubung", "border-emerald-200 bg-emerald-50 text-emerald-700");
+      setDeviceBox("deviceFendi", viewState.connectedDevices.fendi, "HP Fendi terhubung", "HP Fendi belum terhubung", "border-sky-200 bg-sky-50 text-sky-700");
+      setDeviceBox("deviceIda", viewState.connectedDevices.ida, "HP Ida terhubung", "HP Ida belum terhubung", "border-pink-200 bg-pink-50 text-pink-700");
+
+      if (viewState.phase === "lobby") {
+        document.getElementById("phaseTitle").textContent = fendiJoined && idaJoined
+          ? "Kedua pemain sudah siap."
+          : "Menunggu Fendi & Ida Bergabung...";
+        document.getElementById("phaseDescription").textContent = fendiJoined && idaJoined
+          ? "Isi hukuman utama lalu mulai game dari layar ini."
+          : "Buka /v4/player di dua HP, lalu pilih nama pemain di masing-masing device.";
+      } else if (viewState.phase === "suit") {
+        document.getElementById("phaseTitle").textContent = "SUWIT SEKARANG!";
+        document.getElementById("phaseDescription").textContent = "Kedua pemain sedang mengunci pilihannya.";
+      } else if (viewState.phase === "tod_choice") {
+        document.getElementById("phaseTitle").textContent = `${(viewState.loser || "").toUpperCase()} memilih Truth atau Dare...`;
+        document.getElementById("phaseDescription").textContent = "HP yang kalah akan menerima dua tombol pilihan.";
+      } else if (viewState.phase === "card") {
+        document.getElementById("phaseTitle").textContent = "Kartu ronde tampil di layar utama.";
+        document.getElementById("phaseDescription").textContent = "Pemenang ronde bisa menekan NEXT dari HP setelah tantangan selesai.";
+      } else if (viewState.phase === "endgame") {
+        document.getElementById("phaseTitle").textContent = "Game selesai.";
+        document.getElementById("phaseDescription").textContent = "Tampilkan hukuman utama untuk pemain yang kalah total.";
+      }
+
+      if (viewState.currentCard) {
+        document.getElementById("cardLevel").textContent = viewState.currentCard.level;
+        document.getElementById("cardType").textContent = viewState.currentCard.type.toUpperCase();
+        document.getElementById("cardContent").textContent = viewState.currentCard.content;
+      }
+
+      if (viewState.phase === "endgame") {
+        const loserName = (viewState.score.fendi >= 5 ? "Fendi" : "Ida");
+        document.getElementById("endTitle").textContent = `${loserName} kalah. Saatnya hukuman utama dijalankan.`;
+        document.getElementById("endPunishment").textContent = viewState.finalPunishment || "Hukuman belum diisi sebelumnya.";
+      }
+    }
+
+    document.getElementById("startButton").addEventListener("click", () => {
+      const punishment = document.getElementById("punishmentInput").value.trim();
+      if (!punishment) {
+        Swal.fire({ icon: "warning", title: "Hukuman belum diisi", text: "Masukkan hukuman final dulu sebelum mulai." });
+        return;
+      }
+      socket.emit("v4_start_game", { punishment });
+    });
+
+    socket.emit("v4_join", { role: "host" });
+
+    socket.on("v4_state_sync", renderView);
+    socket.on("v4_game_started", renderView);
+    socket.on("v4_round_reset", renderView);
+    socket.on("v4_game_reset", (payload) => {
+      document.getElementById("punishmentInput").value = "";
+      document.getElementById("fendiChoice").textContent = "...";
+      document.getElementById("idaChoice").textContent = "...";
+      document.getElementById("suitMessage").textContent = "Menunggu pilihan dari kedua pemain.";
+      renderView(payload);
+      Swal.fire({ icon: "success", title: "Game direset", timer: 1600, showConfirmButton: false });
+    });
+
+    socket.on("v4_suwit_waiting", ({ locked }) => {
+      document.getElementById("phaseTitle").textContent = "SUWIT SEKARANG!";
+      document.getElementById("phaseDescription").textContent = "Pilihan sedang dikunci oleh pemain.";
+      document.getElementById("fendiChoice").textContent = locked.fendi ? "Terkunci" : "...";
+      document.getElementById("idaChoice").textContent = locked.ida ? "Terkunci" : "...";
+      document.getElementById("suitMessage").textContent = "Menunggu kedua pemain mengunci suit.";
+    });
+
+    socket.on("v4_suwit_result", (payload) => {
+      document.getElementById("fendiChoice").textContent = labelChoice(payload.choices.fendi);
+      document.getElementById("idaChoice").textContent = labelChoice(payload.choices.ida);
+      if (payload.isDraw) {
+        document.getElementById("suitMessage").textContent = payload.message;
+        Swal.fire({ icon: "info", title: "SERI! ULANGI!", timer: 1500, showConfirmButton: false });
+        return;
+      }
+      document.getElementById("suitMessage").textContent = `${payload.loser.toUpperCase()} kalah ronde suit.`;
+      Swal.fire({
+        icon: "success",
+        title: `${payload.loser.toUpperCase()} KALAH!`,
+        text: `${labelChoice(payload.choices.fendi)} vs ${labelChoice(payload.choices.ida)}`,
+        timer: 1800,
+        showConfirmButton: false,
+      });
+    });
+
+    socket.on("v4_card_revealed", ({ card, loser }) => {
+      document.getElementById("cardLevel").textContent = card.level;
+      document.getElementById("cardType").textContent = card.type.toUpperCase();
+      document.getElementById("cardContent").textContent = card.content;
+      document.getElementById("phaseTitle").textContent = `Kartu untuk ${loser.toUpperCase()} sudah tampil.`;
+      document.getElementById("phaseDescription").textContent = "Selesaikan tantangan, lalu pemenang ronde bisa lanjut ke ronde berikutnya.";
+    });
+
+    socket.on("v4_endgame", ({ loser, finalPunishment }) => {
+      document.getElementById("endTitle").textContent = `${loser.toUpperCase()} menerima hukuman utama.`;
+      document.getElementById("endPunishment").textContent = finalPunishment || "Hukuman belum diisi sebelumnya.";
+      Swal.fire({
+        icon: "warning",
+        title: "Game Over",
+        text: `${loser.toUpperCase()} mencapai 5 poin hukuman.`,
+        confirmButtonText: "Tampilkan",
+      });
+    });
+
+    socket.on("v4_error", (message) => {
+      Swal.fire({ icon: "error", title: "Tidak bisa diproses", text: message });
+    });
+
+    fetch("/api/v4/state")
+      .then((response) => response.json())
+      .then((payload) => renderView(payload.state))
+      .catch(() => {});
+
+  </script>
+</body>
+</html>

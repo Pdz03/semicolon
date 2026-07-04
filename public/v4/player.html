@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semicolon V4 Player</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: "Outfit", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(59,130,246,0.24), transparent 30%),
+        radial-gradient(circle at top right, rgba(236,72,153,0.18), transparent 32%),
+        linear-gradient(180deg, #fdfdff 0%, #f2f9ff 56%, #fff5fb 100%);
+      color: #162033;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-display { font-family: "Playfair Display", serif; }
+    .panel {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(255,255,255,0.85);
+      box-shadow: 0 24px 70px rgba(29,78,216,0.12);
+      backdrop-filter: blur(16px);
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1) rotateZ(var(--rot)); }
+      50% { transform: translateY(-20px) scale(1.05) rotateZ(var(--rot)); }
+    }
+    @keyframes flap-l {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(60deg); }
+    }
+    @keyframes flap-r {
+      0% { transform: rotateY(180deg); }
+      100% { transform: rotateY(120deg); }
+    }
+    .butterfly {
+      position: fixed;
+      width: var(--size);
+      height: calc(var(--size) * 1.25);
+      transform-origin: 100% 50%;
+      transform-style: preserve-3d;
+      animation: float 6s ease-in-out infinite;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.3;
+    }
+    .wing-left, .wing-right {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: 100% 50%;
+      filter: drop-shadow(0 0 8px currentColor);
+    }
+    .wing-right { animation: flap-r var(--dur) ease-in-out infinite alternate; }
+    .wing-left { animation: flap-l var(--dur) ease-in-out infinite alternate; }
+    .bf-1 { top: 10%; left: 10%; color: rgba(59, 130, 246, 0.6); --size: 1.5rem; --rot: -15deg; animation-delay: 0s; --dur: 0.15s; }
+    .bf-2 { top: 20%; right: 10%; color: rgba(236, 72, 153, 0.52); --size: 2rem; --rot: 15deg; animation-delay: 1.5s; --dur: 0.25s; }
+    .bf-3 { bottom: 16%; left: 12%; color: rgba(59, 130, 246, 0.5); --size: 2.4rem; --rot: -25deg; animation-delay: 3s; --dur: 0.3s; }
+    .bf-4 { bottom: 18%; right: 15%; color: rgba(217, 70, 239, 0.45); --size: 1.25rem; --rot: 25deg; animation-delay: 0.5s; --dur: 0.2s; }
+    .bf-5 { top: 50%; left: 4%; color: rgba(14, 165, 233, 0.56); --size: 1rem; --rot: -10deg; animation-delay: 2s; --dur: 0.22s; }
+  </style>
+</head>
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+    <defs>
+      <g id="shape-moth">
+        <path fill="currentColor" d="M2.457,32.759c6.752,15.757,12.862,9.004,19.615,31.513c4.96,16.533,12.703,21.434,25.763,19.562c-8.291,5.666-11.245,14.512-2.29,30.097c10.611,18.467,29.262,32.338,38.587,34.268s19.615-6.431,21.866-18.328c2.251-11.898,3.216-13.185,11.255-50.485V66.202v-8.039c0,0-44.054-38.266-73.637-42.767C14.033,10.894-4.296,17.003,2.457,32.759z"/>
+        <path style="fill:#2A0E07;" d="M119.744,44.906c-0.432,0-0.834,0.038-1.212,0.105C111.203,25.333,94.966,3.371,94.218,2.517c-0.767-0.877-1.425-3.234-2.521-2.302c-1.096,0.932,1.37,2.138,1.37,2.138S92.929,3.372,94,3.503c0,0,5.938,7.827,10.25,14.964c6.474,10.715,11.965,22.628,13.779,26.68c-3.596,0.985-4.503,5.059-3.919,8.202l-2.333-1.103C98.575,41.592,67.056,17.901,43.774,14.358c-6.339-0.964-12.222-1.454-17.484-1.454c-12.627,0-21.129,2.773-24.588,8.019c-2.196,3.33-2.266,7.452-0.209,12.25c3.013,7.032,5.939,9.746,8.77,12.371c0.7,0.648,1.392,1.292,2.08,1.995c0.094,0.257,0.285,0.479,0.555,0.6c0.009,0.004,0.019,0.007,0.027,0.011c1.989,2.152,3.956,4.984,5.989,10.133c0.001,0.003,0.002,0.005,0.003,0.008c0.708,1.792,1.423,3.858,2.15,6.283c4.352,14.506,10.892,20.695,21.869,20.696c0,0,0.001,0,0.001,0c0.481,0,0.975-0.017,1.477-0.04c-2.246,2.095-3.779,4.438-4.62,7.069c-1.897,5.936-0.312,13.184,4.842,22.155c1.815,3.158,3.898,6.22,6.15,9.136c0.008,0.014,0.021,0.024,0.029,0.037c10.451,13.517,24.587,23.839,33.105,25.601c0.958,0.198,1.948,0.299,2.94,0.299c9.246,0,18.105-8.548,20.169-19.461c1.029-5.438,1.804-8.716,3.087-14.144c1.128-4.771,2.685-11.36,5.195-22.707c0.665,10.199,2.016,24.19,4.432,24.19V44.906z"/>
+      </g>
+    </defs>
+  </svg>
+  <div class="butterfly bf-1"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-2"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-3"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-4"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <div class="butterfly bf-5"><svg class="wing-left" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg><svg class="wing-right" viewBox="0 0 119.744 148.477"><use href="#shape-moth"></use></svg></div>
+  <main class="relative z-10 flex min-h-screen items-center justify-center px-4 py-6">
+    <section id="unlockScreen" class="panel fixed inset-4 z-20 flex flex-col items-center justify-center rounded-[2rem] px-6 py-10 text-center md:inset-6">
+      <p class="text-xs uppercase tracking-[0.45em] text-sky-700/70">Semicolon V4</p>
+      <h1 class="font-display mt-4 text-5xl font-semibold md:text-7xl">Truth or Dare</h1>
+      <p class="mt-4 max-w-md text-sm leading-7 text-slate-600 md:text-base">Halaman player akan terbuka otomatis saat countdown selesai.</p>
+      <div id="timerDisplay" class="mt-8 text-5xl font-black text-sky-700 md:text-7xl">--:--:--</div>
+    </section>
+    <section class="panel w-full max-w-xl rounded-[2rem] p-6 md:p-8">
+      <p class="text-xs uppercase tracking-[0.45em] text-sky-700/70">Semicolon V4</p>
+      <h1 class="font-display mt-3 text-4xl font-semibold md:text-5xl">Player Device</h1>
+      <p id="subtitle" class="mt-4 text-sm leading-7 text-slate-600">Pilih identitas pemain di device ini, lalu tunggu host memulai permainan.</p>
+
+      <div id="joinSection" class="mt-8 grid gap-4 sm:grid-cols-2">
+        <button data-player="fendi" class="join-btn rounded-[1.75rem] border border-sky-200 bg-sky-50 px-5 py-6 text-left transition hover:-translate-y-1 hover:shadow-lg hover:shadow-sky-100">
+          <span class="block text-xs uppercase tracking-[0.35em] text-sky-700/70">Pemain</span>
+          <span class="mt-3 block text-3xl font-bold text-sky-700">FENDI</span>
+        </button>
+        <button data-player="ida" class="join-btn rounded-[1.75rem] border border-pink-200 bg-pink-50 px-5 py-6 text-left transition hover:-translate-y-1 hover:shadow-lg hover:shadow-pink-100">
+          <span class="block text-xs uppercase tracking-[0.35em] text-pink-700/70">Pemain</span>
+          <span class="mt-3 block text-3xl font-bold text-pink-600">IDA</span>
+        </button>
+      </div>
+
+      <div id="statusCard" class="mt-8 rounded-[1.75rem] border border-slate-100 bg-white/75 p-5">
+        <p class="text-xs uppercase tracking-[0.35em] text-slate-500">Status</p>
+        <p id="statusText" class="mt-3 text-base leading-8 text-slate-700">Belum memilih role pemain.</p>
+      </div>
+
+      <div id="suitSection" class="mt-8 hidden">
+        <p class="text-xs uppercase tracking-[0.35em] text-sky-700/70">Suit</p>
+        <div class="mt-4 grid grid-cols-3 gap-3">
+          <button class="choice-btn rounded-[1.5rem] bg-sky-500 px-3 py-5 text-center text-white shadow-lg shadow-sky-100" data-choice="batu">
+            <div class="text-4xl">✊</div>
+            <div class="mt-2 text-sm font-semibold uppercase tracking-[0.2em]">Batu</div>
+          </button>
+          <button class="choice-btn rounded-[1.5rem] bg-fuchsia-500 px-3 py-5 text-center text-white shadow-lg shadow-fuchsia-100" data-choice="gunting">
+            <div class="text-4xl">✌️</div>
+            <div class="mt-2 text-sm font-semibold uppercase tracking-[0.2em]">Gunting</div>
+          </button>
+          <button class="choice-btn rounded-[1.5rem] bg-violet-500 px-3 py-5 text-center text-white shadow-lg shadow-violet-100" data-choice="kertas">
+            <div class="text-4xl">✋</div>
+            <div class="mt-2 text-sm font-semibold uppercase tracking-[0.2em]">Kertas</div>
+          </button>
+        </div>
+      </div>
+
+      <div id="todSection" class="mt-8 hidden grid gap-4 sm:grid-cols-2">
+        <button class="tod-btn rounded-[1.75rem] bg-gradient-to-br from-sky-500 to-blue-600 px-5 py-7 text-left text-white shadow-lg shadow-sky-100" data-type="truth">
+          <span class="text-xs uppercase tracking-[0.35em] text-sky-100/75">Pilih</span>
+          <span class="mt-3 block text-3xl font-bold">TRUTH</span>
+        </button>
+        <button class="tod-btn rounded-[1.75rem] bg-gradient-to-br from-fuchsia-500 to-pink-600 px-5 py-7 text-left text-white shadow-lg shadow-pink-100" data-type="dare">
+          <span class="text-xs uppercase tracking-[0.35em] text-pink-100/75">Pilih</span>
+          <span class="mt-3 block text-3xl font-bold">DARE</span>
+        </button>
+      </div>
+
+      <div id="cardSection" class="mt-8 hidden rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-5">
+        <p class="text-xs uppercase tracking-[0.35em] text-violet-700/70">Kartu Aktif</p>
+        <p id="cardText" class="mt-3 text-base leading-8 text-slate-700"></p>
+      </div>
+
+      <button id="nextButton" class="mt-8 hidden w-full rounded-full bg-gradient-to-r from-sky-500 via-blue-500 to-fuchsia-500 px-6 py-4 text-sm font-semibold uppercase tracking-[0.28em] text-white shadow-lg shadow-sky-100">Selesai / Next Round</button>
+    </section>
+  </main>
+
+  <script>
+    const socket = io();
+    const clientState = { me: "", phase: "lobby", winner: null, loser: null, currentCard: null, timerTarget: "11:00" };
+    let timerInterval = null;
+    const bypassUnlock = new URLSearchParams(window.location.search).get("akses") === "dev";
+
+    function getNextTargetDate(timeString) {
+      const [hours, minutes] = String(timeString || "11:00").split(":").map((value) => Number(value));
+      const now = new Date();
+      const target = new Date();
+      target.setHours(hours, minutes, 0, 0);
+      if (target.getTime() <= now.getTime()) {
+        target.setDate(target.getDate() + 1);
+      }
+      return target;
+    }
+
+    function updateTimerDisplay() {
+      if (bypassUnlock) {
+        document.getElementById("unlockScreen").classList.add("hidden");
+        document.getElementById("timerDisplay").textContent = "DEV MODE";
+        return;
+      }
+      const target = getNextTargetDate(clientState.timerTarget);
+      const now = new Date();
+      const diff = Math.max(0, target.getTime() - now.getTime());
+      const totalSeconds = Math.floor(diff / 1000);
+      const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+      const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      document.getElementById("timerDisplay").textContent = `${hours}:${minutes}:${seconds}`;
+      document.getElementById("unlockScreen").classList.toggle("hidden", diff <= 0);
+    }
+
+    function ensureTimer() {
+      updateTimerDisplay();
+      if (timerInterval) return;
+      timerInterval = window.setInterval(updateTimerDisplay, 1000);
+    }
+
+    function setStatus(text) {
+      document.getElementById("statusText").textContent = text;
+    }
+
+    function lockChoiceButtons(disabled) {
+      document.querySelectorAll(".choice-btn").forEach((button) => {
+        button.disabled = disabled;
+        button.classList.toggle("opacity-50", disabled);
+      });
+    }
+
+    function lockTodButtons(disabled) {
+      document.querySelectorAll(".tod-btn").forEach((button) => {
+        button.disabled = disabled;
+        button.classList.toggle("opacity-50", disabled);
+      });
+    }
+
+    function renderState(payload) {
+      clientState.phase = payload.phase;
+      clientState.winner = payload.winner;
+      clientState.loser = payload.loser;
+      clientState.currentCard = payload.currentCard;
+      clientState.timerTarget = payload.timerTarget || "11:00";
+      ensureTimer();
+
+      document.getElementById("suitSection").classList.toggle("hidden", payload.phase !== "suit");
+      document.getElementById("todSection").classList.toggle("hidden", !(payload.phase === "tod_choice" && clientState.me === payload.loser));
+      document.getElementById("nextButton").classList.toggle("hidden", !(payload.phase === "card" && clientState.me === payload.winner));
+      document.getElementById("cardSection").classList.toggle("hidden", payload.phase !== "card");
+
+      if (!clientState.me) {
+        setStatus("Belum memilih role pemain.");
+        return;
+      }
+
+      if (payload.phase === "lobby") {
+        setStatus("Menunggu layar utama memulai permainan...");
+        lockChoiceButtons(false);
+        lockTodButtons(false);
+      } else if (payload.phase === "suit") {
+        setStatus("Pilih suit sekarang.");
+        lockChoiceButtons(false);
+        lockTodButtons(false);
+      } else if (payload.phase === "tod_choice") {
+        setStatus(clientState.me === payload.loser ? "Kamu kalah ronde ini. Pilih Truth atau Dare." : "Menunggu pasanganmu memilih Truth atau Dare...");
+      } else if (payload.phase === "card") {
+        document.getElementById("cardText").textContent = payload.currentCard
+          ? `LEVEL ${payload.currentCard.level} • ${payload.currentCard.type.toUpperCase()} • ${payload.currentCard.content}`
+          : "";
+        setStatus(clientState.me === payload.winner ? "Tunggu tantangan selesai, lalu tekan NEXT untuk ronde berikutnya." : "Selesaikan kartu yang tampil di layar utama.");
+      } else if (payload.phase === "endgame") {
+        setStatus(payload.score[clientState.me] >= 5 ? "Game selesai. Kamu kena hukuman utama." : "Game selesai. Pasanganmu kalah total.");
+      }
+    }
+
+    document.querySelectorAll(".join-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        clientState.me = button.dataset.player;
+        socket.emit("v4_join", { role: "player", player: clientState.me });
+        document.getElementById("joinSection").classList.add("hidden");
+        document.getElementById("subtitle").textContent = `Device ini aktif sebagai ${clientState.me.toUpperCase()}.`;
+        setStatus("Menunggu layar utama memulai permainan...");
+      });
+    });
+
+    document.querySelectorAll(".choice-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        socket.emit("v4_suwit_action", { choice: button.dataset.choice });
+        lockChoiceButtons(true);
+        setStatus("Pilihanmu terkunci. Menunggu pasanganmu...");
+      });
+    });
+
+    document.querySelectorAll(".tod-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        socket.emit("v4_tod_choice", { type: button.dataset.type });
+        lockTodButtons(true);
+        setStatus("Pilihanmu dikirim. Tunggu kartu tampil di layar utama.");
+      });
+    });
+
+    document.getElementById("nextButton").addEventListener("click", () => {
+      socket.emit("v4_next_round");
+    });
+
+    socket.on("v4_state_sync", renderState);
+    socket.on("v4_game_started", renderState);
+    socket.on("v4_round_reset", (payload) => {
+      lockChoiceButtons(false);
+      lockTodButtons(false);
+      renderState(payload);
+    });
+    socket.on("v4_game_reset", (payload) => {
+      lockChoiceButtons(false);
+      lockTodButtons(false);
+      renderState(payload);
+      Swal.fire({ icon: "success", title: "Game direset", timer: 1500, showConfirmButton: false });
+    });
+    socket.on("v4_choice_locked", () => {
+      setStatus("Pilihanmu terkunci. Menunggu pasanganmu...");
+    });
+    socket.on("v4_suwit_result", (payload) => {
+      if (payload.isDraw) {
+        lockChoiceButtons(false);
+        setStatus("SERI! Pilih suit lagi.");
+        Swal.fire({ icon: "info", title: "SERI! ULANGI!", timer: 1400, showConfirmButton: false });
+        return;
+      }
+      setStatus(clientState.me === payload.loser ? "Kamu kalah ronde suit." : "Kamu menang ronde suit.");
+    });
+    socket.on("v4_card_revealed", ({ card }) => {
+      document.getElementById("cardText").textContent = `LEVEL ${card.level} • ${card.type.toUpperCase()} • ${card.content}`;
+      renderState({ ...clientState, phase: "card", currentCard: card, winner: clientState.winner, loser: clientState.loser, score: { fendi: 0, ida: 0 } });
+    });
+    socket.on("v4_endgame", ({ loser, finalPunishment }) => {
+      setStatus(clientState.me === loser ? `Game over. Hukumanmu: ${finalPunishment}` : `Game over. ${loser.toUpperCase()} menerima hukuman utama.`);
+      Swal.fire({ icon: "warning", title: "Game Over", text: finalPunishment || "Hukuman utama siap dijalankan." });
+    });
+    socket.on("v4_force_logout", (message) => {
+      Swal.fire({ icon: "warning", title: "Slot diambil perangkat lain", text: message }).then(() => {
+        window.location.reload();
+      });
+    });
+    socket.on("v4_error", (message) => {
+      Swal.fire({ icon: "error", title: "Tidak bisa diproses", text: message });
+    });
+
+    fetch("/api/v4/state")
+      .then((response) => response.json())
+      .then((payload) => renderState(payload.state))
+      .catch(() => {});
+
+      ensureTimer();
+  </script>
+</body>
+</html>

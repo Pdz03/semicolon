@@ -219,7 +219,7 @@
           <img id="photoPreview" class="mt-4 hidden max-h-64 w-full rounded-[1.5rem] object-cover" alt="Preview foto balasan" />
         </section>
 
-        <button class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-6 py-3 font-medium text-white hover:brightness-110">Kirim Pesan</button>
+        <button id="submitReplyButton" class="rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-6 py-3 font-medium text-white hover:brightness-110">Kirim Pesan</button>
         <p id="statusMessage" class="text-sm text-sky-200"></p>
       </form>
     </section>
@@ -275,6 +275,7 @@
     let recordedMimeType = "audio/webm";
     let recordTimer = null;
     let recordStartedAt = 0;
+    let isSubmittingReply = false;
 
     const pageFront = document.getElementById("pageFront");
     const pageBack = document.getElementById("pageBack");
@@ -293,6 +294,7 @@
     const giftPrivacyNotice = document.getElementById("giftPrivacyNotice");
     const recordStatus = document.getElementById("recordStatus");
     const recordDuration = document.getElementById("recordDuration");
+    const submitReplyButton = document.getElementById("submitReplyButton");
 
     function formatDuration(totalSeconds) {
       const minutes = Math.floor(totalSeconds / 60);
@@ -523,6 +525,8 @@
 
     document.getElementById("replyForm").addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (isSubmittingReply) return;
+
       const statusMessage = document.getElementById("statusMessage");
       const replyMessage = document.getElementById("replyMessage").value.trim();
 
@@ -534,6 +538,11 @@
         statusMessage.textContent = "Isi tulisan, rekam suara, atau unggah foto dulu ya.";
         return;
       }
+
+      isSubmittingReply = true;
+      submitReplyButton.disabled = true;
+      submitReplyButton.classList.add("opacity-60", "cursor-not-allowed");
+      submitReplyButton.textContent = "Mengirim...";
 
       const formData = new FormData();
       formData.append("gift_choice", selectedGift);
@@ -550,29 +559,36 @@
         formData.append("photo_reply", photoFile.files[0]);
       }
 
-      const response = await fetch("/api/v-bday/reply", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await response.json();
-      statusMessage.textContent = result.message || result.error || "Terjadi kendala.";
-      if (result.success) {
-        document.getElementById("replyForm").reset();
-        selectedGift = "";
-        mysteryLocked = false;
-        giftPrivacyNotice.classList.add("hidden");
-        document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
-        loadPage();
-        recordedBlob = null;
-        if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-        recordedUrl = "";
-        stopRecordTimer();
-        recordDuration.textContent = "00:00";
-        voicePreview.classList.add("hidden");
-        voicePreview.removeAttribute("src");
-        photoPreview.classList.add("hidden");
-        photoPreview.removeAttribute("src");
-        recordStatus.textContent = "Belum ada rekaman suara.";
+      try {
+        const response = await fetch("/api/v-bday/reply", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await response.json();
+        statusMessage.textContent = result.message || result.error || "Terjadi kendala.";
+        if (result.success) {
+          document.getElementById("replyForm").reset();
+          selectedGift = "";
+          mysteryLocked = false;
+          giftPrivacyNotice.classList.add("hidden");
+          document.querySelectorAll(".gift-card").forEach((card) => card.classList.remove("active"));
+          loadPage();
+          recordedBlob = null;
+          if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+          recordedUrl = "";
+          stopRecordTimer();
+          recordDuration.textContent = "00:00";
+          voicePreview.classList.add("hidden");
+          voicePreview.removeAttribute("src");
+          photoPreview.classList.add("hidden");
+          photoPreview.removeAttribute("src");
+          recordStatus.textContent = "Belum ada rekaman suara.";
+        }
+      } finally {
+        isSubmittingReply = false;
+        submitReplyButton.disabled = false;
+        submitReplyButton.classList.remove("opacity-60", "cursor-not-allowed");
+        submitReplyButton.textContent = "Kirim Pesan";
       }
     });
 
