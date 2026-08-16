@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semicolon V4 - Monitor Tes Level Hubungan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-panel: rgba(255,255,255,0.72);
+      --ink: #132238;
+      --purple: #9333ea;
+    }
+    body {
+      font-family: "Outfit", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(147, 51, 234, 0.2), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.2), transparent 40%),
+        linear-gradient(180deg, #fdfcff 0%, #f4f0ff 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-display { font-family: "Playfair Display", serif; }
+    .glass {
+      background: var(--bg-panel);
+      border: 1px solid rgba(255,255,255,0.75);
+      box-shadow: 0 24px 80px rgba(147, 51, 234, 0.1);
+      backdrop-filter: blur(18px);
+    }
+    .badge-purple { background: rgba(147, 51, 234, 0.1); color: var(--purple); }
+    #qrcode img { margin: 0 auto; border-radius: 12px; }
+  </style>
+</head>
+<body class="p-6 md:p-12">
+
+  <div class="max-w-5xl mx-auto space-y-8">
+    
+    <!-- HEADER -->
+    <header class="glass rounded-3xl p-8 relative overflow-hidden flex justify-between items-center">
+      <div>
+        <p class="text-xs font-bold tracking-widest text-purple-600 mb-2 uppercase">Tes Level Hubungan</p>
+        <h1 class="font-display text-4xl font-bold tracking-tight">Monitor Utama</h1>
+      </div>
+      <a href="/v4" class="px-4 py-2 bg-white/50 hover:bg-white rounded-xl text-sm font-semibold transition-colors border border-white">
+        &larr; Kembali
+      </a>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- WAITING ROOM (QR CODE) -->
+      <div class="glass rounded-3xl p-8 text-center" id="waiting-room">
+        <h2 class="text-2xl font-bold mb-4">Scan untuk Bergabung</h2>
+        <p class="text-slate-600 mb-6">Gunakan HP masing-masing untuk memindai QR Code di bawah ini.</p>
+        
+        <div id="qrcode" class="p-4 bg-white inline-block rounded-2xl shadow-sm mb-6"></div>
+        
+        <div class="space-y-3 max-w-xs mx-auto">
+          <div id="status-p1" class="p-3 rounded-xl bg-slate-100/50 border border-slate-200 flex items-center justify-between">
+            <span class="font-semibold text-slate-500">Player 1 (Fendi)</span>
+            <span class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-500 rounded-full status-badge">Menunggu</span>
+          </div>
+          <div id="status-p2" class="p-3 rounded-xl bg-slate-100/50 border border-slate-200 flex items-center justify-between">
+            <span class="font-semibold text-slate-500">Player 2 (Ida)</span>
+            <span class="text-xs font-bold px-2 py-1 bg-slate-200 text-slate-500 rounded-full status-badge">Menunggu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME PROGRESS & RESULTS -->
+      <div class="glass rounded-3xl p-8 flex flex-col justify-center">
+        
+        <!-- State: Belum Mulai -->
+        <div id="state-idle" class="text-center text-slate-400">
+          <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p>Menunggu kedua pemain masuk ke *room*...</p>
+        </div>
+
+        <!-- State: Sedang Tes -->
+        <div id="state-progress" class="hidden text-center">
+          <h2 class="text-2xl font-bold text-purple-700 mb-6">Tes Sedang Berlangsung</h2>
+          <div class="space-y-6">
+            <div>
+              <p class="text-sm font-semibold mb-2">Progress Fendi</p>
+              <div class="w-full bg-slate-200 rounded-full h-2.5">
+                <div id="bar-p1" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+            <div>
+              <p class="text-sm font-semibold mb-2">Progress Ida</p>
+              <div class="w-full bg-slate-200 rounded-full h-2.5">
+                <div id="bar-p2" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-sm text-slate-500 mt-8 animate-pulse">Menunggu jawaban selesai dikirimkan...</p>
+        </div>
+
+        <!-- State: Hasil Tes (Titik Diskusi) -->
+        <div id="state-results" class="hidden">
+          <h2 class="text-2xl font-bold text-purple-700 mb-4 text-center">Titik Diskusi Ditemukan</h2>
+          <p class="text-slate-600 mb-6 text-center text-sm">Berikut adalah hal-hal yang memiliki perbedaan sudut pandang cukup jauh. Waktunya untuk deep talk!</p>
+          
+          <div id="discussion-list" class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+            <!-- Item Hasil diinjeksi via JS -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const socket = io();
+    const roomId = 'room-' + Math.random().toString(36).substr(2, 6);
+    const totalQuestions = 10; // Sesuai dengan jumlah di questions.json (sekarang ada 10)
+    
+    let joined = { p1: false, p2: false };
+    let progress = { p1: 0, p2: 0 };
+    let questionsData = [];
+
+    // Fetch questions to know the text for results
+    fetch('/api/relationship-test/questions')
+      .then(res => res.json())
+      .then(data => { questionsData = data; });
+
+    // Generate QR Code
+    const playerUrl = window.location.origin + '/v4/relationship-player?roomId=' + roomId;
+    new QRCode(document.getElementById("qrcode"), {
+      text: playerUrl,
+      width: 200,
+      height: 200,
+      colorDark : "#132238",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H
+    });
+
+    // Join Socket Room
+    socket.emit('join-new-room', { roomId: roomId, role: 'monitor' });
+
+    function updateJoinedStatus(playerId) {
+      joined[playerId] = true;
+      const el = document.getElementById('status-' + playerId);
+      el.classList.add('bg-green-50', 'border-green-200');
+      const badge = el.querySelector('.status-badge');
+      badge.textContent = 'Terhubung';
+      badge.classList.replace('bg-slate-200', 'bg-green-200');
+      badge.classList.replace('text-slate-500', 'text-green-700');
+
+      if (joined.p1 && joined.p2) {
+        document.getElementById('state-idle').classList.add('hidden');
+        document.getElementById('state-progress').classList.remove('hidden');
+      }
+    }
+
+    socket.on('player-joined', (data) => {
+      if (data.playerId) updateJoinedStatus(data.playerId);
+    });
+
+    socket.on('player-answered', (data) => {
+      progress[data.playerId]++;
+      const percent = (progress[data.playerId] / totalQuestions) * 100;
+      document.getElementById('bar-' + data.playerId).style.width = percent + '%';
+    });
+
+    socket.on('test-results', (data) => {
+      document.getElementById('state-progress').classList.add('hidden');
+      document.getElementById('state-results').classList.remove('hidden');
+
+      const listEl = document.getElementById('discussion-list');
+      listEl.innerHTML = '';
+
+      if (data.discussionPoints.length === 0) {
+        listEl.innerHTML = '<div class="p-6 bg-green-50 rounded-2xl text-center text-green-700 font-semibold border border-green-200">Luar biasa! Tidak ada perbedaan skor yang signifikan. Pandangan kalian sangat sejalan.</div>';
+        return;
+      }
+
+      data.discussionPoints.forEach(pt => {
+        const qText = questionsData.find(q => q.id === pt.questionId)?.text || 'Pertanyaan ' + pt.questionId;
+        
+        listEl.innerHTML += `
+          <div class="p-5 bg-white rounded-2xl border border-purple-100 shadow-sm relative overflow-hidden">
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-purple-500"></div>
+            <p class="font-medium text-slate-800 mb-4 pr-4">${qText}</p>
+            <div class="flex justify-between items-center text-sm">
+              <div class="flex flex-col items-center">
+                <span class="text-slate-500 mb-1">Fendi</span>
+                <span class="font-bold text-lg text-blue-600">${pt.p1Score}</span>
+              </div>
+              <div class="text-xs font-bold text-purple-400 bg-purple-50 px-2 py-1 rounded-full">Selisih: ${pt.diff}</div>
+              <div class="flex flex-col items-center">
+                <span class="text-slate-500 mb-1">Ida</span>
+                <span class="font-bold text-lg text-pink-600">${pt.p2Score}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    });
+
+  </script>
+</body>
+</html>

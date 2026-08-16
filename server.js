@@ -1696,9 +1696,7 @@ app.get("/v-spesial/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/admin.html"));
 });
 
-app.get("/v4", (req, res) => {
-  res.sendFile(path.join(__dirname, "public/v4/host.html"));
-});
+app.get("/v4", (req, res) => { res.sendFile(path.join(__dirname, "public/v4/index.html")); });
 
 app.get("/v4/host", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v4/host.html"));
@@ -2549,6 +2547,126 @@ app.delete("/api/v4/cards/:id", requireV4Admin, async (req, res) => {
   res.json({ success: true });
 });
 
+
+// ==========================================
+// FITUR BARU: TES LEVEL HUBUNGAN & PUZZLE
+// ==========================================
+
+// REST API untuk mengambil pertanyaan Tes Level Hubungan
+app.get('/api/relationship-test/questions', (req, res) => {
+    const questionsPath = path.join(__dirname, 'data', 'questions.json');
+    fs.readFile(questionsPath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading questions.json:', err);
+            return res.status(500).json({ error: 'Gagal memuat pertanyaan' });
+        }
+        res.json(JSON.parse(data));
+    });
+});
+
+// State manajemen untuk Tes Level Hubungan & Puzzle
+const newRooms = {}; // { roomId: { monitor: socketId, p1: socketId, p2: socketId, testAnswers: { p1: {}, p2: {} }, puzzleInputs: {} } }
+
+io.on('connection', (socket) => {
+    // --- KONEKSI DEVICE ---
+    socket.on('join-new-room', ({ roomId, role, playerId }) => {
+        socket.join(roomId);
+        if (!newRooms[roomId]) newRooms[roomId] = { testAnswers: { p1: {}, p2: {} }, puzzleInputs: {} };
+        
+        if (role === 'monitor') {
+            newRooms[roomId].monitor = socket.id;
+            console.log("[TesHubungan] Monitor joined room");
+        } else if (role === 'player') {
+            newRooms[roomId][playerId] = socket.id;
+            console.log("[TesHubungan] Player joined room");
+        }
+
+        // Beritahu monitor jika ada player yang bergabung
+        if (newRooms[roomId].monitor) {
+            io.to(newRooms[roomId].monitor).emit('player-joined', { playerId });
+        }
+    });
+
+    // --- FITUR 1: TES LEVEL HUBUNGAN ---
+    socket.on('submit-answer', ({ roomId, playerId, questionId, score }) => {
+        const room = newRooms[roomId];
+        if (!room) return;
+
+        // Simpan jawaban
+        if (!room.testAnswers[playerId]) room.testAnswers[playerId] = {};
+        room.testAnswers[playerId][questionId] = score;
+
+        // Beritahu monitor bahwa player ini sudah menjawab pertanyaan
+        if (room.monitor) {
+            io.to(room.monitor).emit('player-answered', { playerId, questionId });
+        }
+
+        // Cek apakah kedua pemain sudah menyelesaikan semua kuis (Asumsi 6 pertanyaan berdasarkan questions.json)
+        const totalQuestions = 6;
+        const p1Answers = room.testAnswers['p1'] || {};
+        const p2Answers = room.testAnswers['p2'] || {};
+
+        if (Object.keys(p1Answers).length === totalQuestions && Object.keys(p2Answers).length === totalQuestions) {
+            const discussionPoints = [];
+            
+            for (let i = 1; i <= totalQuestions; i++) {
+                const score1 = p1Answers[i];
+                const score2 = p2Answers[i];
+                const diff = Math.abs(score1 - score2);
+                
+                // Flagging titik diskusi jika selisih >= 2
+                if (diff >= 2) {
+                    discussionPoints.push({
+                        questionId: i,
+                        p1Score: score1,
+                        p2Score: score2,
+                        diff: diff
+                    });
+                }
+            }
+
+            if (room.monitor) {
+                io.to(room.monitor).emit('test-results', { discussionPoints });
+            }
+        }
+    });
+
+    // --- FITUR 2: PUZZLE CINTA & MAKNA RUMAH ---
+    socket.on('puzzle-interaction', ({ roomId, playerId, progress }) => {
+        const room = newRooms[roomId];
+        if (room && room.monitor) {
+            io.to(room.monitor).emit('sync-puzzle-progress', { playerId, progress });
+        }
+    });
+
+    socket.on('submit-reflection', ({ roomId, playerId, text }) => {
+        const room = newRooms[roomId];
+        if (!room) return;
+
+        room.puzzleInputs[playerId] = text;
+        if (room.monitor) {
+            io.to(room.monitor).emit('player-reflection-submitted', { playerId });
+            
+            // Cek jika dua-duanya sudah submit
+            if (room.puzzleInputs['p1'] && room.puzzleInputs['p2']) {
+                io.to(room.monitor).emit('trigger-climax-animation', {
+                    reflections: room.puzzleInputs
+                });
+            }
+        }
+    });
+});
+
+// Route untuk menu baru
+app.get('/v4/relationship-test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/v4/relationship-test.html'));
+});
+app.get('/v4/relationship-player', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/v4/relationship-player.html'));
+});
+app.get('/v4/puzzle', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/v4/puzzle.html'));
+});
 // --- SERVER ---
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT ?? "3001";

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Semicolon V4 - Main Menu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-soft: #f5fbff;
+      --bg-panel: rgba(255,255,255,0.72);
+      --line: rgba(29, 78, 216, 0.12);
+      --blue: #1d4ed8;
+      --pink: #ec4899;
+      --purple: #9333ea;
+      --ink: #132238;
+    }
+    body {
+      font-family: "Outfit", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.28), transparent 30%),
+        radial-gradient(circle at top right, rgba(236, 72, 153, 0.22), transparent 32%),
+        linear-gradient(180deg, #fdfcff 0%, #eef7ff 54%, #fdf5ff 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-display { font-family: "Playfair Display", serif; }
+    .glass {
+      background: var(--bg-panel);
+      border: 1px solid rgba(255,255,255,0.75);
+      box-shadow: 0 24px 80px rgba(29, 78, 216, 0.12);
+      backdrop-filter: blur(18px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .glass:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 30px 90px rgba(29, 78, 216, 0.18);
+    }
+    
+    .menu-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 100%;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .badge-blue { background: rgba(29, 78, 216, 0.1); color: var(--blue); }
+    .badge-purple { background: rgba(147, 51, 234, 0.1); color: var(--purple); }
+    .badge-pink { background: rgba(236, 72, 153, 0.1); color: var(--pink); }
+
+  </style>
+</head>
+<body class="p-6 md:p-12">
+
+  <div class="max-w-6xl mx-auto space-y-8">
+    
+    <!-- HEADER -->
+    <header class="glass rounded-3xl p-8 md:p-12 relative overflow-hidden">
+      <div class="relative z-10">
+        <p class="text-xs font-bold tracking-widest text-blue-600 mb-3 uppercase">Semicolon V4</p>
+        <h1 class="font-display text-5xl md:text-6xl font-bold tracking-tight mb-4">Pilih Mode <br/>Permainan</h1>
+        <p class="text-slate-600 max-w-xl text-lg">Pilih salah satu menu di bawah ini untuk memulai sesi. Pastikan perangkat Anda sudah siap untuk saling terhubung.</p>
+      </div>
+    </header>
+
+    <!-- MENU GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- MENU 1: Truth or Dare -->
+      <a href="/v4/host" class="glass rounded-3xl p-8 menu-card cursor-pointer group no-underline text-inherit block">
+        <div>
+          <span class="badge badge-blue mb-4">Tersedia</span>
+          <h2 class="font-display text-3xl font-bold mb-3 group-hover:text-blue-700 transition-colors">Truth or Dare</h2>
+          <p class="text-slate-600 leading-relaxed mb-6">
+            Bermain suwit secara real-time dan selesaikan kartu tantangan romantis yang menegangkan.
+          </p>
+        </div>
+        <div class="flex items-center text-blue-600 font-semibold text-sm">
+          <span>Mulai Sekarang</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </div>
+      </a>
+
+      <!-- MENU 2: Tes Level Hubungan -->
+      <a href="/v4/relationship-test" class="glass rounded-3xl p-8 menu-card cursor-pointer group no-underline text-inherit block relative overflow-hidden">
+        <div>
+          <span class="badge badge-purple mb-4">Fitur Baru</span>
+          <h2 class="font-display text-3xl font-bold mb-3 group-hover:text-purple-700 transition-colors">Tes Level Hubungan</h2>
+          <p class="text-slate-600 leading-relaxed mb-6">
+            Jawab pertanyaan deep talk dari HP masing-masing dan temukan titik diskusi dari perbedaan sudut pandang.
+          </p>
+        </div>
+        <div class="flex items-center text-purple-600 font-semibold text-sm">
+          <span>Mulai Sekarang</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </div>
+      </a>
+
+      <!-- MENU 3: Puzzle Cinta & Rumah -->
+      <a href="/v4/puzzle" class="glass rounded-3xl p-8 menu-card cursor-pointer group no-underline text-inherit block relative overflow-hidden">
+        <div>
+          <span class="badge badge-pink mb-4">Fitur Baru</span>
+          <h2 class="font-display text-3xl font-bold mb-3 group-hover:text-pink-600 transition-colors">Puzzle Cinta & Makna Rumah</h2>
+          <p class="text-slate-600 leading-relaxed mb-6">
+            Satukan potongan ego lewat interaksi di layar HP, dan lihat keajaiban "Rumah" kita terbentuk di monitor.
+          </p>
+        </div>
+        <div class="flex items-center text-pink-600 font-semibold text-sm">
+          <span>Mulai Sekarang</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </div>
+      </a>
+
+    </div>
+  </div>
+
+</body>
+</html>
