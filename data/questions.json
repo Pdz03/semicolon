@@ -38,5 +38,45 @@
   {
     "id": 10,
     "text": "Seberapa sering kehadiran, pesan, atau suaranya membuatmu merasa aman dan tenang seperti 'pulang' setelah hari yang berat?"
+  },
+  {
+    "id": 11,
+    "text": "Dalam proses kita merintis bisnis bersama atau saat saling bantu project (seperti template portofolio), seberapa kuat kamu merasa kita adalah tim yang saling mendukung alih-alih saling membebani?"
+  },
+  {
+    "id": 12,
+    "text": "Ketika mood sedang berantakan sampai enggan menyentuh urusan bisnis/pekerjaan, seberapa nyaman kamu jika aku mencoba mengingatkanmu, tanpa kamu merasa dihakimi atau dituntut?"
+  },
+  {
+    "id": 13,
+    "text": "Seberapa besar kamu merasa aman untuk sekadar bilang 'aku lagi capek/hilang arah dan butuh jeda', tanpa merasa bersalah pada komitmen bisnis dan pekerjaan kita?"
+  },
+  {
+    "id": 14,
+    "text": "Saat kamu mengalami kejadian yang mengaduk emosi—entah itu bikin senang, marah, atau sedih—seberapa besar doronganmu untuk menjadikan aku orang pertama (di luar keluarga) yang mendengarnya?"
+  },
+  {
+    "id": 15,
+    "text": "Dari semua rutinitas yang melelahkan, hiruk-pikuk bisnis, dan jarak yang memisahkan, seberapa dalam kamu memaknai hubungan kita ini sebagai 'rumah'—tempat kamu menanggalkan semua topeng dan rileks seutuhnya?"
+  },
+  {
+    "id": 16,
+    "text": "Ketika keadaan sedang sangat menekan atau melelahkan, bagaimana pandanganmu tentang sebuah 'jeda' (waktu untuk sendiri-sendiri sejenak)—apakah kamu melihatnya sebagai ruang untuk bernapas, atau justru terasa seperti jarak yang merenggangkan?"
+  },
+  {
+    "id": 17,
+    "text": "Pernahkah kamu menyadari bahwa kita mungkin punya cara berbeda untuk berprogres: yang satu mungkin bisa berlari kencang saat dibiarkan fokus sendiri, sementara yang lain baru bisa melangkah maju jika pasangannya selalu ada menemani?"
+  },
+  {
+    "id": 18,
+    "text": "Seberapa sering kamu merasa bahwa kehadiran kita untuk satu sama lain sudah bukan lagi sekadar pelengkap hari, melainkan sudah menjadi poros utama yang kalau sempat redup sedikit saja rasanya seperti kehilangan arah?"
+  },
+  {
+    "id": 19,
+    "text": "Sejauh mana kita mampu menyeimbangkan antara menjadi 'individu yang mandiri meraih mimpinya' dengan menjadi 'pasangan yang saling menyandarkan diri', tanpa membuat salah satu merasa ditinggalkan atau justru terlalu membebani?"
+  },
+  {
+    "id": 20,
+    "text": "Jika suatu saat salah satu dari kita benar-benar sedang butuh 'jeda' untuk memulihkan diri atau fokus pada bebannya, keyakinan seperti apa yang perlu kita berikan agar yang ditinggalkan jeda tetap merasa aman dan dicintai?"
   }
 ]
