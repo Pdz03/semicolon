@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
+const crypto = require("crypto");
 const multer = require("multer");
 const cron = require("node-cron");
 const app = express();
@@ -207,6 +208,37 @@ const V4CardSchema = new mongoose.Schema({
   content: { type: String, required: true },
 });
 const V4Card = mongoose.model("V4Card", V4CardSchema);
+// --- SCHEMA V5: HISTORY EVENT ---
+const V5ConfigSchema = new mongoose.Schema({
+  event_id: { type: String, unique: true, default: "current_v5" },
+  event_name: { type: String, default: "Semicolon V5" },
+  fendi_pin_hash: { type: String, default: "" },
+  ida_pin_hash: { type: String, default: "" },
+  review_release_time: Date,
+  game_release_time: Date,
+  timezone: { type: String, default: "Asia/Jakarta" },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+});
+const V5ParticipantSchema = new mongoose.Schema({
+  event_id: { type: String, default: "current_v5" },
+  role: { type: String, enum: ["fendi", "ida"], unique: true },
+  history_status: { type: String, enum: ["draft", "submitted", "needs_resubmit"], default: "draft" },
+  submitted_at: Date,
+  updated_at: { type: Date, default: Date.now },
+});
+const V5HistorySchema = new mongoose.Schema({
+  event_id: { type: String, default: "current_v5" },
+  role: { type: String, enum: ["fendi", "ida"], required: true },
+  content: { type: String, required: true, trim: true },
+  image_url: { type: String, default: "" },
+  order: { type: Number, default: 0 },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+});
+const V5Config = mongoose.model("V5Config", V5ConfigSchema);
+const V5Participant = mongoose.model("V5Participant", V5ParticipantSchema);
+const V5History = mongoose.model("V5History", V5HistorySchema);
 
 let v3State = {
     current_number: null,
@@ -1665,9 +1697,319 @@ function requireV4Admin(req, res, next) {
   next();
 }
 
-// Redirect root to /v4
+// --- API V5: HISTORY MVP ---
+const v5Sessions = new Map();
+const v5Upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)),
+});
+const V5_EVENT_ID = "current_v5";
+const V5_TIMEZONE = "Asia/Jakarta";
+
+function v5HashPin(pin) {
+  return crypto.createHash("sha256").update(`${process.env.V5_PIN_SALT || "semicolon-v5"}:${pin}`).digest("hex");
+}
+
+
+function v5ParseDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const date = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}:00+07:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function ensureV5Config() {
+  let config = await V5Config.findOne({ event_id: V5_EVENT_ID });
+  if (!config) {
+    config = await V5Config.create({
+      event_id: V5_EVENT_ID,
+      fendi_pin_hash: v5ValidPin(process.env.V5_FENDI_PIN) ? v5HashPin(process.env.V5_FENDI_PIN) : "",
+      ida_pin_hash: v5ValidPin(process.env.V5_IDA_PIN) ? v5HashPin(process.env.V5_IDA_PIN) : "",
+      timezone: V5_TIMEZONE,
+    });
+  }
+  return config;
+}
+
+function v5PublicConfig(config) {
+  return {
+    event_name: config.event_name,
+    review_release_time: config.review_release_time || null,
+    game_release_time: config.game_release_time || null,
+    timezone: config.timezone || V5_TIMEZONE,
+  };
+}
+
+async function ensureV5Participants() {
+  await Promise.all(["fendi", "ida"].map((role) => V5Participant.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, role },
+    { $setOnInsert: { event_id: V5_EVENT_ID, role, history_status: "draft" } },
+    { upsert: true, new: true }
+  )));
+}
+
+function requireV5Session(req, res, next) {
+  const token = req.headers["x-v5-session"];
+  const session = token && v5Sessions.get(token);
+  if (!session || session.expiresAt < Date.now()) {
+    if (token) v5Sessions.delete(token);
+    return res.status(401).json({ success: false, message: "Sesi v5 sudah berakhir." });
+  }
+  req.v5Role = session.role;
+  next();
+}
+
+function requireV5Admin(req, res, next) {
+  const token = req.headers["x-v5-admin-session"];
+  if (!token || !v5Sessions.get(`admin:${token}`)) {
+    return res.status(401).json({ success: false, message: "Sesi admin tidak valid." });
+  }
+  next();
+}
+
+function v5HistoryJson(item) {
+  return {
+    id: String(item._id),
+    content: item.content,
+    image_url: item.image_url || "",
+    order: item.order || 0,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  };
+}
+
+app.get("/api/v5/config", async (req, res) => {
+  const config = await ensureV5Config();
+  res.json({ success: true, config: v5PublicConfig(config) });
+});
+
+app.post("/api/v5/auth", async (req, res) => {
+  const role = String(req.body.role || "").toLowerCase();
+  const pin = String(req.body.pin || "");
+  if (!["fendi", "ida"].includes(role) || !v5ValidPin(pin)) {
+    return res.status(400).json({ success: false, message: "Role atau PIN tidak valid." });
+  }
+  const config = await ensureV5Config();
+  const expectedHash = role === "fendi" ? config.fendi_pin_hash : config.ida_pin_hash;
+  if (!expectedHash || v5HashPin(pin) !== expectedHash) {
+    return res.status(401).json({ success: false, message: "PIN salah atau belum diatur admin." });
+  }
+  await ensureV5Participants();
+  const token = crypto.randomBytes(32).toString("hex");
+  v5Sessions.set(token, { role, expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 30 });
+  res.json({ success: true, token, role });
+});
+
+app.get("/api/v5/session", requireV5Session, async (req, res) => {
+  const config = await ensureV5Config();
+  const participant = await V5Participant.findOne({ event_id: V5_EVENT_ID, role: req.v5Role }).lean();
+  res.json({ success: true, role: req.v5Role, config: v5PublicConfig(config), participant: {
+    history_status: participant?.history_status || "draft",
+    submitted_at: participant?.submitted_at || null,
+  }});
+});
+
+app.get("/api/v5/history", requireV5Session, async (req, res) => {
+  const items = await V5History.find({ event_id: V5_EVENT_ID, role: req.v5Role }).sort({ order: 1, created_at: 1 }).lean();
+  res.json({ success: true, items: items.map(v5HistoryJson) });
+});
+
+async function markV5NeedsResubmit(role) {
+  await V5Participant.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, role },
+    { history_status: "needs_resubmit", submitted_at: null, updated_at: new Date() },
+    { upsert: true }
+  );
+}
+
+app.post("/api/v5/history", requireV5Session, async (req, res) => {
+  const content = String(req.body.content || "").trim();
+  if (!content) return res.status(400).json({ success: false, message: "Isi history wajib diisi." });
+  const last = await V5History.findOne({ event_id: V5_EVENT_ID, role: req.v5Role }).sort({ order: -1 }).lean();
+  const item = await V5History.create({ event_id: V5_EVENT_ID, role: req.v5Role, content, order: (last?.order || 0) + 1 });
+  await markV5NeedsResubmit(req.v5Role);
+  res.json({ success: true, item: v5HistoryJson(item) });
+});
+
+app.put("/api/v5/history/:id", requireV5Session, async (req, res) => {
+  const content = String(req.body.content || "").trim();
+  if (!content) return res.status(400).json({ success: false, message: "Isi history wajib diisi." });
+  const item = await V5History.findOneAndUpdate(
+    { _id: req.params.id, event_id: V5_EVENT_ID, role: req.v5Role },
+    { content, updated_at: new Date() },
+    { new: true }
+  );
+  if (!item) return res.status(404).json({ success: false, message: "History tidak ditemukan." });
+  await markV5NeedsResubmit(req.v5Role);
+  res.json({ success: true, item: v5HistoryJson(item) });
+});
+
+app.delete("/api/v5/history/:id", requireV5Session, async (req, res) => {
+  const item = await V5History.findOneAndDelete({ _id: req.params.id, event_id: V5_EVENT_ID, role: req.v5Role });
+  if (!item) return res.status(404).json({ success: false, message: "History tidak ditemukan." });
+  await markV5NeedsResubmit(req.v5Role);
+  res.json({ success: true });
+});
+
+app.post("/api/v5/history/:id/image", requireV5Session, v5Upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: "File gambar wajib dipilih." });
+  const item = await V5History.findOne({ _id: req.params.id, event_id: V5_EVENT_ID, role: req.v5Role });
+  if (!item) return res.status(404).json({ success: false, message: "History tidak ditemukan." });
+  const form = new FormData();
+  form.append("file", new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
+  const uploadResponse = await fetch(process.env.MEDIA_UPLOAD_URL || "https://api.sajakkode.com/api/upload-media", { method: "POST", body: form });
+  const uploadPayload = await uploadResponse.json().catch(() => ({}));
+  if (!uploadResponse.ok || uploadPayload.success !== true || !uploadPayload.url) {
+    return res.status(502).json({ success: false, message: uploadPayload.message || "Upload media gagal." });
+  }
+  item.image_url = String(uploadPayload.url);
+  item.updated_at = new Date();
+  await item.save();
+  await markV5NeedsResubmit(req.v5Role);
+  res.json({ success: true, image_url: item.image_url, item: v5HistoryJson(item) });
+});
+
+app.post("/api/v5/history/submit", requireV5Session, async (req, res) => {
+  const count = await V5History.countDocuments({ event_id: V5_EVENT_ID, role: req.v5Role });
+  if (!count) return res.status(400).json({ success: false, message: "Tambahkan minimal satu history." });
+  const participant = await V5Participant.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, role: req.v5Role },
+    { history_status: "submitted", submitted_at: new Date(), updated_at: new Date() },
+    { upsert: true, new: true }
+  );
+  res.json({ success: true, history_status: participant.history_status, submitted_at: participant.submitted_at });
+});
+
+app.post("/api/v5/admin/login", async (req, res) => {
+  const password = String(req.body.password || "");
+  const expected = process.env.V5_ADMIN_PASSWORD || process.env.V4_ADMIN_PASSWORD || "sajak-admin";
+  if (!password || password !== expected) return res.status(401).json({ success: false, message: "Password admin salah." });
+  const token = crypto.randomBytes(32).toString("hex");
+  v5Sessions.set(`admin:${token}`, { role: "admin", expiresAt: Date.now() + 1000 * 60 * 60 * 12 });
+  res.json({ success: true, token });
+});
+
+app.get("/api/v5/admin/config", requireV5Admin, async (req, res) => {
+  const config = await ensureV5Config();
+  res.json({ success: true, config: v5PublicConfig(config), has_fendi_pin: Boolean(config.fendi_pin_hash), has_ida_pin: Boolean(config.ida_pin_hash) });
+});
+
+app.put("/api/v5/admin/config", requireV5Admin, async (req, res) => {
+  const updates = { event_name: String(req.body.event_name || "Semicolon V5").trim() || "Semicolon V5", timezone: V5_TIMEZONE, updated_at: new Date() };
+  if (req.body.fendi_pin !== undefined && String(req.body.fendi_pin).trim()) {
+    if (!v5ValidPin(req.body.fendi_pin)) return res.status(400).json({ success: false, message: "PIN Fendi harus tanggal valid format DDMMYY." });
+    updates.fendi_pin_hash = v5HashPin(String(req.body.fendi_pin));
+  }
+  if (req.body.ida_pin !== undefined && String(req.body.ida_pin).trim()) {
+    if (!v5ValidPin(req.body.ida_pin)) return res.status(400).json({ success: false, message: "PIN Ida harus tanggal valid format DDMMYY." });
+    updates.ida_pin_hash = v5HashPin(String(req.body.ida_pin));
+  }
+  for (const field of ["review_release_time", "game_release_time"]) {
+    if (req.body[field] !== undefined) {
+      const parsed = v5ParseDate(req.body[field]);
+      if (req.body[field] && !parsed) return res.status(400).json({ success: false, message: `Waktu ${field} tidak valid.` });
+      updates[field] = parsed;
+    }
+  }
+  const config = await V5Config.findOneAndUpdate({ event_id: V5_EVENT_ID }, updates, { upsert: true, new: true, setDefaultsOnInsert: true });
+  res.json({ success: true, config: v5PublicConfig(config), has_fendi_pin: Boolean(config.fendi_pin_hash), has_ida_pin: Boolean(config.ida_pin_hash) });
+});
+
+app.get("/api/v5/admin/history-status", requireV5Admin, async (req, res) => {
+  await ensureV5Participants();
+  const participants = await V5Participant.find({ event_id: V5_EVENT_ID }).sort({ role: 1 }).lean();
+  const counts = await V5History.aggregate([{ $match: { event_id: V5_EVENT_ID } }, { $group: { _id: "$role", count: { $sum: 1 } } }]);
+  const countMap = Object.fromEntries(counts.map((item) => [item._id, item.count]));
+  res.json({ success: true, items: participants.map((item) => ({ role: item.role, history_status: item.history_status, submitted_at: item.submitted_at || null, count: countMap[item.role] || 0 })) });
+});
+
+app.post("/api/v5/admin/history-status/:role/reset", requireV5Admin, async (req, res) => {
+  if (!["fendi", "ida"].includes(req.params.role)) return res.status(400).json({ success: false, message: "Role tidak valid." });
+  await V5Participant.findOneAndUpdate({ event_id: V5_EVENT_ID, role: req.params.role }, { history_status: "needs_resubmit", submitted_at: null, updated_at: new Date() }, { upsert: true });
+  res.json({ success: true });
+});
+
+function v5ValidPin(pin) {
+  const value = String(pin || "");
+  if (!/^\d{6}$/.test(value)) return false;
+  const day = Number(value.slice(0, 2));
+  const month = Number(value.slice(2, 4));
+  const year = Number(value.slice(4, 6));
+  const date = new Date(2000 + year, month - 1, day);
+  return date.getFullYear() === 2000 + year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function v5ParseDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const date = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}:00+07:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+async function ensureV5Config() {
+  let config = await V5Config.findOne({ event_id: V5_EVENT_ID });
+  if (!config) {
+    config = await V5Config.create({
+      event_id: V5_EVENT_ID,
+      fendi_pin_hash: v5ValidPin(process.env.V5_FENDI_PIN) ? v5HashPin(process.env.V5_FENDI_PIN) : "",
+      ida_pin_hash: v5ValidPin(process.env.V5_IDA_PIN) ? v5HashPin(process.env.V5_IDA_PIN) : "",
+      timezone: V5_TIMEZONE,
+    });
+  }
+  return config;
+}
+
+function v5PublicConfig(config) {
+  return {
+    event_name: config.event_name,
+    review_release_time: config.review_release_time || null,
+    game_release_time: config.game_release_time || null,
+    timezone: config.timezone || V5_TIMEZONE,
+  };
+}
+
+async function ensureV5Participants() {
+  await Promise.all(["fendi", "ida"].map((role) => V5Participant.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, role },
+    { $setOnInsert: { event_id: V5_EVENT_ID, role, history_status: "draft" } },
+    { upsert: true, new: true }
+  )));
+}
+
+function requireV5Session(req, res, next) {
+  const token = req.headers["x-v5-session"];
+  const session = token && v5Sessions.get(token);
+  if (!session || session.expiresAt < Date.now()) {
+    if (token) v5Sessions.delete(token);
+    return res.status(401).json({ success: false, message: "Sesi v5 sudah berakhir." });
+  }
+  req.v5Role = session.role;
+  next();
+}
+
+function requireV5Admin(req, res, next) {
+  const token = req.headers["x-v5-admin-session"];
+  if (!token || !v5Sessions.get(`admin:${token}`)) {
+    return res.status(401).json({ success: false, message: "Sesi admin tidak valid." });
+  }
+  next();
+}
+
+function v5HistoryJson(item) {
+  return {
+    id: String(item._id),
+    content: item.content,
+    image_url: item.image_url || "",
+    order: item.order || 0,
+    created_at: item.created_at,
+    updated_at: item.updated_at,
+  };
+}
+
+// Redirect root to /v5
 app.get("/", (req, res) => {
-  res.redirect("/v4");
+  res.redirect("/v5");
 });
 
 // Fix asset paths for v1 (supporting relative paths like images/ and music/)
@@ -1675,6 +2017,7 @@ app.use("/v1/images", express.static(path.join(__dirname, "public/images")));
 app.use("/v1/music", express.static(path.join(__dirname, "public/music")));
 app.use("/v-spesial", express.static(path.join(__dirname, "public/v-spesial")));
 app.use("/v4", express.static(path.join(__dirname, "public/v4"), { index: false, redirect: false }));
+app.use("/v5", express.static(path.join(__dirname, "public/v5"), { index: false, redirect: false }));
 
 app.get("/v-spesial", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v-spesial/index.html"));
@@ -1697,6 +2040,9 @@ app.get("/v-spesial/admin", (req, res) => {
 });
 
 app.get("/v4", (req, res) => { res.sendFile(path.join(__dirname, "public/v4/index.html")); });
+app.get("/v5", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/index.html")); });
+app.get("/v5/input-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/input-history.html")); });
+app.get("/v5/admin", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/admin.html")); });
 
 app.get("/v4/host", (req, res) => {
   res.sendFile(path.join(__dirname, "public/v4/host.html"));
