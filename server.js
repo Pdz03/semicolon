@@ -1762,7 +1762,9 @@ function requireV5Session(req, res, next) {
 
 function requireV5Admin(req, res, next) {
   const token = req.headers["x-v5-admin-session"];
-  if (!token || !v5Sessions.get(`admin:${token}`)) {
+  const session = token && v5Sessions.get(`admin:${token}`);
+  if (!session || session.expiresAt < Date.now()) {
+    if (token) v5Sessions.delete(`admin:${token}`);
     return res.status(401).json({ success: false, message: "Sesi admin tidak valid." });
   }
   next();
@@ -1813,6 +1815,37 @@ app.get("/api/v5/session", requireV5Session, async (req, res) => {
 app.get("/api/v5/history", requireV5Session, async (req, res) => {
   const items = await V5History.find({ event_id: V5_EVENT_ID, role: req.v5Role }).sort({ order: 1, created_at: 1 }).lean();
   res.json({ success: true, items: items.map(v5HistoryJson) });
+});
+
+app.get("/api/v5/review", requireV5Session, async (req, res) => {
+  const config = await ensureV5Config();
+  await ensureV5Participants();
+  const participants = await V5Participant.find({ event_id: V5_EVENT_ID }).lean();
+  const bothSubmitted = ["fendi", "ida"].every((role) => participants.some((item) => item.role === role && item.history_status === "submitted"));
+  const releaseTime = config.review_release_time ? new Date(config.review_release_time) : null;
+  const timerOpen = Boolean(releaseTime && releaseTime.getTime() <= Date.now());
+
+  if (!timerOpen || !bothSubmitted) {
+    return res.json({
+      success: true,
+      unlocked: false,
+      reason: !releaseTime ? "Timer review belum diatur." : !timerOpen ? "Menunggu waktu pembukaan." : "Fendi dan Ida harus submit Input History terlebih dahulu.",
+      review_release_time: releaseTime,
+      both_submitted: bothSubmitted,
+      items: [],
+    });
+  }
+
+  const partnerRole = req.v5Role === "fendi" ? "ida" : "fendi";
+  const items = await V5History.find({ event_id: V5_EVENT_ID, role: partnerRole }).sort({ order: 1, created_at: 1 }).lean();
+  res.json({
+    success: true,
+    unlocked: true,
+    partner_role: partnerRole,
+    review_release_time: releaseTime,
+    both_submitted: true,
+    items: items.map(v5HistoryJson),
+  });
 });
 
 async function markV5NeedsResubmit(role) {
@@ -1924,88 +1957,22 @@ app.get("/api/v5/admin/history-status", requireV5Admin, async (req, res) => {
   res.json({ success: true, items: participants.map((item) => ({ role: item.role, history_status: item.history_status, submitted_at: item.submitted_at || null, count: countMap[item.role] || 0 })) });
 });
 
+app.get("/api/v5/admin/review", requireV5Admin, async (req, res) => {
+  const viewerRole = String(req.query.viewer || "").toLowerCase();
+  if (!["fendi", "ida"].includes(viewerRole)) {
+    return res.status(400).json({ success: false, message: "Role preview tidak valid." });
+  }
+  const partnerRole = viewerRole === "fendi" ? "ida" : "fendi";
+  const items = await V5History.find({ event_id: V5_EVENT_ID, role: partnerRole }).sort({ order: 1, created_at: 1 }).lean();
+  res.json({ success: true, unlocked: true, preview: true, viewer_role: viewerRole, partner_role: partnerRole, items: items.map(v5HistoryJson) });
+});
+
 app.post("/api/v5/admin/history-status/:role/reset", requireV5Admin, async (req, res) => {
   if (!["fendi", "ida"].includes(req.params.role)) return res.status(400).json({ success: false, message: "Role tidak valid." });
   await V5Participant.findOneAndUpdate({ event_id: V5_EVENT_ID, role: req.params.role }, { history_status: "needs_resubmit", submitted_at: null, updated_at: new Date() }, { upsert: true });
   res.json({ success: true });
 });
 
-function v5ValidPin(pin) {
-  const value = String(pin || "");
-  if (!/^\d{6}$/.test(value)) return false;
-  const day = Number(value.slice(0, 2));
-  const month = Number(value.slice(2, 4));
-  const year = Number(value.slice(4, 6));
-  const date = new Date(2000 + year, month - 1, day);
-  return date.getFullYear() === 2000 + year && date.getMonth() === month - 1 && date.getDate() === day;
-}
-
-function v5ParseDate(value) {
-  if (!value) return null;
-  const raw = String(value).trim();
-  const date = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? raw : `${raw}:00+07:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-async function ensureV5Config() {
-  let config = await V5Config.findOne({ event_id: V5_EVENT_ID });
-  if (!config) {
-    config = await V5Config.create({
-      event_id: V5_EVENT_ID,
-      fendi_pin_hash: v5ValidPin(process.env.V5_FENDI_PIN) ? v5HashPin(process.env.V5_FENDI_PIN) : "",
-      ida_pin_hash: v5ValidPin(process.env.V5_IDA_PIN) ? v5HashPin(process.env.V5_IDA_PIN) : "",
-      timezone: V5_TIMEZONE,
-    });
-  }
-  return config;
-}
-
-function v5PublicConfig(config) {
-  return {
-    event_name: config.event_name,
-    review_release_time: config.review_release_time || null,
-    game_release_time: config.game_release_time || null,
-    timezone: config.timezone || V5_TIMEZONE,
-  };
-}
-
-async function ensureV5Participants() {
-  await Promise.all(["fendi", "ida"].map((role) => V5Participant.findOneAndUpdate(
-    { event_id: V5_EVENT_ID, role },
-    { $setOnInsert: { event_id: V5_EVENT_ID, role, history_status: "draft" } },
-    { upsert: true, new: true }
-  )));
-}
-
-function requireV5Session(req, res, next) {
-  const token = req.headers["x-v5-session"];
-  const session = token && v5Sessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    if (token) v5Sessions.delete(token);
-    return res.status(401).json({ success: false, message: "Sesi v5 sudah berakhir." });
-  }
-  req.v5Role = session.role;
-  next();
-}
-
-function requireV5Admin(req, res, next) {
-  const token = req.headers["x-v5-admin-session"];
-  if (!token || !v5Sessions.get(`admin:${token}`)) {
-    return res.status(401).json({ success: false, message: "Sesi admin tidak valid." });
-  }
-  next();
-}
-
-function v5HistoryJson(item) {
-  return {
-    id: String(item._id),
-    content: item.content,
-    image_url: item.image_url || "",
-    order: item.order || 0,
-    created_at: item.created_at,
-    updated_at: item.updated_at,
-  };
-}
 
 // Redirect root to /v5
 app.get("/", (req, res) => {
@@ -2042,6 +2009,7 @@ app.get("/v-spesial/admin", (req, res) => {
 app.get("/v4", (req, res) => { res.sendFile(path.join(__dirname, "public/v4/index.html")); });
 app.get("/v5", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/index.html")); });
 app.get("/v5/input-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/input-history.html")); });
+app.get("/v5/review-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/review-history.html")); });
 app.get("/v5/admin", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/admin.html")); });
 
 app.get("/v4/host", (req, res) => {
@@ -3020,5 +2988,15 @@ if (process.env.NODE_ENV !== "production") {
   http.listen(PORT, () =>
     console.log(`Server is running at http://localhost:${PORT}`),
   );
+}
+
+function v5ValidPin(pin) {
+  const value = String(pin || "");
+  if (!/^\d{6}$/.test(value)) return false;
+  const day = Number(value.slice(0, 2));
+  const month = Number(value.slice(2, 4));
+  const year = Number(value.slice(4, 6));
+  const date = new Date(2000 + year, month - 1, day);
+  return date.getFullYear() === 2000 + year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 module.exports = app;
