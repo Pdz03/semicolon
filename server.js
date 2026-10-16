@@ -256,8 +256,12 @@ const V5GameSchema = new mongoose.Schema({
   started_at: Date,
   fendi_barcode_code: String,
   fendi_barcode_scanned_at: Date,
+  fendi_shared_barcode_code: String,
+  fendi_shared_barcode_scanned_at: Date,
   ida_barcode_code: String,
   ida_barcode_scanned_at: Date,
+  ida_shared_barcode_code: String,
+  ida_shared_barcode_scanned_at: Date,
   fendi_variables: { type: mongoose.Schema.Types.Mixed, default: {} },
   ida_variables: { type: mongoose.Schema.Types.Mixed, default: {} },
   fendi_questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
@@ -2060,12 +2064,9 @@ function generateV5Math() {
   };
 }
 
-function v5VisibleVariables(game, role) {
+function v5InitialVariables(game, role) {
   const variables = game[`${role}_variables`] || {};
-  const questions = game[`${role}_questions`] || [];
-  const solvedCount = game[`${role}_question_index`] || 0;
-  const baseKeys = role === "ida" ? ["A", "B", "C", "D"] : ["I", "J", "K", "L"];
-  const keys = baseKeys.concat(questions.slice(0, solvedCount).map((question) => question.target));
+  const keys = role === "ida" ? ["A", "B", "C", "D"] : ["I", "J", "K", "L"];
   return Object.fromEntries(keys.map((key) => [key, variables[key]]));
 }
 
@@ -2080,12 +2081,14 @@ function v5GameJson(game, config) {
       fendi: {
         started: Boolean(game.fendi_started_at),
         barcode_scanned: Boolean(game.fendi_barcode_scanned_at),
+        shared_barcode_scanned: Boolean(game.fendi_shared_barcode_scanned_at),
         question_index: game.fendi_question_index || 0,
         finished_at: game.fendi_finished_at || null,
       },
       ida: {
         started: Boolean(game.ida_started_at),
         barcode_scanned: Boolean(game.ida_barcode_scanned_at),
+        shared_barcode_scanned: Boolean(game.ida_shared_barcode_scanned_at),
         question_index: game.ida_question_index || 0,
         finished_at: game.ida_finished_at || null,
       },
@@ -2101,17 +2104,17 @@ function v5PlayerGameJson(game, config, role) {
   return {
     ...state,
     role,
-    variables: player.barcode_scanned ? v5VisibleVariables(game, role) : {},
+    variables: player.barcode_scanned && player.question_index === 0 ? v5InitialVariables(game, role) : {},
     current_question: player.barcode_scanned && !player.finished_at ? {
       number: player.question_index + 1,
       target: questions[player.question_index]?.target,
       expression: questions[player.question_index]?.expression,
     } : null,
     shared: {
-      active: bothFinished && !game.shared_solved_at,
+      active: bothFinished && Boolean(game.fendi_shared_barcode_scanned_at && game.ida_shared_barcode_scanned_at) && !game.shared_solved_at,
       solved: Boolean(game.shared_solved_at),
-      expression: role === "ida" && bothFinished ? game.shared_question?.expression : null,
-      can_answer: role === "fendi" && bothFinished && !game.shared_solved_at,
+      expression: role === "ida" && bothFinished && game.fendi_shared_barcode_scanned_at && game.ida_shared_barcode_scanned_at ? game.shared_question?.expression : null,
+      can_answer: role === "fendi" && bothFinished && game.fendi_shared_barcode_scanned_at && game.ida_shared_barcode_scanned_at && !game.shared_solved_at,
     },
   };
 }
@@ -2155,7 +2158,12 @@ app.post("/api/v5/game/scan", requireV5Session, async (req, res) => {
   if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
   const game = await ensureV5Game();
   if (!game.started_at) return res.status(403).json({ success: false, message: "Tunggu Fendi dan Ida menekan Start." });
-  const scannedField = `${req.v5Role}_barcode_scanned_at`;
+  const playerFinished = Boolean(game[`${req.v5Role}_finished_at`]);
+  if (playerFinished && (!game.fendi_finished_at || !game.ida_finished_at)) {
+    return res.status(403).json({ success: false, message: "Tunggu pasangan menyelesaikan soal ke-4." });
+  }
+  const scannedField = playerFinished ? `${req.v5Role}_shared_barcode_scanned_at` : `${req.v5Role}_barcode_scanned_at`;
+  const codeField = playerFinished ? `${req.v5Role}_shared_barcode_code` : `${req.v5Role}_barcode_code`;
   if (game[scannedField]) return res.status(400).json({ success: false, message: "Kamu sudah memakai barcode." });
   const barcode = await V5Barcode.findOneAndUpdate(
     { event_id: V5_EVENT_ID, code, owner_role: req.v5Role, active: true, used_at: null },
@@ -2163,7 +2171,7 @@ app.post("/api/v5/game/scan", requireV5Session, async (req, res) => {
     { new: true }
   );
   if (!barcode) return res.status(400).json({ success: false, message: "Barcode tidak terdaftar, bukan untukmu, atau sudah dipakai." });
-  game[`${req.v5Role}_barcode_code`] = code;
+  game[codeField] = code;
   game[scannedField] = new Date();
   game.updated_at = new Date();
   await game.save();
@@ -2183,16 +2191,19 @@ app.post("/api/v5/game/answer", requireV5Session, async (req, res) => {
   if (Number(req.body.answer) !== Number(question.answer)) return res.status(400).json({ success: false, correct: false, message: "Jawaban belum tepat. Coba lagi." });
   game[indexField] = (game[indexField] || 0) + 1;
   if (game[indexField] >= questions.length) game[finishedField] = new Date();
+  game[`${req.v5Role}_barcode_code`] = undefined;
+  game[`${req.v5Role}_barcode_scanned_at`] = undefined;
   game.updated_at = new Date();
   await game.save();
   const config = await ensureV5Config();
-  res.json({ success: true, correct: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+  res.json({ success: true, correct: true, solved_variable: { target: question.target, value: question.answer }, state: v5PlayerGameJson(game, config, req.v5Role) });
 });
 
 app.post("/api/v5/game/shared-answer", requireV5Session, async (req, res) => {
   if (req.v5Role !== "fendi") return res.status(403).json({ success: false, message: "Jawaban hanya dikirim dari perangkat Fendi." });
   const game = await ensureV5Game();
   if (!game.fendi_finished_at || !game.ida_finished_at) return res.status(403).json({ success: false, message: "Tunggu kedua pemain menyelesaikan soal ke-4." });
+  if (!game.fendi_shared_barcode_scanned_at || !game.ida_shared_barcode_scanned_at) return res.status(403).json({ success: false, message: "Kedua pemain harus menemukan barcode soal bersama." });
   if (game.shared_solved_at) return res.status(400).json({ success: false, message: "Soal bersama sudah selesai." });
   if (Number(req.body.answer) !== Number(game.shared_question?.answer)) return res.status(400).json({ success: false, correct: false, message: "Jawaban bersama belum tepat." });
   game.shared_solved_at = new Date();
@@ -2252,7 +2263,7 @@ app.post("/api/v5/admin/game/reset", requireV5Admin, async (req, res) => {
     V5Game.findOneAndUpdate(
       { event_id: V5_EVENT_ID },
       {
-        $unset: { fendi_started_at: 1, ida_started_at: 1, started_at: 1, fendi_barcode_code: 1, fendi_barcode_scanned_at: 1, ida_barcode_code: 1, ida_barcode_scanned_at: 1, fendi_finished_at: 1, ida_finished_at: 1, shared_solved_at: 1 },
+        $unset: { fendi_started_at: 1, ida_started_at: 1, started_at: 1, fendi_barcode_code: 1, fendi_barcode_scanned_at: 1, fendi_shared_barcode_code: 1, fendi_shared_barcode_scanned_at: 1, ida_barcode_code: 1, ida_barcode_scanned_at: 1, ida_shared_barcode_code: 1, ida_shared_barcode_scanned_at: 1, fendi_finished_at: 1, ida_finished_at: 1, shared_solved_at: 1 },
         $set: { fendi_variables: {}, ida_variables: {}, fendi_questions: [], ida_questions: [], fendi_question_index: 0, ida_question_index: 0, shared_question: null, updated_at: new Date() },
       },
       { upsert: true }
