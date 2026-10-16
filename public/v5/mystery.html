@@ -1,0 +1,108 @@
+﻿<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Misteri Ida</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--pink:#e85d8e;--ink:#3b2330;--muted:#806b75;--line:#f2cbd9;--soft:#fff4f8;--paper:#fffdf8}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;min-height:100vh;color:var(--ink);font-family:Outfit,sans-serif;background:radial-gradient(circle at 5% 0,#ffdce9,transparent 33%),linear-gradient(145deg,#fff,#fff7fa)}
+    button,input{font:inherit}
+    .hidden{display:none!important}
+    .blackout{position:fixed;inset:0;z-index:100;background:#000;transition:opacity 1.4s ease;pointer-events:none}
+    .blackout.leave{opacity:0}
+    .page{width:min(100% - 28px,680px);margin:auto;padding:48px 0 100px;opacity:0;transform:translateY(18px);transition:opacity 1s ease,transform 1s ease}
+    .page.show{opacity:1;transform:none}
+    .eyebrow{color:var(--pink);font-size:11px;font-weight:700;letter-spacing:.28em;text-align:center}
+    .serif{font-family:"Playfair Display",serif}
+    .intro{text-align:center;padding:18px 12px 32px}
+    .intro h1{font-size:clamp(38px,11vw,64px);margin:10px 0}
+    .muted{color:var(--muted);line-height:1.7}
+    .photos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+    .polaroid{margin:0;background:var(--paper);padding:8px 8px 24px;box-shadow:0 12px 28px #5d26351c;border:1px solid #f5e7df;transform:rotate(var(--tilt));opacity:0;translate:0 24px;transition:opacity .7s ease,translate .7s ease}
+    .polaroid.visible{opacity:1;translate:0 0}
+    .polaroid:nth-child(4n+1){--tilt:-2deg}.polaroid:nth-child(4n+2){--tilt:1.5deg}.polaroid:nth-child(4n+3){--tilt:1deg}.polaroid:nth-child(4n){--tilt:-1.5deg}
+    .polaroid img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;background:#f8edf1}
+    .panel{margin-top:80px;padding:28px 22px;background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:0 18px 50px #9d4a6b12;text-align:center}
+    .panel h2{font-size:clamp(30px,8vw,46px);margin:4px 0 16px}
+    .instruction{font-size:clamp(22px,6vw,30px);line-height:1.5;margin:0 auto 24px}
+    .button{width:100%;border:0;border-radius:14px;padding:15px 18px;background:var(--pink);color:#fff;font-weight:700;cursor:pointer}
+    .button:disabled{opacity:.55;cursor:not-allowed}
+    .secondary{margin-top:10px;background:#fff;color:var(--pink);border:1px solid var(--line)}
+    .input{width:100%;border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;color:var(--ink)}
+    .reader{overflow:hidden;border-radius:18px;margin:14px 0}
+    .audio{width:100%;margin:18px 0 8px;accent-color:var(--pink)}
+    .message{min-height:24px;color:#a63f65;font-weight:600}
+    .final{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:36px 24px;background:#fff;color:var(--ink);text-align:center;opacity:0;transition:opacity 1.4s ease}
+    .final.show{opacity:1}
+    .final h1{max-width:760px;font-size:clamp(34px,9vw,72px);line-height:1.18;margin:0;opacity:0;transform:translateY(20px);transition:opacity 1.2s .7s ease,transform 1.2s .7s ease}
+    .final p{position:absolute;bottom:34px;margin:0;color:var(--muted);font-size:clamp(14px,4vw,18px);opacity:0;transition:opacity 1.2s 2s ease}
+    .final.show h1,.final.show p{opacity:1;transform:none}
+    @media(min-width:560px){.photos{gap:24px}.polaroid{padding:12px 12px 34px}.panel{padding:38px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.blackout,.page,.polaroid,.final,.final h1,.final p{transition:none}}
+  </style>
+</head>
+<body>
+  <div id="blackout" class="blackout"></div>
+  <main id="page" class="page">
+    <header class="intro">
+      <div class="eyebrow">UNTUK IDA</div>
+      <h1 class="serif">Sedikit perjalanan lagi.</h1>
+      <p class="muted">Lihat kembali potongan cerita yang membawa kita sampai di sini.</p>
+    </header>
+    <section id="photos" class="photos" aria-label="Kumpulan foto"></section>
+    <section id="cluePanel" class="panel">
+      <p class="instruction serif">Masuk ke kamar, maju 3 langkah, lihat bawah.</p>
+      <button id="showScan" class="button">Lanjutkan</button>
+    </section>
+    <section id="scanPanel" class="panel hidden">
+      <div class="eyebrow">AMPLOP TERAKHIR</div>
+      <h2 class="serif">Ambil amplop dan scan barcode yang ada.</h2>
+      <button id="camera" class="button">Buka kamera barcode</button>
+      <div id="reader" class="reader hidden"></div>
+      <p class="muted">Jika kamera sulit membaca barcode, masukkan kode yang tercetak.</p>
+      <input id="manualCode" class="input" autocomplete="off" inputmode="numeric" placeholder="Masukkan kode barcode">
+      <button id="manualSubmit" class="button secondary">Validasi barcode</button>
+      <div id="scanMessage" class="message"></div>
+    </section>
+    <section id="audioPanel" class="panel hidden">
+      <div class="eyebrow">PESAN SUARA</div>
+      <h2 class="serif">Dengarkan sampai selesai.</h2>
+      <audio id="audio" class="audio" controls preload="metadata"></audio>
+      <p id="audioHint" class="muted">Pesan akan diputar otomatis. Gunakan slider untuk mengulang bagian mana pun.</p>
+      <button id="finish" class="button hidden">Lanjutkan</button>
+    </section>
+  </main>
+  <section id="final" class="final hidden" aria-live="polite">
+    <h1 class="serif">Terus bersamaku, aku akan lakukan apapun yang aku bisa untuk memperjuangkan kita.</h1>
+    <p>Sampai jumpa di versi berikutnya ....</p>
+  </section>
+  <script>
+    const token=localStorage.getItem("v5_session"),role=localStorage.getItem("v5_role");
+    if(!token||role!=="ida")location.href="/v5";
+    let state=null,scanner=null,scanning=false,submitting=false;
+    const $=selector=>document.querySelector(selector);
+    async function api(url,options={}){const response=await fetch(url,{...options,headers:{"Content-Type":"application/json","x-v5-session":token,...(options.headers||{})}});const payload=await response.json().catch(()=>({}));if(response.status===401){localStorage.removeItem("v5_session");localStorage.removeItem("v5_role");location.href="/v5";return null}if(!response.ok)throw Error(payload.message||"Permintaan gagal.");return payload}
+    function revealPage(){requestAnimationFrame(()=>{$("#blackout").classList.add("leave");$("#page").classList.add("show")});setTimeout(()=>$("#blackout").remove(),1600)}
+    function renderPhotos(){const photos=state.photos||[];$("#photos").innerHTML=photos.length?photos.map((url,index)=>`<figure class="polaroid"><img src="${escapeHtml(url)}" alt="Kenangan ${index+1}" loading="lazy"></figure>`).join(""):`<p class="muted" style="grid-column:1/-1;text-align:center">Foto belum ditambahkan.</p>`;const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add("visible");observer.unobserve(entry.target)}}),{threshold:.15});document.querySelectorAll(".polaroid").forEach(item=>observer.observe(item))}
+    function escapeHtml(value){return String(value).replace(/[&<>"']/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char])}
+    function showScan(){$("#scanPanel").classList.remove("hidden");setTimeout(()=>$("#scanPanel").scrollIntoView({behavior:"smooth",block:"start"}),80)}
+    function showAudio(autoplay=false){stopScanner();$("#scanPanel").classList.add("hidden");$("#audioPanel").classList.remove("hidden");const audio=$("#audio");if(state.audio_url&&audio.src!==state.audio_url)audio.src=state.audio_url;if(!state.audio_url)$("#audioHint").textContent="Pesan suara belum ditambahkan oleh admin.";$("#finish").classList.toggle("hidden",!state.audio_finished);setTimeout(()=>$("#audioPanel").scrollIntoView({behavior:"smooth",block:"center"}),80);if(autoplay&&state.audio_url)audio.play().catch(()=>{$("#audioHint").textContent="Tekan tombol play untuk mendengarkan pesan suara."})}
+    function showFinal(){stopScanner();$("#final").classList.remove("hidden");requestAnimationFrame(()=>$("#final").classList.add("show"))}
+    async function submitCode(code){if(!code||submitting)return;submitting=true;$("#scanMessage").textContent="Barcode terbaca. Memvalidasi...";try{await stopScanner();const payload=await api("/api/v5/mystery/scan",{method:"POST",body:JSON.stringify({code})});if(!payload)return;state=payload.state;$("#manualCode").value="";$("#scanMessage").textContent="";showAudio(true)}catch(error){$("#scanMessage").textContent=error.message}finally{submitting=false}}
+    async function stopScanner(){if(!scanner)return;const active=scanner;scanner=null;if(scanning)await active.stop().catch(()=>{});try{active.clear()}catch{}scanning=false;$("#reader").classList.add("hidden");$("#camera").textContent="Buka kamera barcode"}
+    $("#showScan").onclick=showScan;
+    $("#manualSubmit").onclick=()=>submitCode($("#manualCode").value.trim());
+    $("#camera").onclick=async()=>{if(scanning)return stopScanner();$("#reader").classList.remove("hidden");scanner=new Html5Qrcode("reader",{formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.QR_CODE],verbose:false});scanning=true;$("#camera").textContent="Tutup kamera";try{await scanner.start({facingMode:"environment"},{fps:15,qrbox:(width,height)=>({width:Math.min(320,width-24),height:Math.min(140,height-24)}),aspectRatio:1.777778},submitCode)}catch{await stopScanner();$("#scanMessage").textContent="Kamera tidak dapat dibuka. Periksa izin kamera atau gunakan input manual."}};
+    $("#audio").onended=async()=>{try{const payload=await api("/api/v5/mystery/audio-finished",{method:"POST",body:"{}"});if(!payload)return;state=payload.state;$("#finish").classList.remove("hidden")}catch(error){$("#audioHint").textContent=error.message}};
+    $("#finish").onclick=async()=>{try{const payload=await api("/api/v5/mystery/complete",{method:"POST",body:"{}"});if(!payload)return;state=payload.state;showFinal()}catch(error){alert(error.message)}};
+    (async()=>{try{let payload=await api("/api/v5/mystery");if(!payload)return;state=payload.state;if(!state.started){payload=await api("/api/v5/mystery/start",{method:"POST",body:"{}"});if(!payload)return;state=payload.state}renderPhotos();revealPage();if(state.completed)return showFinal();if(state.final_barcode_scanned)return showAudio();}catch(error){revealPage();$("#page").innerHTML=`<section class="panel"><h1 class="serif">Belum dapat dibuka</h1><p class="muted">${escapeHtml(error.message)}</p></section>`}})();
+  </script>
+</body>
+</html>
+
+

@@ -216,6 +216,9 @@ const V5ConfigSchema = new mongoose.Schema({
   ida_pin_hash: { type: String, default: "" },
   review_release_time: Date,
   game_release_time: Date,
+  mystery_photo_urls: { type: [String], default: [] },
+  mystery_audio_url: { type: String, default: "" },
+  mystery_final_barcode_code: { type: String, default: "" },
   timezone: { type: String, default: "Asia/Jakarta" },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
@@ -272,6 +275,10 @@ const V5GameSchema = new mongoose.Schema({
   ida_finished_at: Date,
   shared_question: { type: mongoose.Schema.Types.Mixed, default: null },
   shared_solved_at: Date,
+  ida_mystery_started_at: Date,
+  ida_final_barcode_scanned_at: Date,
+  ida_audio_finished_at: Date,
+  ida_mystery_completed_at: Date,
   updated_at: { type: Date, default: Date.now },
 });
 const V5Barcode = mongoose.model("V5Barcode", V5BarcodeSchema);
@@ -1741,6 +1748,11 @@ const v5Upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)),
 });
+const v5MysteryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype) || /^audio\/(mpeg|mp3)$/.test(file.mimetype)),
+});
 const V5_EVENT_ID = "current_v5";
 const V5_TIMEZONE = "Asia/Jakarta";
 
@@ -1776,6 +1788,15 @@ function v5PublicConfig(config) {
     game_release_time: config.game_release_time || null,
     timezone: config.timezone || V5_TIMEZONE,
   };
+}
+
+async function uploadV5Media(file) {
+  const form = new FormData();
+  form.append("file", new Blob([file.buffer], { type: file.mimetype }), file.originalname);
+  const response = await fetch(process.env.MEDIA_UPLOAD_URL || "https://api.sajakkode.com/api/upload-media", { method: "POST", body: form });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.success !== true || !payload.url) throw new Error(payload.message || "Upload media gagal.");
+  return String(payload.url);
 }
 
 async function ensureV5Participants() {
@@ -1926,14 +1947,11 @@ app.post("/api/v5/history/:id/image", requireV5Session, v5Upload.single("file"),
   if (!req.file) return res.status(400).json({ success: false, message: "File gambar wajib dipilih." });
   const item = await V5History.findOne({ _id: req.params.id, event_id: V5_EVENT_ID, role: req.v5Role });
   if (!item) return res.status(404).json({ success: false, message: "History tidak ditemukan." });
-  const form = new FormData();
-  form.append("file", new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
-  const uploadResponse = await fetch(process.env.MEDIA_UPLOAD_URL || "https://api.sajakkode.com/api/upload-media", { method: "POST", body: form });
-  const uploadPayload = await uploadResponse.json().catch(() => ({}));
-  if (!uploadResponse.ok || uploadPayload.success !== true || !uploadPayload.url) {
-    return res.status(502).json({ success: false, message: uploadPayload.message || "Upload media gagal." });
+  try {
+    item.image_url = await uploadV5Media(req.file);
+  } catch (error) {
+    return res.status(502).json({ success: false, message: error.message });
   }
-  item.image_url = String(uploadPayload.url);
   item.updated_at = new Date();
   await item.save();
   await markV5NeedsResubmit(req.v5Role);
@@ -1962,11 +1980,22 @@ app.post("/api/v5/admin/login", async (req, res) => {
 
 app.get("/api/v5/admin/config", requireV5Admin, async (req, res) => {
   const config = await ensureV5Config();
-  res.json({ success: true, config: v5PublicConfig(config), has_fendi_pin: Boolean(config.fendi_pin_hash), has_ida_pin: Boolean(config.ida_pin_hash) });
+  res.json({
+    success: true,
+    config: {
+      ...v5PublicConfig(config),
+      mystery_photo_urls: config.mystery_photo_urls || [],
+      mystery_audio_url: config.mystery_audio_url || "",
+    },
+    has_fendi_pin: Boolean(config.fendi_pin_hash),
+    has_ida_pin: Boolean(config.ida_pin_hash),
+    has_mystery_final_barcode: Boolean(config.mystery_final_barcode_code),
+  });
 });
 
 app.put("/api/v5/admin/config", requireV5Admin, async (req, res) => {
-  const updates = { event_name: String(req.body.event_name || "Semicolon V5").trim() || "Semicolon V5", timezone: V5_TIMEZONE, updated_at: new Date() };
+  const updates = { timezone: V5_TIMEZONE, updated_at: new Date() };
+  if (req.body.event_name !== undefined) updates.event_name = String(req.body.event_name || "Semicolon V5").trim() || "Semicolon V5";
   if (req.body.fendi_pin !== undefined && String(req.body.fendi_pin).trim()) {
     if (!v5ValidPin(req.body.fendi_pin)) return res.status(400).json({ success: false, message: "PIN Fendi harus tanggal valid format DDMMYY." });
     updates.fendi_pin_hash = v5HashPin(String(req.body.fendi_pin));
@@ -1974,6 +2003,9 @@ app.put("/api/v5/admin/config", requireV5Admin, async (req, res) => {
   if (req.body.ida_pin !== undefined && String(req.body.ida_pin).trim()) {
     if (!v5ValidPin(req.body.ida_pin)) return res.status(400).json({ success: false, message: "PIN Ida harus tanggal valid format DDMMYY." });
     updates.ida_pin_hash = v5HashPin(String(req.body.ida_pin));
+  }
+  if (req.body.mystery_final_barcode_code !== undefined && String(req.body.mystery_final_barcode_code).trim()) {
+    updates.mystery_final_barcode_code = String(req.body.mystery_final_barcode_code).trim();
   }
   for (const field of ["review_release_time", "game_release_time"]) {
     if (req.body[field] !== undefined) {
@@ -1983,7 +2015,36 @@ app.put("/api/v5/admin/config", requireV5Admin, async (req, res) => {
     }
   }
   const config = await V5Config.findOneAndUpdate({ event_id: V5_EVENT_ID }, updates, { upsert: true, new: true, setDefaultsOnInsert: true });
-  res.json({ success: true, config: v5PublicConfig(config), has_fendi_pin: Boolean(config.fendi_pin_hash), has_ida_pin: Boolean(config.ida_pin_hash) });
+  res.json({ success: true, config: v5PublicConfig(config), has_fendi_pin: Boolean(config.fendi_pin_hash), has_ida_pin: Boolean(config.ida_pin_hash), has_mystery_final_barcode: Boolean(config.mystery_final_barcode_code) });
+});
+
+app.post("/api/v5/admin/mystery/photos", requireV5Admin, v5MysteryUpload.single("file"), async (req, res) => {
+  if (!req.file || !req.file.mimetype.startsWith("image/")) return res.status(400).json({ success: false, message: "Pilih file foto JPG, PNG, atau WebP." });
+  try {
+    const url = await uploadV5Media(req.file);
+    await V5Config.findOneAndUpdate({ event_id: V5_EVENT_ID }, { $push: { mystery_photo_urls: url }, updated_at: new Date() }, { upsert: true });
+    res.json({ success: true, url });
+  } catch (error) {
+    res.status(502).json({ success: false, message: error.message });
+  }
+});
+
+app.delete("/api/v5/admin/mystery/photos", requireV5Admin, async (req, res) => {
+  const url = String(req.body.url || "");
+  if (!url) return res.status(400).json({ success: false, message: "URL foto wajib diisi." });
+  await V5Config.findOneAndUpdate({ event_id: V5_EVENT_ID }, { $pull: { mystery_photo_urls: url }, updated_at: new Date() });
+  res.json({ success: true });
+});
+
+app.post("/api/v5/admin/mystery/audio", requireV5Admin, v5MysteryUpload.single("file"), async (req, res) => {
+  if (!req.file || !/^audio\/(mpeg|mp3)$/.test(req.file.mimetype)) return res.status(400).json({ success: false, message: "Pilih file MP3." });
+  try {
+    const url = await uploadV5Media(req.file);
+    await V5Config.findOneAndUpdate({ event_id: V5_EVENT_ID }, { mystery_audio_url: url, updated_at: new Date() }, { upsert: true });
+    res.json({ success: true, url });
+  } catch (error) {
+    res.status(502).json({ success: false, message: error.message });
+  }
 });
 
 app.get("/api/v5/admin/history-status", requireV5Admin, async (req, res) => {
@@ -2213,6 +2274,86 @@ app.post("/api/v5/game/shared-answer", requireV5Session, async (req, res) => {
   res.json({ success: true, correct: true, state: v5PlayerGameJson(game, config, req.v5Role) });
 });
 
+function v5MysteryJson(game, config) {
+  const finalBarcodeScanned = Boolean(game.ida_final_barcode_scanned_at);
+  return {
+    photos: config.mystery_photo_urls || [],
+    audio_url: finalBarcodeScanned ? config.mystery_audio_url || "" : "",
+    started: Boolean(game.ida_mystery_started_at),
+    final_barcode_scanned: finalBarcodeScanned,
+    audio_finished: Boolean(game.ida_audio_finished_at),
+    completed: Boolean(game.ida_mystery_completed_at),
+  };
+}
+
+async function getV5IdaMystery(req, res) {
+  if (req.v5Role !== "ida") {
+    res.status(403).json({ success: false, message: "Halaman misteri hanya untuk Ida." });
+    return null;
+  }
+  const [game, config] = await Promise.all([ensureV5Game(), ensureV5Config()]);
+  if (!game.shared_solved_at) {
+    res.status(403).json({ success: false, message: "Selesaikan permainan bersama terlebih dahulu." });
+    return null;
+  }
+  return { game, config };
+}
+
+app.get("/api/v5/mystery", requireV5Session, async (req, res) => {
+  const data = await getV5IdaMystery(req, res);
+  if (!data) return;
+  res.json({ success: true, state: v5MysteryJson(data.game, data.config) });
+});
+
+app.post("/api/v5/mystery/start", requireV5Session, async (req, res) => {
+  const data = await getV5IdaMystery(req, res);
+  if (!data) return;
+  if (!data.game.ida_mystery_started_at) {
+    data.game.ida_mystery_started_at = new Date();
+    data.game.updated_at = new Date();
+    await data.game.save();
+  }
+  res.json({ success: true, state: v5MysteryJson(data.game, data.config) });
+});
+
+app.post("/api/v5/mystery/scan", requireV5Session, async (req, res) => {
+  const data = await getV5IdaMystery(req, res);
+  if (!data) return;
+  const code = String(req.body.code || "").trim();
+  if (!data.config.mystery_final_barcode_code) return res.status(400).json({ success: false, message: "Barcode final belum diatur admin." });
+  if (code !== data.config.mystery_final_barcode_code) return res.status(400).json({ success: false, message: "Barcode belum tepat." });
+  if (!data.game.ida_final_barcode_scanned_at) {
+    data.game.ida_final_barcode_scanned_at = new Date();
+    data.game.updated_at = new Date();
+    await data.game.save();
+  }
+  res.json({ success: true, state: v5MysteryJson(data.game, data.config) });
+});
+
+app.post("/api/v5/mystery/audio-finished", requireV5Session, async (req, res) => {
+  const data = await getV5IdaMystery(req, res);
+  if (!data) return;
+  if (!data.game.ida_final_barcode_scanned_at) return res.status(403).json({ success: false, message: "Scan barcode final terlebih dahulu." });
+  if (!data.game.ida_audio_finished_at) {
+    data.game.ida_audio_finished_at = new Date();
+    data.game.updated_at = new Date();
+    await data.game.save();
+  }
+  res.json({ success: true, state: v5MysteryJson(data.game, data.config) });
+});
+
+app.post("/api/v5/mystery/complete", requireV5Session, async (req, res) => {
+  const data = await getV5IdaMystery(req, res);
+  if (!data) return;
+  if (!data.game.ida_audio_finished_at) return res.status(403).json({ success: false, message: "Dengarkan pesan suara sampai selesai." });
+  if (!data.game.ida_mystery_completed_at) {
+    data.game.ida_mystery_completed_at = new Date();
+    data.game.updated_at = new Date();
+    await data.game.save();
+  }
+  res.json({ success: true, state: v5MysteryJson(data.game, data.config) });
+});
+
 app.get("/api/v5/game/monitor", async (req, res) => {
   const [config, game] = await Promise.all([ensureV5Config(), ensureV5Game()]);
   res.json({ success: true, state: v5GameJson(game, config) });
@@ -2263,7 +2404,7 @@ app.post("/api/v5/admin/game/reset", requireV5Admin, async (req, res) => {
     V5Game.findOneAndUpdate(
       { event_id: V5_EVENT_ID },
       {
-        $unset: { fendi_started_at: 1, ida_started_at: 1, started_at: 1, fendi_barcode_code: 1, fendi_barcode_scanned_at: 1, fendi_shared_barcode_code: 1, fendi_shared_barcode_scanned_at: 1, ida_barcode_code: 1, ida_barcode_scanned_at: 1, ida_shared_barcode_code: 1, ida_shared_barcode_scanned_at: 1, fendi_finished_at: 1, ida_finished_at: 1, shared_solved_at: 1 },
+        $unset: { fendi_started_at: 1, ida_started_at: 1, started_at: 1, fendi_barcode_code: 1, fendi_barcode_scanned_at: 1, fendi_shared_barcode_code: 1, fendi_shared_barcode_scanned_at: 1, ida_barcode_code: 1, ida_barcode_scanned_at: 1, ida_shared_barcode_code: 1, ida_shared_barcode_scanned_at: 1, fendi_finished_at: 1, ida_finished_at: 1, shared_solved_at: 1, ida_mystery_started_at: 1, ida_final_barcode_scanned_at: 1, ida_audio_finished_at: 1, ida_mystery_completed_at: 1 },
         $set: { fendi_variables: {}, ida_variables: {}, fendi_questions: [], ida_questions: [], fendi_question_index: 0, ida_question_index: 0, shared_question: null, updated_at: new Date() },
       },
       { upsert: true }
@@ -2312,6 +2453,7 @@ app.get("/v5", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/inde
 app.get("/v5/input-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/input-history.html")); });
 app.get("/v5/review-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/review-history.html")); });
 app.get("/v5/game", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/game.html")); });
+app.get("/v5/mystery", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/mystery.html")); });
 app.get("/monitor", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/monitor.html")); });
 app.get("/v5/admin", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/admin.html")); });
 
