@@ -243,6 +243,7 @@ const V5BarcodeSchema = new mongoose.Schema({
   event_id: { type: String, default: "current_v5" },
   code: { type: String, required: true, trim: true, unique: true },
   label: { type: String, default: "" },
+  owner_role: { type: String, enum: ["fendi", "ida"], required: true },
   active: { type: Boolean, default: true },
   used_by: { type: String, enum: ["fendi", "ida", null], default: null },
   used_at: Date,
@@ -2127,14 +2128,25 @@ app.post("/api/v5/game/start", requireV5Session, async (req, res) => {
     return res.status(403).json({ success: false, message: "Permainan belum dibuka." });
   }
   const field = req.v5Role === "fendi" ? "fendi_started_at" : "ida_started_at";
-  const game = await ensureV5Game();
-  if (!game[field]) game[field] = new Date();
-  if (!game.started_at && game.fendi_started_at && game.ida_started_at) {
-    Object.assign(game, generateV5Math());
-    game.started_at = new Date();
+  const now = new Date();
+  await ensureV5Game();
+  let game = await V5Game.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, [field]: null },
+    { $set: { [field]: now, updated_at: now } },
+    { new: true }
+  );
+  const startedNow = Boolean(game);
+  if (!game) game = await ensureV5Game();
+
+  if (startedNow && !game.started_at && game.fendi_started_at && game.ida_started_at) {
+    const math = generateV5Math();
+    const initializedGame = await V5Game.findOneAndUpdate(
+      { event_id: V5_EVENT_ID, started_at: null, fendi_started_at: { $ne: null }, ida_started_at: { $ne: null } },
+      { $set: { ...math, started_at: now, updated_at: now } },
+      { new: true }
+    );
+    game = initializedGame || await ensureV5Game();
   }
-  game.updated_at = new Date();
-  await game.save();
   res.json({ success: true, state: v5PlayerGameJson(game, config, req.v5Role) });
 });
 
@@ -2146,11 +2158,11 @@ app.post("/api/v5/game/scan", requireV5Session, async (req, res) => {
   const scannedField = `${req.v5Role}_barcode_scanned_at`;
   if (game[scannedField]) return res.status(400).json({ success: false, message: "Kamu sudah memakai barcode." });
   const barcode = await V5Barcode.findOneAndUpdate(
-    { event_id: V5_EVENT_ID, code, active: true, used_at: null },
+    { event_id: V5_EVENT_ID, code, owner_role: req.v5Role, active: true, used_at: null },
     { used_by: req.v5Role, used_at: new Date() },
     { new: true }
   );
-  if (!barcode) return res.status(400).json({ success: false, message: "Barcode tidak terdaftar atau sudah dipakai." });
+  if (!barcode) return res.status(400).json({ success: false, message: "Barcode tidak terdaftar, bukan untukmu, atau sudah dipakai." });
   game[`${req.v5Role}_barcode_code`] = code;
   game[scannedField] = new Date();
   game.updated_at = new Date();
@@ -2197,14 +2209,16 @@ app.get("/api/v5/game/monitor", async (req, res) => {
 
 app.get("/api/v5/admin/barcodes", requireV5Admin, async (req, res) => {
   const items = await V5Barcode.find({ event_id: V5_EVENT_ID }).sort({ created_at: -1 }).lean();
-  res.json({ success: true, items: items.map((item) => ({ id: String(item._id), code: item.code, label: item.label || "", active: item.active, used_by: item.used_by || null, used_at: item.used_at || null })) });
+  res.json({ success: true, items: items.map((item) => ({ id: String(item._id), code: item.code, label: item.label || "", owner_role: item.owner_role || null, active: item.active, used_by: item.used_by || null, used_at: item.used_at || null })) });
 });
 
 app.post("/api/v5/admin/barcodes", requireV5Admin, async (req, res) => {
   const code = String(req.body.code || "").trim();
+  const ownerRole = String(req.body.owner_role || "").toLowerCase();
   if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
+  if (!["fendi", "ida"].includes(ownerRole)) return res.status(400).json({ success: false, message: "Pemilik barcode wajib dipilih." });
   if (await V5Barcode.exists({ code })) return res.status(409).json({ success: false, message: "Kode barcode sudah terdaftar." });
-  const item = await V5Barcode.create({ event_id: V5_EVENT_ID, code, label: String(req.body.label || "").trim() });
+  const item = await V5Barcode.create({ event_id: V5_EVENT_ID, code, owner_role: ownerRole, label: String(req.body.label || "").trim() });
   res.json({ success: true, item: { id: String(item._id), code: item.code } });
 });
 
@@ -2213,9 +2227,12 @@ app.put("/api/v5/admin/barcodes/:id", requireV5Admin, async (req, res) => {
   if (!item) return res.status(404).json({ success: false, message: "Barcode tidak ditemukan." });
   if (item.used_at) return res.status(400).json({ success: false, message: "Barcode yang sudah dipakai tidak dapat diubah." });
   const code = String(req.body.code || "").trim();
+  const ownerRole = String(req.body.owner_role || "").toLowerCase();
   if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
+  if (!["fendi", "ida"].includes(ownerRole)) return res.status(400).json({ success: false, message: "Pemilik barcode wajib dipilih." });
   if (await V5Barcode.exists({ code, _id: { $ne: item._id } })) return res.status(409).json({ success: false, message: "Kode barcode sudah terdaftar." });
   item.code = code;
+  item.owner_role = ownerRole;
   item.label = String(req.body.label || "").trim();
   item.active = req.body.active !== false;
   await item.save();
