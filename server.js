@@ -35,7 +35,7 @@ async function connectDB() {
     cached.promise = mongoose
       .connect(process.env.MONGODB_URI, opts)
       .then((mongoose) => {
-        console.log("✅ Terkoneksi ke MongoDB (Baru)");
+        console.log("âœ… Terkoneksi ke MongoDB (Baru)");
         return mongoose;
       });
   }
@@ -44,7 +44,7 @@ async function connectDB() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error("❌ Gagal koneksi DB:", e);
+    console.error("âŒ Gagal koneksi DB:", e);
     throw e;
   }
 
@@ -823,7 +823,7 @@ const config = await SettingV2.findOne({ key: 'config_v2' }); // Ambil status de
 
 // --- SOCKET.IO LOGIC ---
 io.on("connection", (socket) => {
-  console.log("📱 Device Terhubung:", socket.id);
+  console.log("ðŸ“± Device Terhubung:", socket.id);
 
   // ==========================================
   // TAHAP 1: SINKRONISASI KODE (PAIRING)
@@ -833,7 +833,7 @@ io.on("connection", (socket) => {
   socket.on("master_set_code", (code) => {
     gameState.masterCode = code;
     socket.join("cengklik_room"); // Masuk ke room khusus kalian
-    console.log("🔑 Master Code Set:", code);
+    console.log("ðŸ”‘ Master Code Set:", code);
   });
 
   // HP Client (Dipegang Fendi) mencoba memasukkan kode
@@ -845,10 +845,10 @@ io.on("connection", (socket) => {
     if (code === gameState.masterCode) {
       socket.join("cengklik_room");
       io.to("cengklik_room").emit("pairing_success");
-      console.log("✅ PAIRING MATCH!");
+      console.log("âœ… PAIRING MATCH!");
     } else {
       socket.emit("pairing_failed");
-      console.log("❌ PAIRING GAGAL!");
+      console.log("âŒ PAIRING GAGAL!");
     }
   });
 
@@ -1793,7 +1793,11 @@ function v5PublicConfig(config) {
 async function uploadV5Media(file) {
   const form = new FormData();
   form.append("file", new Blob([file.buffer], { type: file.mimetype }), file.originalname);
-  const response = await fetch(process.env.MEDIA_UPLOAD_URL || "https://api.sajakkode.com/api/upload-media", { method: "POST", body: form });
+  const response = await fetch(process.env.MEDIA_UPLOAD_URL || "https://dev.sajakkode.com/api/upload-media", {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(30000),
+  });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.success !== true || !payload.url) throw new Error(payload.message || "Upload media gagal.");
   return String(payload.url);
@@ -2106,20 +2110,20 @@ function generateV5Math() {
   return {
     ida_variables: ida,
     ida_questions: [
-      { target: "E", expression: `A + ${idaMultiplier} × B`, answer: ida.E },
+      { target: "E", expression: `A + ${idaMultiplier} Ã— B`, answer: ida.E },
       { target: "F", expression: "E - C", answer: ida.F },
-      { target: "G", expression: "F × D", answer: ida.G },
-      { target: "H", expression: "G ÷ A", answer: ida.H },
+      { target: "G", expression: "F Ã— D", answer: ida.G },
+      { target: "H", expression: "G Ã· A", answer: ida.H },
     ],
     fendi_variables: fendi,
     fendi_questions: [
       { target: "M", expression: "I + J", answer: fendi.M },
-      { target: "N", expression: "M × K", answer: fendi.N },
+      { target: "N", expression: "M Ã— K", answer: fendi.N },
       { target: "O", expression: "N - L", answer: fendi.O },
       { target: "P", expression: "O + J", answer: fendi.P },
     ],
     shared_question: {
-      expression: "A^K × (B + J)",
+      expression: "A^K Ã— (B + J)",
       answer: Math.pow(ida.A, fendi.K) * (ida.B + fendi.J),
     },
   };
@@ -2495,7 +2499,7 @@ app.get("/init", async (req, res) => {
       chat_data: [
         {
           sender: "me",
-          text: "mbak Ida, aku sepedaan, sebener e mau ke stadion, tapi baru setengah jalan kaki udah mau nyerah karena jalannya nanjak terus 😅",
+          text: "mbak Ida, aku sepedaan, sebener e mau ke stadion, tapi baru setengah jalan kaki udah mau nyerah karena jalannya nanjak terus ðŸ˜…",
           time: "7:20 am",
         },
         {
@@ -2535,7 +2539,7 @@ app.get("/init", async (req, res) => {
       chat_data: [
         {
           sender: "her",
-          text: "Mending anda jadi content creator aja mas. Ngajarin orang coding 😇",
+          text: "Mending anda jadi content creator aja mas. Ngajarin orang coding ðŸ˜‡",
           time: "8:17 pm",
         },
       ],
@@ -2684,11 +2688,11 @@ app.get("/init-v2", async (req, res) => {
     { level: 1, text: "(250 / 2) + 25 = ?", answer: "150" },
 
     // Level 2: Pangkat & Akar
-    { level: 2, text: "√144 x 3 = ?", answer: "36" },
+    { level: 2, text: "âˆš144 x 3 = ?", answer: "36" },
     { level: 2, text: "(19 + 10) x 2 = ?", answer: "58" }, // Tanggal + Bulan
-    { level: 2, text: "5² + 15 = ?", answer: "40" },
-    { level: 2, text: "2⁴ x 3 = ?", answer: "48" },
-    { level: 2, text: "√81 x √16 = ?", answer: "36" },
+    { level: 2, text: "5Â² + 15 = ?", answer: "40" },
+    { level: 2, text: "2â´ x 3 = ?", answer: "48" },
+    { level: 2, text: "âˆš81 x âˆš16 = ?", answer: "36" },
 
     // Level 3: Aljabar Dasar (Cari Variabel)
     { level: 3, text: "3a + 5 = 20. Berapa a?", answer: "5" },
@@ -2700,16 +2704,16 @@ app.get("/init-v2", async (req, res) => {
     // Level 4: Logika Tipuan (BODMAS / KABATAKU)
     { level: 4, text: "2 + 2 x 4 = ?", answer: "10" },
     { level: 4, text: "(100 / 10) + 19 = ?", answer: "29" },
-    { level: 4, text: "Jika x = 5, y = 4. Maka x² - y² = ?", answer: "9" },
-    { level: 4, text: "√625 / 5 = ?", answer: "5" },
-    { level: 4, text: "3³ - √49 = ?", answer: "20" },
+    { level: 4, text: "Jika x = 5, y = 4. Maka xÂ² - yÂ² = ?", answer: "9" },
+    { level: 4, text: "âˆš625 / 5 = ?", answer: "5" },
+    { level: 4, text: "3Â³ - âˆš49 = ?", answer: "20" },
 
     // Level 5: Rumit / Butuh Konsentrasi
     { level: 5, text: "((50 / 2) x 3) - 5 = ?", answer: "70" },
     { level: 5, text: "1000 / 8 = ?", answer: "125" },
-    { level: 5, text: "(√225 x 2) - 10 = ?", answer: "20" },
+    { level: 5, text: "(âˆš225 x 2) - 10 = ?", answer: "20" },
     { level: 5, text: "(2026 - 2025) + 100 = ?", answer: "101" },
-    { level: 5, text: "√10000 / √100 = ?", answer: "10" },
+    { level: 5, text: "âˆš10000 / âˆš100 = ?", answer: "10" },
   ];
   await QuestionV2.insertMany(questions);
 
@@ -2742,11 +2746,11 @@ app.get("/init-v2-final", async (req, res) => {
         { level: 1, text: "15 + 15 + 15 + 15 = ?", answer: "60" },
         
         // Level 2: Pangkat & Akar Ringan
-        { level: 2, text: "√64 x 5 = ?", answer: "40" },
-        { level: 2, text: "6² - 16 = ?", answer: "20" },
-        { level: 2, text: "3³ + 3 = ?", answer: "30" },
-        { level: 2, text: "(√100 + 5) x 2 = ?", answer: "30" },
-        { level: 2, text: "8² / 4 = ?", answer: "16" },
+        { level: 2, text: "âˆš64 x 5 = ?", answer: "40" },
+        { level: 2, text: "6Â² - 16 = ?", answer: "20" },
+        { level: 2, text: "3Â³ + 3 = ?", answer: "30" },
+        { level: 2, text: "(âˆš100 + 5) x 2 = ?", answer: "30" },
+        { level: 2, text: "8Â² / 4 = ?", answer: "16" },
         
         // Level 3: Aljabar Dasar (Cari Nilai Variabel)
         { level: 3, text: "5a - 10 = 40. Berapa a?", answer: "10" },
@@ -2759,14 +2763,14 @@ app.get("/init-v2-final", async (req, res) => {
         { level: 4, text: "5 + 5 x 5 = ?", answer: "30" }, 
         { level: 4, text: "10 - 10 x 0 + 10 = ?", answer: "20" },
         { level: 4, text: "Setengah dari 50, dikali 2 = ?", answer: "50" },
-        { level: 4, text: "√81 + 2 x 5 = ?", answer: "19" },
+        { level: 4, text: "âˆš81 + 2 x 5 = ?", answer: "19" },
         { level: 4, text: "(20 / 2) + 5 x 0 = ?", answer: "10" },
         
         // Level 5: Konsentrasi Penuh (Endgame Prep)
         { level: 5, text: "((100 / 4) x 3) - 15 = ?", answer: "60" },
-        { level: 5, text: "(√400 x 3) - 10 = ?", answer: "50" },
+        { level: 5, text: "(âˆš400 x 3) - 10 = ?", answer: "50" },
         { level: 5, text: "(2026 - 2000) x 2 = ?", answer: "52" },
-        { level: 5, text: "(10³ / 100) + 15 = ?", answer: "25" },
+        { level: 5, text: "(10Â³ / 100) + 15 = ?", answer: "25" },
         { level: 5, text: "(50 + 50) x (10 / 5) = ?", answer: "200" }
     ];
     await QuestionV2.insertMany(questions);
