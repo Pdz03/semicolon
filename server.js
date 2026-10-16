@@ -239,6 +239,38 @@ const V5HistorySchema = new mongoose.Schema({
 const V5Config = mongoose.model("V5Config", V5ConfigSchema);
 const V5Participant = mongoose.model("V5Participant", V5ParticipantSchema);
 const V5History = mongoose.model("V5History", V5HistorySchema);
+const V5BarcodeSchema = new mongoose.Schema({
+  event_id: { type: String, default: "current_v5" },
+  code: { type: String, required: true, trim: true, unique: true },
+  label: { type: String, default: "" },
+  active: { type: Boolean, default: true },
+  used_by: { type: String, enum: ["fendi", "ida", null], default: null },
+  used_at: Date,
+  created_at: { type: Date, default: Date.now },
+});
+const V5GameSchema = new mongoose.Schema({
+  event_id: { type: String, unique: true, default: "current_v5" },
+  fendi_started_at: Date,
+  ida_started_at: Date,
+  started_at: Date,
+  fendi_barcode_code: String,
+  fendi_barcode_scanned_at: Date,
+  ida_barcode_code: String,
+  ida_barcode_scanned_at: Date,
+  fendi_variables: { type: mongoose.Schema.Types.Mixed, default: {} },
+  ida_variables: { type: mongoose.Schema.Types.Mixed, default: {} },
+  fendi_questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  ida_questions: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  fendi_question_index: { type: Number, default: 0 },
+  ida_question_index: { type: Number, default: 0 },
+  fendi_finished_at: Date,
+  ida_finished_at: Date,
+  shared_question: { type: mongoose.Schema.Types.Mixed, default: null },
+  shared_solved_at: Date,
+  updated_at: { type: Date, default: Date.now },
+});
+const V5Barcode = mongoose.model("V5Barcode", V5BarcodeSchema);
+const V5Game = mongoose.model("V5Game", V5GameSchema);
 
 let v3State = {
     current_number: null,
@@ -1973,6 +2005,247 @@ app.post("/api/v5/admin/history-status/:role/reset", requireV5Admin, async (req,
   res.json({ success: true });
 });
 
+async function ensureV5Game() {
+  const game = await V5Game.findOneAndUpdate(
+    { event_id: V5_EVENT_ID },
+    { $setOnInsert: { event_id: V5_EVENT_ID } },
+    { upsert: true, new: true }
+  );
+  if (game.started_at && (!game.fendi_questions?.length || !game.ida_questions?.length)) {
+    Object.assign(game, generateV5Math());
+    await game.save();
+  }
+  return game;
+}
+
+function v5Random(min, max) {
+  return crypto.randomInt(min, max + 1);
+}
+
+function generateV5Math() {
+  const ida = { A: v5Random(2, 4), B: v5Random(2, 6), C: v5Random(1, 4), D: 0 };
+  const idaMultiplier = v5Random(2, 3);
+  ida.D = ida.A * v5Random(2, 3);
+  ida.E = ida.A + idaMultiplier * ida.B;
+  ida.F = ida.E - ida.C;
+  ida.G = ida.F * ida.D;
+  ida.H = ida.G / ida.A;
+
+  const fendi = { I: v5Random(3, 7), J: v5Random(2, 6), K: v5Random(2, 3), L: v5Random(1, 5) };
+  fendi.M = fendi.I + fendi.J;
+  fendi.N = fendi.M * fendi.K;
+  fendi.O = fendi.N - fendi.L;
+  fendi.P = fendi.O + fendi.J;
+
+  return {
+    ida_variables: ida,
+    ida_questions: [
+      { target: "E", expression: `A + ${idaMultiplier} × B`, answer: ida.E },
+      { target: "F", expression: "E - C", answer: ida.F },
+      { target: "G", expression: "F × D", answer: ida.G },
+      { target: "H", expression: "G ÷ A", answer: ida.H },
+    ],
+    fendi_variables: fendi,
+    fendi_questions: [
+      { target: "M", expression: "I + J", answer: fendi.M },
+      { target: "N", expression: "M × K", answer: fendi.N },
+      { target: "O", expression: "N - L", answer: fendi.O },
+      { target: "P", expression: "O + J", answer: fendi.P },
+    ],
+    shared_question: {
+      expression: "A^K × (B + J)",
+      answer: Math.pow(ida.A, fendi.K) * (ida.B + fendi.J),
+    },
+  };
+}
+
+function v5VisibleVariables(game, role) {
+  const variables = game[`${role}_variables`] || {};
+  const questions = game[`${role}_questions`] || [];
+  const solvedCount = game[`${role}_question_index`] || 0;
+  const baseKeys = role === "ida" ? ["A", "B", "C", "D"] : ["I", "J", "K", "L"];
+  const keys = baseKeys.concat(questions.slice(0, solvedCount).map((question) => question.target));
+  return Object.fromEntries(keys.map((key) => [key, variables[key]]));
+}
+
+function v5GameJson(game, config) {
+  const releaseTime = config.game_release_time ? new Date(config.game_release_time) : null;
+  return {
+    released: Boolean(releaseTime && releaseTime.getTime() <= Date.now()),
+    release_time: releaseTime,
+    started_at: game.started_at || null,
+    shared_solved: Boolean(game.shared_solved_at),
+    players: {
+      fendi: {
+        started: Boolean(game.fendi_started_at),
+        barcode_scanned: Boolean(game.fendi_barcode_scanned_at),
+        question_index: game.fendi_question_index || 0,
+        finished_at: game.fendi_finished_at || null,
+      },
+      ida: {
+        started: Boolean(game.ida_started_at),
+        barcode_scanned: Boolean(game.ida_barcode_scanned_at),
+        question_index: game.ida_question_index || 0,
+        finished_at: game.ida_finished_at || null,
+      },
+    },
+  };
+}
+
+function v5PlayerGameJson(game, config, role) {
+  const state = v5GameJson(game, config);
+  const player = state.players[role];
+  const questions = game[`${role}_questions`] || [];
+  const bothFinished = Boolean(game.fendi_finished_at && game.ida_finished_at);
+  return {
+    ...state,
+    role,
+    variables: player.barcode_scanned ? v5VisibleVariables(game, role) : {},
+    current_question: player.barcode_scanned && !player.finished_at ? {
+      number: player.question_index + 1,
+      target: questions[player.question_index]?.target,
+      expression: questions[player.question_index]?.expression,
+    } : null,
+    shared: {
+      active: bothFinished && !game.shared_solved_at,
+      solved: Boolean(game.shared_solved_at),
+      expression: role === "ida" && bothFinished ? game.shared_question?.expression : null,
+      can_answer: role === "fendi" && bothFinished && !game.shared_solved_at,
+    },
+  };
+}
+
+app.get("/api/v5/game/status", requireV5Session, async (req, res) => {
+  const [config, game] = await Promise.all([ensureV5Config(), ensureV5Game()]);
+  res.json({ success: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+});
+
+app.post("/api/v5/game/start", requireV5Session, async (req, res) => {
+  const config = await ensureV5Config();
+  const releaseTime = config.game_release_time ? new Date(config.game_release_time) : null;
+  if (!releaseTime || releaseTime.getTime() > Date.now()) {
+    return res.status(403).json({ success: false, message: "Permainan belum dibuka." });
+  }
+  const field = req.v5Role === "fendi" ? "fendi_started_at" : "ida_started_at";
+  const game = await ensureV5Game();
+  if (!game[field]) game[field] = new Date();
+  if (!game.started_at && game.fendi_started_at && game.ida_started_at) {
+    Object.assign(game, generateV5Math());
+    game.started_at = new Date();
+  }
+  game.updated_at = new Date();
+  await game.save();
+  res.json({ success: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+});
+
+app.post("/api/v5/game/scan", requireV5Session, async (req, res) => {
+  const code = String(req.body.code || "").trim();
+  if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
+  const game = await ensureV5Game();
+  if (!game.started_at) return res.status(403).json({ success: false, message: "Tunggu Fendi dan Ida menekan Start." });
+  const scannedField = `${req.v5Role}_barcode_scanned_at`;
+  if (game[scannedField]) return res.status(400).json({ success: false, message: "Kamu sudah memakai barcode." });
+  const barcode = await V5Barcode.findOneAndUpdate(
+    { event_id: V5_EVENT_ID, code, active: true, used_at: null },
+    { used_by: req.v5Role, used_at: new Date() },
+    { new: true }
+  );
+  if (!barcode) return res.status(400).json({ success: false, message: "Barcode tidak terdaftar atau sudah dipakai." });
+  game[`${req.v5Role}_barcode_code`] = code;
+  game[scannedField] = new Date();
+  game.updated_at = new Date();
+  await game.save();
+  const config = await ensureV5Config();
+  res.json({ success: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+});
+
+app.post("/api/v5/game/answer", requireV5Session, async (req, res) => {
+  const game = await ensureV5Game();
+  const indexField = `${req.v5Role}_question_index`;
+  const finishedField = `${req.v5Role}_finished_at`;
+  const questions = game[`${req.v5Role}_questions`] || [];
+  if (!game[`${req.v5Role}_barcode_scanned_at`]) return res.status(403).json({ success: false, message: "Scan barcode terlebih dahulu." });
+  if (game[finishedField]) return res.status(400).json({ success: false, message: "Semua soal personal sudah selesai." });
+  const question = questions[game[indexField] || 0];
+  if (!question) return res.status(400).json({ success: false, message: "Soal belum tersedia." });
+  if (Number(req.body.answer) !== Number(question.answer)) return res.status(400).json({ success: false, correct: false, message: "Jawaban belum tepat. Coba lagi." });
+  game[indexField] = (game[indexField] || 0) + 1;
+  if (game[indexField] >= questions.length) game[finishedField] = new Date();
+  game.updated_at = new Date();
+  await game.save();
+  const config = await ensureV5Config();
+  res.json({ success: true, correct: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+});
+
+app.post("/api/v5/game/shared-answer", requireV5Session, async (req, res) => {
+  if (req.v5Role !== "fendi") return res.status(403).json({ success: false, message: "Jawaban hanya dikirim dari perangkat Fendi." });
+  const game = await ensureV5Game();
+  if (!game.fendi_finished_at || !game.ida_finished_at) return res.status(403).json({ success: false, message: "Tunggu kedua pemain menyelesaikan soal ke-4." });
+  if (game.shared_solved_at) return res.status(400).json({ success: false, message: "Soal bersama sudah selesai." });
+  if (Number(req.body.answer) !== Number(game.shared_question?.answer)) return res.status(400).json({ success: false, correct: false, message: "Jawaban bersama belum tepat." });
+  game.shared_solved_at = new Date();
+  game.updated_at = new Date();
+  await game.save();
+  const config = await ensureV5Config();
+  res.json({ success: true, correct: true, state: v5PlayerGameJson(game, config, req.v5Role) });
+});
+
+app.get("/api/v5/game/monitor", async (req, res) => {
+  const [config, game] = await Promise.all([ensureV5Config(), ensureV5Game()]);
+  res.json({ success: true, state: v5GameJson(game, config) });
+});
+
+app.get("/api/v5/admin/barcodes", requireV5Admin, async (req, res) => {
+  const items = await V5Barcode.find({ event_id: V5_EVENT_ID }).sort({ created_at: -1 }).lean();
+  res.json({ success: true, items: items.map((item) => ({ id: String(item._id), code: item.code, label: item.label || "", active: item.active, used_by: item.used_by || null, used_at: item.used_at || null })) });
+});
+
+app.post("/api/v5/admin/barcodes", requireV5Admin, async (req, res) => {
+  const code = String(req.body.code || "").trim();
+  if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
+  if (await V5Barcode.exists({ code })) return res.status(409).json({ success: false, message: "Kode barcode sudah terdaftar." });
+  const item = await V5Barcode.create({ event_id: V5_EVENT_ID, code, label: String(req.body.label || "").trim() });
+  res.json({ success: true, item: { id: String(item._id), code: item.code } });
+});
+
+app.put("/api/v5/admin/barcodes/:id", requireV5Admin, async (req, res) => {
+  const item = await V5Barcode.findOne({ _id: req.params.id, event_id: V5_EVENT_ID });
+  if (!item) return res.status(404).json({ success: false, message: "Barcode tidak ditemukan." });
+  if (item.used_at) return res.status(400).json({ success: false, message: "Barcode yang sudah dipakai tidak dapat diubah." });
+  const code = String(req.body.code || "").trim();
+  if (!code) return res.status(400).json({ success: false, message: "Kode barcode wajib diisi." });
+  if (await V5Barcode.exists({ code, _id: { $ne: item._id } })) return res.status(409).json({ success: false, message: "Kode barcode sudah terdaftar." });
+  item.code = code;
+  item.label = String(req.body.label || "").trim();
+  item.active = req.body.active !== false;
+  await item.save();
+  res.json({ success: true });
+});
+
+app.delete("/api/v5/admin/barcodes/:id", requireV5Admin, async (req, res) => {
+  const item = await V5Barcode.findOne({ _id: req.params.id, event_id: V5_EVENT_ID });
+  if (!item) return res.status(404).json({ success: false, message: "Barcode tidak ditemukan." });
+  if (item.used_at) return res.status(400).json({ success: false, message: "Reset game sebelum menghapus barcode yang sudah dipakai." });
+  await item.deleteOne();
+  res.json({ success: true });
+});
+
+app.post("/api/v5/admin/game/reset", requireV5Admin, async (req, res) => {
+  await Promise.all([
+    V5Game.findOneAndUpdate(
+      { event_id: V5_EVENT_ID },
+      {
+        $unset: { fendi_started_at: 1, ida_started_at: 1, started_at: 1, fendi_barcode_code: 1, fendi_barcode_scanned_at: 1, ida_barcode_code: 1, ida_barcode_scanned_at: 1, fendi_finished_at: 1, ida_finished_at: 1, shared_solved_at: 1 },
+        $set: { fendi_variables: {}, ida_variables: {}, fendi_questions: [], ida_questions: [], fendi_question_index: 0, ida_question_index: 0, shared_question: null, updated_at: new Date() },
+      },
+      { upsert: true }
+    ),
+    V5Barcode.updateMany({ event_id: V5_EVENT_ID }, { $unset: { used_by: 1, used_at: 1 } }),
+  ]);
+  res.json({ success: true });
+});
+
+
 
 // Redirect root to /v5
 app.get("/", (req, res) => {
@@ -2010,6 +2283,8 @@ app.get("/v4", (req, res) => { res.sendFile(path.join(__dirname, "public/v4/inde
 app.get("/v5", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/index.html")); });
 app.get("/v5/input-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/input-history.html")); });
 app.get("/v5/review-history", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/review-history.html")); });
+app.get("/v5/game", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/game.html")); });
+app.get("/monitor", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/monitor.html")); });
 app.get("/v5/admin", (req, res) => { res.sendFile(path.join(__dirname, "public/v5/admin.html")); });
 
 app.get("/v4/host", (req, res) => {
